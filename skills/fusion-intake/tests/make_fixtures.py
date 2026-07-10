@@ -105,6 +105,67 @@ def make_png(path: Path):
                      + chunk(b"IDAT", idat) + chunk(b"IEND", b""))
 
 
+DOCX_TWO_PAGE_DOCUMENT = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:body>
+<w:p><w:r><w:t>Page one of the onboarding pack.</w:t></w:r></w:p>
+<w:p><w:r><w:br w:type="page"/></w:r></w:p>
+<w:p><w:r><w:t>Page two: the ledger discipline in daily practice.</w:t></w:r></w:p>
+</w:body></w:document>"""
+
+
+def make_docx_two_page(path: Path):
+    """Two pages forced by an explicit page break."""
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("[Content_Types].xml", DOCX_CONTENT_TYPES)
+        z.writestr("_rels/.rels", DOCX_RELS)
+        z.writestr("word/document.xml", DOCX_TWO_PAGE_DOCUMENT)
+
+
+def make_html_eml(path: Path):
+    """HTML-only mail: entities, style and script blocks, no text/plain part."""
+    msg = EmailMessage()
+    msg["From"] = "gilberte@example.com"
+    msg["To"] = "studio@example.com"
+    msg["Subject"] = "Studio move — final quote"
+    msg["Date"] = "Fri, 10 Jul 2026 09:00:00 +0200"
+    msg.set_content(
+        "<html><head><style>p{color:red}</style>"
+        "<script>alert('tracking')</script></head>"
+        "<body><p>Quote for Dupont &amp; Fils: total 1250 euros.</p>"
+        "<p>Valid until <b>2026-08-01</b>.</p></body></html>",
+        subtype="html")
+    path.write_bytes(bytes(msg))
+
+
+def make_eml_colliding_attachments(path: Path):
+    """Two distinct attachments that share one filename."""
+    msg = EmailMessage()
+    msg["From"] = "gilberte@example.com"
+    msg["To"] = "studio@example.com"
+    msg["Subject"] = "Both riders"
+    msg["Date"] = "Fri, 10 Jul 2026 10:00:00 +0200"
+    msg.set_content("Two riders attached, same filename.\n")
+    msg.add_attachment(b"rider one\n", maintype="text", subtype="plain",
+                       filename="rider.txt")
+    msg.add_attachment(b"rider two\n", maintype="text", subtype="plain",
+                       filename="rider.txt")
+    path.write_bytes(bytes(msg))
+
+
+def make_merged_xlsx(path: Path):
+    """A merged title spanning two columns — the anchor value must survive."""
+    import openpyxl
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Budget"
+    ws["A1"] = "Q3 forecast"
+    ws.merge_cells("A1:B1")
+    ws.append(["item", "amount"])
+    ws.append(["strings", 42.5])
+    wb.save(path)
+
+
 if __name__ == "__main__":
     out = Path("fixtures-preview")
     out.mkdir(exist_ok=True)

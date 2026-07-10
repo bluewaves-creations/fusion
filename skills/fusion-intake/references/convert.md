@@ -20,9 +20,11 @@ Walk `pages` in order:
 Format-specific notes:
 - **mail** (`path: mail`): the page text carries headers + body. Body
   becomes the document; headers land in the summary and frontmatter
-  (`created:` from the Date header). Attachments were extracted into the
-  work dir — tell the user, and offer to move them to `inbox/` so each
-  goes through the gate itself.
+  (`created:` from the Date header). An html-only body is converted to
+  text with entities decoded and script/style dropped whole; attachment
+  names that collide are de-collided (`name-2.ext`) so neither is lost.
+  Attachments were extracted into the work dir — tell the user, and
+  offer to move them to `inbox/` so each goes through the gate itself.
 - **text** (`path: text`): the content is already prose. Normalize it
   into the document body; if it carried frontmatter, preserve unknown
   keys (liberal reader) and merge the required three.
@@ -73,7 +75,8 @@ report. The bucket's own Rules (BUCKET.md) override this table.
 1. Document is non-empty and summary-first.
 2. Every manifest page is represented in the body (count them).
 3. Every table's row and column counts match the source page (spot-check
-   against the image).
+   against the image). Merged ranges are unfolded to their anchor value
+   before pruning, so a spanned column is never mistaken for empty.
 4. All three required frontmatter fields present; aurora is one of the
    eight; `source:` points at the admitted original.
 5. Anything you could not read faithfully is flagged in your report to

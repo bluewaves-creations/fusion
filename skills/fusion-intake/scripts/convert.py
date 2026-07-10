@@ -29,6 +29,7 @@ import uuid
 from datetime import datetime
 from email import policy
 from email.parser import BytesParser
+from html.parser import HTMLParser
 from pathlib import Path
 
 import yaml
@@ -260,6 +261,44 @@ def soffice_to_pdf(src: Path, out_dir: Path) -> Path:
     return pdf
 
 
+class _HTMLText(HTMLParser):
+    """Text of an HTML mail body: entities decoded (convert_charrefs),
+    script/style dropped whole, block tags become line breaks."""
+    _SKIP = {"script", "style"}
+    _BREAK = {"p", "br", "div", "tr", "li", "table",
+              "h1", "h2", "h3", "h4", "h5", "h6"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self._chunks: list = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in self._SKIP:
+            self._skip_depth += 1
+        elif tag in self._BREAK:
+            self._chunks.append("\n")
+
+    def handle_endtag(self, tag):
+        if tag in self._SKIP and self._skip_depth:
+            self._skip_depth -= 1
+        elif tag in self._BREAK:
+            self._chunks.append("\n")
+
+    def handle_data(self, data):
+        if not self._skip_depth:
+            self._chunks.append(data)
+
+
+def html_to_text(html: str) -> str:
+    parser = _HTMLText()
+    parser.feed(html)
+    parser.close()
+    lines = [re.sub(r"[ \t]+", " ", ln).strip()
+             for ln in "".join(parser._chunks).splitlines()]
+    return "\n".join(ln for ln in lines if ln)
+
+
 def eml_to_text(path: Path, work_dir: Path):
     msg = BytesParser(policy=policy.default).parse(open(path, "rb"))
     lines = [f"{h}: {msg[h]}" for h in ("From", "To", "Date", "Subject")
@@ -267,10 +306,15 @@ def eml_to_text(path: Path, work_dir: Path):
     body = msg.get_body(preferencelist=("plain", "html"))
     content = body.get_content() if body else ""
     if body and body.get_content_subtype() == "html":
-        content = re.sub(r"<[^>]+>", " ", content)
+        content = html_to_text(content)
     attachments = []
     for part in msg.iter_attachments():
         name = Path(part.get_filename() or "attachment.bin").name
+        stem, dot, ext = name.partition(".")
+        n = 2
+        while name in attachments:
+            name = f"{stem}-{n}{dot}{ext}"
+            n += 1
         (work_dir / name).write_bytes(part.get_payload(decode=True) or b"")
         attachments.append(name)
     return "\n".join(lines) + "\n\n" + content, attachments
@@ -294,12 +338,29 @@ def _route(ext: str) -> str:
                       "what it cannot preserve")
 
 
+def _sheet_matrix(ws):
+    """All cell values with merged ranges unfolded — every cell a merge
+    spans carries the anchor's value, so pruning never eats merged data."""
+    rows = [list(r) for r in ws.iter_rows(values_only=True)]
+    for rng in ws.merged_cells.ranges:
+        if rng.min_row - 1 >= len(rows):
+            continue
+        anchor_row = rows[rng.min_row - 1]
+        anchor = (anchor_row[rng.min_col - 1]
+                  if rng.min_col - 1 < len(anchor_row) else None)
+        for r in range(rng.min_row, min(rng.max_row, len(rows)) + 1):
+            row = rows[r - 1]
+            for c in range(rng.min_col, min(rng.max_col, len(row)) + 1):
+                row[c - 1] = anchor
+    return rows
+
+
 def _xlsx_body(path: Path):
     import openpyxl
     wb = openpyxl.load_workbook(path, data_only=True)
     sections, sheets, rows_total = [], 0, 0
     for name in wb.sheetnames:
-        rows = list(wb[name].iter_rows(values_only=True))
+        rows = _sheet_matrix(wb[name])
         live = [r for r in rows if not _row_empty(r)]
         if live:
             sheets += 1

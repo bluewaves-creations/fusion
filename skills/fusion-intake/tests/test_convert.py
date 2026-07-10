@@ -283,6 +283,59 @@ def test_slugify():
     assert len(convert.slugify("x" * 200)) <= 60
 
 
+# ── fidelity hardening: merged cells, html mail, colliding attachments ────
+
+def test_html_only_mail_reads_clean(bucket):
+    put_inbox(bucket, "quote.eml", fx.make_html_eml)
+    rec = admit(bucket, "quote.eml")
+    record = convert.prepare(bucket, rec["source"])
+    # decoded entities, no tags, no script/style payload
+    text = record["pages"][0]["text"]
+    assert "Dupont & Fils" in text
+    assert "alert(" not in text
+    assert "color:red" not in text
+    assert "<p>" not in text
+
+
+def test_mail_attachments_never_collide(bucket):
+    put_inbox(bucket, "riders.eml", fx.make_eml_colliding_attachments)
+    rec = admit(bucket, "riders.eml")
+    record = convert.prepare(bucket, rec["source"])
+    assert sorted(record["attachments"]) == ["rider-2.txt", "rider.txt"]
+    # and both files exist with their own content in the run dir
+    run_dir = bucket / record["run_dir"]
+    assert (run_dir / "rider.txt").read_bytes() == b"rider one\n"
+    assert (run_dir / "rider-2.txt").read_bytes() == b"rider two\n"
+
+
+def test_merged_cells_keep_their_anchor_value(bucket):
+    put_inbox(bucket, "forecast.xlsx", fx.make_merged_xlsx)
+    rec = admit(bucket, "forecast.xlsx")
+    record = convert.prepare(bucket, rec["source"])
+    doc = (bucket / record["output_file"]).read_text(encoding="utf-8")
+    body = doc.split("---\n", 2)[2]
+    assert "Q3 forecast" in body
+    assert "| strings | 42.5 |" in body
+    assert "| item | amount |" in body          # column B survived pruning
+
+
+@pytest.mark.skipif(shutil.which("soffice") is None and shutil.which("libreoffice") is None,
+                    reason="LibreOffice not installed")
+def test_docx_page_break_yields_two_pages(bucket):
+    put_inbox(bucket, "onboarding.docx", fx.make_docx_two_page)
+    rec = admit(bucket, "onboarding.docx")
+    record = convert.prepare(bucket, rec["source"])
+    assert record["page_count"] >= 2
+    assert len(record["images"]) == record["page_count"]
+
+
+def test_html_to_text_direct():
+    out = convert.html_to_text(
+        "<style>x{}</style><script>bad()</script>"
+        "<p>A &amp; B</p><p>C</p>")
+    assert out == "A & B\nC"
+
+
 def test_cell_to_string_floats_verbatim():
     """The lossless contract: numbers verbatim, never rounded away."""
     assert convert.cell_to_string(78.5) == "78.5"
