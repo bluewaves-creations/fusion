@@ -32,8 +32,8 @@ it got right and refusing what made it non-portable:
 |---|---|---|
 | **OKF** (Google, open spec) | Minimal specified format; untyped cross-links; `resource:`; "the spec is the contribution"; liberal reading | Absence of validation; no in-file disclosure |
 | **Athena** (Bluewaves app) | Fixed opinionated structure; the aurora system; archive convention (path is truth, aurora is signal); strict validation at the gate | The app; the envelope; UUID identity |
-| **Gizmo NXT** (Bluewaves app) | The session/workbench idea; agent-as-colleague posture | Runtime coupling; app-locked state |
-| **Shaping Room V2** (skills) | doc-converter intake gate; immutable sources; summary-first disclosure; registers; workbench | Convention-only reliability (registers maintained by hope) |
+| **Gizmo NXT** (Bluewaves app) | The session/workbench idea; agent-as-colleague posture; the Dream (reflection & pruning), reborn as files | Runtime coupling; app-locked state |
+| **Shaping Room V2** (Bluewaves designs) | doc-converter intake gate; immutable sources; summary-first disclosure; registers; workbench | Convention-only reliability (registers maintained by hope) |
 
 ## Founding concepts
 
@@ -99,7 +99,7 @@ Every bucket is the same shape — all zones present from day one, scaffolded by
 
 ```
 <bucket>/
-├── BUCKET.md        # identity card: name, kind (pro|personal|club|…), description, conventions
+├── BUCKET.md        # identity card: name, kind (pro|personal|club|…), description + § Conventions (learned rules, standing delegations)
 ├── LEDGER.md        # append-only record of everything done here — by human or AI
 ├── inbox/           # drop zone — legacy files land here, nothing lives here
 ├── sources/         # immutable originals, preserved forever, out of the knowledge — with MANIFEST.md
@@ -142,6 +142,9 @@ triage before opening anything).
 - **Ownership means accountability.** Every act of curation is a `fusion log`
   entry — the ledger is the librarian's signed register; `fusion check` is the
   audit it answers to.
+- **Ownership means maintenance.** The librarian runs the reflection ritual
+  (§7): the bucket is introspected, curated, pruned, and refined on a cadence —
+  order that isn't maintained isn't owned.
 - **Clean, bold, opinionated structure.** Few, strongly-named folders — no
   `misc/`, no fifteen half-overlapping categories. The librarian has the
   authority to say "this goes here" and to *restructure* when the taxonomy stops
@@ -233,8 +236,9 @@ versioning; the other is trust between colleagues.
   `FUSION_ACTOR` env or `--as` — `claude`, `pi`, `goose`, the human. The
   centaur's two hands, distinguishable forever.
 - **Closed verb set:** `created, converted, classified, indexed, moved,
-  promoted, archived, restructured, shipped, noted`. Small and greppable so
-  agents can reason over the record. `noted` is the escape hatch.
+  promoted, archived, restructured, shipped, reflected, noted`. Small and
+  greppable so agents can reason over the record. `noted` is the escape hatch;
+  `reflected` signs off a reflection cycle (§7).
 - The librarian's accountability lives here: `restructured` entries carry the
   justification.
 
@@ -255,6 +259,9 @@ versioning; the other is trust between colleagues.
 life; LP block — focus; client call — commitments; surf window — life), and only
 the hub can compose it. Aurora is what makes the composition possible: eight
 words that mean the same thing across the user's entire existence.
+
+`fusion status` and `fusion log` accept `--since <date|last-reflection>` so
+reflection cycles (§7) scope cleanly over the ledger.
 
 **Implementation posture:** Python, installed as a uv tool. Dependencies near
 zero (pyyaml and little else). No daemon, no database, no config beyond the hub
@@ -286,7 +293,9 @@ Pi, and Goose.
 - **fusion-librarian** — the accountable owner as a skill: queries, creation,
   tagging, cross-referencing, promotion from workbench, archiving, and its
   distinctive power — **restructuring**, executed and signed in the ledger with
-  reasons. Also owns activity *hygiene* across `activities/`.
+  reasons. Also owns activity *hygiene* across `activities/`, and runs the
+  **reflection ritual** (§7) — introspection, curation, pruning, and the
+  maintenance of `BUCKET.md § Conventions`.
 - **fusion-planner** — the human drives activities; the planner structures them:
   creates activities (folders + stateful documents with `status`, dates,
   aurora), keeps the horizon honest (stalled activities, expiring commitments,
@@ -309,7 +318,62 @@ Pi, and Goose.
 V2's audit became `fusion check`; scaffold became `fusion new`; workspace's
 promote folds into the librarian. Six skills became four skills and a CLI.
 
-## 7. Installation & open-source posture
+## 7. The metabolism — reflection, learning, pruning
+
+A system that only operates is a filing cabinet with better manners. Fusion
+lives: **the files remember → the AI reflects → the human judges → the system
+learns.** The loop needs no ninth command and no fifth skill — everything
+required already exists; this section defines the ritual and the place where
+learning lands.
+
+### The Reflection
+
+Per bucket, on a cadence suggested in BUCKET.md (weekly for hot buckets,
+monthly for calm ones), triggered by the human or their agent's scheduler —
+Fusion itself still refuses watchers. The librarian runs it:
+
+1. **Introspect** — read `LEDGER.md` since the last reflection (`--since
+   last-reflection`), run `fusion check` and `fusion status`. The ledger doubles
+   as telemetry: what got converted, promoted, touched — and what never did.
+2. **Curate & prune** — propose: stale workbench items (expire or promote),
+   dormant activities (no ledger touch in N days → `dormant` or archive),
+   superseded library docs → `archive/`, duplicates to merge, fat documents to
+   split, summaries that no longer match their bodies, taxonomy that stopped
+   serving.
+3. **Judge** — proposals go to the human. Destructive and archival acts need a
+   yes — except where standing delegation applies (below).
+4. **Learn** — what the reflection taught lands in `BUCKET.md § Conventions`;
+   the cycle signs off with a `reflected` ledger entry.
+
+Episodic reflection reports are ephemeral (workbench); only conventions and
+ledger entries persist.
+
+### BUCKET.md § Conventions — where the system learns
+
+A living section the librarian maintains: bucket-specific rules discovered
+through operation — "scorecards are filed by supplier, not by date," "never
+archive client contracts." The long-term memory of *how this bucket works*; the
+ledger is the episodic memory of *what happened*. Every convention added or
+changed is logged. Skills read § Conventions before acting — the system
+genuinely behaves differently after it learns.
+
+### The trust dial — standing delegations
+
+Also in § Conventions: explicit grants — *"the librarian may archive dormant
+explore-aurora docs without asking."* Trust between colleagues grows the way it
+does between humans: earned, explicit, recorded, revocable. Synergy's Trust flow
+made structural — delegation widens as the ledger proves reliability.
+
+### Honest boundary
+
+File-based reflection sees *actions*, not *reads* — no `accessCount` without an
+app, and the app was refused. Fusion learns from what the centaur *did*, not
+what it glanced at. That is the portable trade, stated proudly.
+
+**Lineage:** this is Gizmo's Dream reborn as files — the pruner that ran in a
+Core Data store becomes a ritual over a ledger anyone can read.
+
+## 8. Installation & open-source posture
 
 ```
 fusion/
@@ -337,7 +401,7 @@ Then `fusion new <path>` and you're living in it.
 - Spec versioned (`fusion_version` in BUCKET.md); spec changes rare and
   versioned.
 
-## 8. Error posture — liberal reader, strict writer
+## 9. Error posture — liberal reader, strict writer
 
 - **Reading (OKF's lesson):** no tool ever rejects a bucket for missing optional
   fields, unknown types, or broken links. A half-migrated bucket is still a
@@ -348,7 +412,7 @@ Then `fusion new <path>` and you're living in it.
 - CLI: honest exit codes, locked appends, nothing destructive without
   `--force`. Append-only ledger + git = recovery always trivial.
 
-## 9. Testing
+## 10. Testing
 
 - **CLI:** pytest golden-file suites — scaffold → index → check round-trips
   against `examples/`.
@@ -357,7 +421,7 @@ Then `fusion new <path>` and you're living in it.
 - **Dogfood:** the two day-one buckets are living fixtures. When `fusion today`
   composes a real morning correctly, v1 works.
 
-## 10. What v1 refuses
+## 11. What v1 refuses
 
 | Refused | Why |
 |---|---|
@@ -369,7 +433,7 @@ Then `fusion new <path>` and you're living in it.
 | Watchers/automation | Agent-invoked only. Nothing moves unless a colleague — human or AI — moves it. |
 | Custom auroras | The eight are the eight. A configurable attention system is no system at all. |
 
-## 11. Decisions log (from the brainstorm)
+## 12. Decisions log (from the brainstorm)
 
 1. **Whole-system-first:** the core represents the complete system from first
    design — all zones, aurora, registers, buckets, expandability — each in its
@@ -388,3 +452,8 @@ Then `fusion new <path>` and you're living in it.
    opinionated structures.
 8. **Life-scale test passed:** 3 companies + personal + studio = 5 buckets;
    `fusion today` and `resource:` added as consequences.
+9. **The metabolism (user-identified gap):** the system must learn, introspect,
+   improve, curate, prune, refine. Answered structurally — reflection ritual
+   run by the librarian, `BUCKET.md § Conventions` as learning store, standing
+   delegations as the trust dial, `reflected` verb — with no new command and no
+   new skill.
