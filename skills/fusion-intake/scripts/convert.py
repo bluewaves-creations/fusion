@@ -7,7 +7,7 @@
 #   "pymupdf>=1.24.0",
 # ]
 # ///
-"""fusion-intake Stage-1 engine: admit / prepare / link / cleanup.
+"""fusion-intake Stage-1 engine: admit / prepare / link / batch / cleanup.
 
 Deterministic, no LLM. `admit` is the ONLY writer of sources/MANIFEST.md in
 the whole Fusion reference implementation. `prepare` routes by format:
@@ -15,7 +15,10 @@ extractive files (xlsx/csv) become conformant documents directly; everything
 else gets a work dir under workbench/.intake/ with page text + images +
 manifest.json for the Stage-2 agent (references/convert.md). The page-
 coverage invariant — every page recorded, low-text pages flagged
-needs_vision — makes silent-empty output structurally impossible.
+needs_vision — makes silent-empty output structurally impossible. `batch`
+runs a validated admit+link op-list in one process for delivery-scale
+intake (references/delivery.md) — it reuses `admit`/`link`, never a second
+writer.
 """
 import argparse
 import csv as csv_mod
@@ -51,6 +54,10 @@ SUPPORTED_EXTS = (EXTRACTIVE_EXTS | LIBREOFFICE_EXTS | IMAGE_EXTS
 # into inbox/ and discards the zip — the members become the originals.
 # They must never join SUPPORTED_EXTS; admit keeps refusing them.
 CONTAINER_EXTS = {".zip", ".athena"}
+
+# Zones a `link` doc path may point into — inbox/sources/workbench never
+# hold finished documents, only originals and ephemeral staging.
+DOC_ZONES = {"library", "activities", "output"}
 
 TEXT_COVERAGE_MIN_CHARS = 100   # below this a page is scanned/figure
 RENDER_DPI = 150
@@ -172,6 +179,22 @@ def manifest_link(root: Path, rel: str, doc: str) -> None:
     if not hit:
         raise IntakeError(f"source not in manifest: {rel}")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _manifest_rels(root: Path) -> set:
+    """The `file` column of every real row — used by `batch` to validate
+    (category, basename) uniqueness against what's already registered."""
+    path = _manifest_path(root)
+    if not path.is_file():
+        return set()
+    rels = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip().startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) == 5 and cells[0] not in ("file", "---"):
+            rels.add(cells[0])
+    return rels
 
 
 # ── admit ────────────────────────────────────────────────────────────────
@@ -602,6 +625,106 @@ def link(root: Path, source_rel: str, doc_rel: str) -> dict:
     return {"source": source_rel, "library": doc_rel}
 
 
+# ── batch: one op-list, validated whole, then moved ──────────────────────
+#
+# Schema (references/delivery.md):
+#   {"admits": [{"file": "<inbox-rel>", "category": "<cat>"}],
+#    "links":  [{"source": "<sources-rel>", "doc": "<zone-rel-doc>"}]}
+#
+# Semantics — two validation passes, never partial:
+#   1. VALIDATE every admit and link syntactically/structurally BEFORE any
+#      filesystem or MANIFEST mutation (the gate's rule, batch-scale): a
+#      bad op anywhere in the list means nothing moves, nothing is
+#      appended — not even the good ops ahead of it.
+#   2. EXECUTE all admits (reusing `admit()`, one MANIFEST row per file).
+#   3. VALIDATE that every link's doc exists on disk NOW — admits already
+#      landed (the mechanical half doesn't roll back), but if any doc is
+#      missing NO link is written, not even the ones whose doc is fine.
+#   4. EXECUTE all links (reusing `link()`).
+
+def batch(root: Path, ops: dict, actor: str) -> dict:
+    root = Path(root)
+    if not actor or any(c.isspace() for c in actor):
+        raise IntakeError(f"actor must be a single token: {actor!r}")
+
+    admits = ops.get("admits", [])
+    links = ops.get("links", [])
+
+    # ── phase 1: validate every op, nothing touched yet ──────────────────
+    existing_rels = _manifest_rels(root)
+    batch_rels = set()
+    seen_files = set()
+    for i, op in enumerate(admits):
+        file = (op.get("file") or "").strip()
+        category = (op.get("category") or "").strip().strip("/")
+        if not file:
+            raise IntakeError(f"admits[{i}]: file required")
+        if not category:
+            raise IntakeError(f"admits[{i}]: category required")
+        if file in seen_files:
+            raise IntakeError(
+                f"admits[{i}]: {file!r} is admitted twice in this batch — "
+                "the first admit would move it before the second runs")
+        seen_files.add(file)
+        src = root / "inbox" / file
+        if not src.is_file():
+            raise IntakeError(f"admits[{i}]: not in inbox/: {file}")
+        if src.suffix.lower() not in SUPPORTED_EXTS:
+            raise IntakeError(
+                f"admits[{i}]: unsupported format: {src.suffix.lower()} — "
+                "the gate refuses what it cannot preserve; the file stays "
+                "in inbox/")
+        if any(c in src.name for c in "|\n\r") or any(c in category for c in "|\n\r"):
+            raise IntakeError(
+                f"admits[{i}]: '|' and newlines break the manifest "
+                f"grammar: {src.name!r}")
+        rel = f"{category}/{src.name}"
+        if rel in existing_rels:
+            raise IntakeError(
+                f"admits[{i}]: sources/ is immutable and {rel} already "
+                "exists — rename the incoming file before admitting it")
+        if rel in batch_rels:
+            raise IntakeError(
+                f"admits[{i}]: duplicate (category, basename) within this "
+                f"batch: {rel}")
+        batch_rels.add(rel)
+
+    for i, op in enumerate(links):
+        source = (op.get("source") or "").strip()
+        doc = (op.get("doc") or "").strip()
+        if not source:
+            raise IntakeError(f"links[{i}]: source required")
+        if not doc:
+            raise IntakeError(f"links[{i}]: doc required")
+        if doc.split("/", 1)[0] not in DOC_ZONES:
+            raise IntakeError(
+                f"links[{i}]: doc must be zone-relative under "
+                f"{sorted(DOC_ZONES)}: {doc!r}")
+        if source not in existing_rels and source not in batch_rels:
+            raise IntakeError(
+                f"links[{i}]: link source will not exist: {source!r} — "
+                "not already registered in sources/ nor admitted by this "
+                "batch's own admits")
+
+    # ── phase 2: execute admits ───────────────────────────────────────────
+    admitted = [admit(root, op["file"], op["category"], actor) for op in admits]
+
+    # ── phase 3: validate every link's doc exists NOW, before any link ───
+    for i, op in enumerate(links):
+        doc = op["doc"].strip()
+        if not (root / doc).is_file():
+            raise IntakeError(
+                f"links[{i}]: doc does not exist: {doc!r} — write it "
+                "(Stage 2 conversion) before linking; no link in this "
+                "batch was written")
+
+    # ── phase 4: execute links ────────────────────────────────────────────
+    for op in links:
+        link(root, op["source"].strip(), op["doc"].strip())
+
+    return {"admitted": len(admitted), "linked": len(links)}
+
+
 def cleanup(run_dir: Path) -> None:
     run_dir = Path(run_dir).resolve()
     parts = run_dir.parts
@@ -648,6 +771,13 @@ def main(argv=None) -> int:
     p = sub.add_parser("cleanup", help="delete one work dir")
     p.add_argument("--run-dir", required=True)
 
+    p = sub.add_parser("batch", help="validated multi-op admit+link in one "
+                       "process (references/delivery.md)")
+    p.add_argument("--bucket", required=True)
+    p.add_argument("--ops", required=True,
+                   help="path to a JSON op-list: {admits: [...], links: [...]}")
+    p.add_argument("--actor", default="claude")
+
     args = ap.parse_args(argv)
     try:
         if args.cmd == "admit":
@@ -660,6 +790,9 @@ def main(argv=None) -> int:
                           aurora=args.aurora, reconcile=args.reconcile)
         elif args.cmd == "link":
             out = link(Path(args.bucket), args.source, args.doc)
+        elif args.cmd == "batch":
+            ops = json.loads(Path(args.ops).read_text(encoding="utf-8"))
+            out = batch(Path(args.bucket), ops, args.actor)
         else:
             cleanup(Path(args.run_dir))
             out = {"cleaned": args.run_dir}

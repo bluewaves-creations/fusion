@@ -481,3 +481,189 @@ def test_slugify_strips_structured_text_extensions():
     assert convert.slugify("manifest.json") == "manifest"
     assert convert.slugify("Deploy Config.yaml") == "deploy-config"
     assert convert.slugify("ci.yml") == "ci"
+
+
+# ── batch: one op-list, validated whole, then moved ─────────────────────
+
+def write_doc(root, rel, title):
+    p = root / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(convert.render_document(
+        {"title": title, "type": "note", "aurora": "library"},
+        f"{title}.", "Body."), encoding="utf-8")
+    return p
+
+
+def manifest_rows(bucket):
+    text = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    return [ln for ln in text.strip().splitlines() if ln.strip().startswith("|")][2:]
+
+
+def test_batch_happy_path(bucket):
+    put_inbox(bucket, "a.csv", fx.make_csv)
+    put_inbox(bucket, "b.csv", fx.make_csv)
+    write_doc(bucket, "library/records/a.md", "A")
+    write_doc(bucket, "library/records/b.md", "B")
+    ops = {
+        "admits": [{"file": "a.csv", "category": "records"},
+                   {"file": "b.csv", "category": "records"}],
+        "links": [{"source": "records/a.csv", "doc": "library/records/a.md"},
+                  {"source": "records/b.csv", "doc": "library/records/b.md"}],
+    }
+    out = convert.batch(bucket, ops, actor="claude")
+    assert out == {"admitted": 2, "linked": 2}
+    assert not (bucket / "inbox" / "a.csv").exists()
+    assert not (bucket / "inbox" / "b.csv").exists()
+    assert (bucket / "sources" / "records" / "a.csv").is_file()
+    assert (bucket / "sources" / "records" / "b.csv").is_file()
+    rows = manifest_rows(bucket)
+    assert len(rows) == 2
+    for row in rows:
+        cells = [c.strip() for c in row.strip("|").split("|")]
+        assert cells[2] == "claude"
+        assert cells[4] in ("library/records/a.md", "library/records/b.md")
+
+
+def test_batch_validation_before_damage(bucket):
+    # 3 admits: two good, one referencing a file that isn't in inbox/ at
+    # all — the whole batch must abort before the first mutation.
+    put_inbox(bucket, "a.csv", fx.make_csv)
+    put_inbox(bucket, "b.csv", fx.make_csv)
+    manifest_before = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    ops = {
+        "admits": [{"file": "a.csv", "category": "records"},
+                   {"file": "ghost.csv", "category": "records"},
+                   {"file": "b.csv", "category": "records"}],
+        "links": [],
+    }
+    with pytest.raises(convert.IntakeError, match="inbox"):
+        convert.batch(bucket, ops, actor="claude")
+    # nothing moved, nothing appended — even the two good admits
+    assert (bucket / "inbox" / "a.csv").is_file()
+    assert (bucket / "inbox" / "b.csv").is_file()
+    assert not (bucket / "sources" / "records").exists()
+    manifest_after = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    assert manifest_after == manifest_before
+
+
+def test_batch_validation_catches_bad_link_before_any_admit(bucket):
+    put_inbox(bucket, "a.csv", fx.make_csv)
+    ops = {
+        "admits": [{"file": "a.csv", "category": "records"}],
+        "links": [{"source": "records/nope.csv", "doc": "library/x.md"}],
+    }
+    with pytest.raises(convert.IntakeError, match="link source"):
+        convert.batch(bucket, ops, actor="claude")
+    assert (bucket / "inbox" / "a.csv").is_file()
+    assert not (bucket / "sources" / "records").exists()
+
+
+def test_batch_link_source_declared_in_same_batch_works(bucket):
+    # the link's source isn't in sources/ yet — it's one of THIS batch's
+    # own admits (forward reference within one call, no separate admit()
+    # round trip needed).
+    put_inbox(bucket, "a.csv", fx.make_csv)
+    write_doc(bucket, "library/records/a.md", "A")
+    ops = {
+        "admits": [{"file": "a.csv", "category": "records"}],
+        "links": [{"source": "records/a.csv", "doc": "library/records/a.md"}],
+    }
+    out = convert.batch(bucket, ops, actor="claude")
+    assert out == {"admitted": 1, "linked": 1}
+    row = manifest_rows(bucket)[0]
+    assert row.split("|")[-2].strip() == "library/records/a.md"
+
+
+def test_batch_link_source_already_admitted_before_batch(bucket):
+    # the link's source was admitted in a PRIOR, separate admit() call —
+    # not part of this batch's admits at all.
+    put_inbox(bucket, "old.csv", fx.make_csv)
+    admit(bucket, "old.csv")
+    write_doc(bucket, "library/records/old.md", "Old")
+    ops = {"admits": [], "links": [{"source": "records/old.csv",
+                                    "doc": "library/records/old.md"}]}
+    out = convert.batch(bucket, ops, actor="claude")
+    assert out == {"admitted": 0, "linked": 1}
+
+
+def test_batch_missing_link_doc_aborts_before_any_link_written(bucket):
+    # admits succeed (the mechanical half is done); the doc for one link
+    # was never written — nothing partial: NO link gets applied, not even
+    # the one whose doc does exist.
+    put_inbox(bucket, "a.csv", fx.make_csv)
+    put_inbox(bucket, "b.csv", fx.make_csv)
+    write_doc(bucket, "library/records/a.md", "A")
+    # b.md deliberately not written
+    ops = {
+        "admits": [{"file": "a.csv", "category": "records"},
+                   {"file": "b.csv", "category": "records"}],
+        "links": [{"source": "records/a.csv", "doc": "library/records/a.md"},
+                  {"source": "records/b.csv", "doc": "library/records/b.md"}],
+    }
+    with pytest.raises(convert.IntakeError, match="library/records/b.md"):
+        convert.batch(bucket, ops, actor="claude")
+    # both admits landed — the mechanical half is not rolled back
+    assert (bucket / "sources" / "records" / "a.csv").is_file()
+    assert (bucket / "sources" / "records" / "b.csv").is_file()
+    # but NEITHER link was written — not even the one with a real doc
+    for row in manifest_rows(bucket):
+        cells = [c.strip() for c in row.strip("|").split("|")]
+        assert cells[4] == "—"
+
+
+def test_batch_rejects_duplicate_category_basename_within_batch(bucket):
+    put_inbox(bucket, "dupe.csv", fx.make_csv)
+    (bucket / "inbox" / "sub").mkdir()
+    (bucket / "inbox" / "sub" / "dupe.csv").write_bytes(
+        (bucket / "inbox" / "dupe.csv").read_bytes())
+    ops = {"admits": [{"file": "dupe.csv", "category": "records"},
+                      {"file": "sub/dupe.csv", "category": "records"}],
+           "links": []}
+    with pytest.raises(convert.IntakeError, match="duplicate"):
+        convert.batch(bucket, ops, actor="claude")
+    assert not (bucket / "sources" / "records").exists()
+
+
+def test_batch_rejects_basename_collision_against_existing_manifest_row(bucket):
+    put_inbox(bucket, "dupe.csv", fx.make_csv)
+    admit(bucket, "dupe.csv")   # already a MANIFEST row for records/dupe.csv
+    put_inbox(bucket, "dupe2.csv", fx.make_csv)
+    (bucket / "inbox" / "dupe2.csv").rename(bucket / "inbox" / "dupe.csv")
+    ops = {"admits": [{"file": "dupe.csv", "category": "records"}],
+           "links": []}
+    with pytest.raises(convert.IntakeError, match="immutable"):
+        convert.batch(bucket, ops, actor="claude")
+
+
+def test_batch_rejects_bad_actor(bucket):
+    put_inbox(bucket, "a.csv", fx.make_csv)
+    ops = {"admits": [{"file": "a.csv", "category": "records"}], "links": []}
+    with pytest.raises(convert.IntakeError, match="actor"):
+        convert.batch(bucket, ops, actor="two words")
+    assert (bucket / "inbox" / "a.csv").is_file()
+
+
+def test_batch_rejects_link_doc_not_zone_relative(bucket):
+    put_inbox(bucket, "a.csv", fx.make_csv)
+    ops = {"admits": [{"file": "a.csv", "category": "records"}],
+           "links": [{"source": "records/a.csv", "doc": "inbox/sneaky.md"}]}
+    with pytest.raises(convert.IntakeError, match="zone"):
+        convert.batch(bucket, ops, actor="claude")
+    assert (bucket / "inbox" / "a.csv").is_file()
+
+
+def test_batch_rejects_duplicate_inbox_file_in_two_admits(bucket):
+    put_inbox(bucket, "a.csv", fx.make_csv)
+    ops = {"admits": [{"file": "a.csv", "category": "records"},
+                      {"file": "a.csv", "category": "other"}],
+           "links": []}
+    with pytest.raises(convert.IntakeError, match="twice"):
+        convert.batch(bucket, ops, actor="claude")
+    assert (bucket / "inbox" / "a.csv").is_file()
+    assert not (bucket / "sources" / "records").exists()
+    assert not (bucket / "sources" / "other").exists()
+
+
+def test_batch_empty_ops_is_a_noop(bucket):
+    out = convert.batch(bucket, {"admits": [], "links": []}, actor="claude")
+    assert out == {"admitted": 0, "linked": 0}

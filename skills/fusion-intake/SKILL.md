@@ -43,6 +43,14 @@ inbox/ ─► STAGE 1 gate (scripts/gate.py)      deterministic: hash, similarit
 bucket root before calling (the manifest's `run_dir` is bucket-relative).
 `<skill>` is this skill's directory.
 
+A delivery — a container or folder holding dozens to hundreds of files
+arriving together — walks this same pipeline, but its mechanical halves
+(admit, link) run once each as a single validated batch instead of one
+call per file: `convert.py batch --bucket <root> --ops <ops.json>`. Read
+`references/delivery.md` for the full protocol (dedupe, per-folder
+categories on basename collision, batch schema) before working a
+delivery.
+
 Containers (`.zip`, `.athena`) are delivery vehicles, not originals:
 `uv run <skill>/scripts/convert.py unpack --bucket <root> --file <name>`
 extracts one beside the container (`inbox/<stem>/` for top-level drops)
