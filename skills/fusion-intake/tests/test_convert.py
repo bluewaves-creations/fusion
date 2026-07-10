@@ -446,3 +446,9 @@ def test_json_rides_the_text_route():
     assert convert._route(".json") == "text"
     assert ".yaml" in convert.SUPPORTED_EXTS
     assert ".yml" in convert.SUPPORTED_EXTS
+
+
+def test_slugify_strips_structured_text_extensions():
+    assert convert.slugify("manifest.json") == "manifest"
+    assert convert.slugify("Deploy Config.yaml") == "deploy-config"
+    assert convert.slugify("ci.yml") == "ci"
