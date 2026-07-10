@@ -97,3 +97,15 @@ def test_write_indexes_logs_only_changes(tmp_path):
                                     at=datetime(2026, 7, 10, 10, 6))
     assert all(r["changed"] is False for r in results)
     assert len(ledger.read(tmp_path)) == 2
+
+
+def test_dot_directory_filter_excludes_hidden_paths(tmp_path):
+    """Verify that _zone_documents skips files in dot-prefixed directories."""
+    zone = tmp_path / "library"
+    _doc(zone / "visible.md", "Visible", "A real document.")
+    _doc(zone / ".trash" / "ghost.md", "Ghost", "Should not appear in index.")
+    out = indexer.generate(zone, "library")
+    assert "visible.md" in out
+    assert "Visible" in out
+    assert "ghost" not in out.lower()
+    assert "Ghost" not in out
