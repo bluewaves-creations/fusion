@@ -6,11 +6,11 @@
 """fusion-intake Stage 1 — the deterministic gate classifier.
 
 Hashes every file in inbox/, compares against the sources/ tree, normalizes
-filenames, scores content similarity, and writes a gate manifest with four
-buckets: exact_dups, near_dups, update_candidates, clean_new. It classifies
-and reports — it never writes to sources/ or library/. Stage 2 (the agent,
-references/gate.md) assigns the final class and asks the human where the
-locked rule requires it.
+filenames, scores content similarity, and writes a gate manifest with six
+buckets: exact_dups, near_dups, update_candidates, clean_new, containers,
+inbox_dups. It classifies and reports — it never writes to sources/ or
+library/. Stage 2 (the agent, references/gate.md) assigns the final
+class and asks the human where the locked rule requires it.
 
 Usage:
     uv run <skill>/scripts/gate.py --bucket <bucket-root> [--out <path>]

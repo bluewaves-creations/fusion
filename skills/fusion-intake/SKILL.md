@@ -19,7 +19,7 @@ contain filing rules and standing delegations that bind this whole run.
 
 ```
 inbox/ ─► STAGE 1 gate (scripts/gate.py)      deterministic: hash, similarity
-              │        four buckets → gate-<runid>.json
+              │        six buckets → gate-<runid>.json
               ▼
           STAGE 2 gate (references/gate.md)   judgment: final class + intake report
               │        new → auto-proceed · exact dup → auto-skip
@@ -66,10 +66,12 @@ and deletes the container — the members become the originals, signed
    plural noun (`reports`, `mails`, `gear`). The MANIFEST row is the
    script's job — never edit MANIFEST.md yourself.
 3. **Prepare:**
-   `uv run <skill>/scripts/convert.py prepare --bucket <root> --source <cat>/<name> [--dest …] [--type …] [--aurora …]`
+   `uv run <skill>/scripts/convert.py prepare --bucket <root> --source <cat>/<name> [--dest …] [--slug …] [--type …] [--aurora …] [--reconcile]`
    Extractive files (`done: true`) are already conformant documents.
    Everything else returns a work-dir manifest — load
-   `references/convert.md` and reconstruct.
+   `references/convert.md` and reconstruct. `--reconcile` (with the
+   existing doc's `--dest`/`--slug`) is the confirmed-update path —
+   prepare refuses an existing destination without it.
 4. **Close** (per file): refine the document summary if it's the
    deterministic placeholder, then — admit already moved the original into
    `sources/`, so closing is just the register trail:
@@ -83,10 +85,12 @@ and deletes the container — the members become the originals, signed
 | Class | Meaning | Action |
 |---|---|---|
 | new | nothing matches | auto-proceed |
-| duplicate (exact) | byte-identical to a source | auto-skip, recorded |
-| duplicate (near) | re-export / trivial edit | ASK: skip / update / new |
+| duplicate — exact | byte-identical to a source | auto-skip, recorded |
+| duplicate — near | re-export / trivial edit | ASK: skip / update / new |
 | updated | newer version of an existing source | ASK, then supersede |
 | conflicting | claims contradict the library | ASK — the gate never picks a winner |
+
+Four classes — `duplicate` splits into exact (auto-skip) and near (ask).
 
 The four classes cover matches against `sources/`; the same bytes dropped
 twice within one inbox batch are reported separately as `inbox_dups` and
@@ -94,10 +98,11 @@ cleaned per the bucket's rules (`references/gate.md`).
 
 **Supersede, the Fusion way:** `sources/` is immutable — a confirmed update
 ADMITS THE NEW FILE as its own source (rename it first if the name
-collides) and RECONCILES the existing library document in place: same
-path, content updated, `updated:` bumped, `source:` repointed to the new
-original. One document, no `-v2` twin. The old original stays in
-`sources/` and the MANIFEST, superseded but never erased.
+collides) and RECONCILES the existing library document in place
+(`prepare --reconcile`): same path, content updated, `updated:` bumped,
+`source:` repointed to the new original. One document, no `-v2` twin.
+The old original stays in `sources/` and the MANIFEST, superseded but
+never erased.
 
 ## The fidelity contract (lossless, non-negotiable)
 

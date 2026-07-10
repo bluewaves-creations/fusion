@@ -1,10 +1,11 @@
 # The intake gate — Stage 2 (judgment)
 
 Stage 1 (`scripts/gate.py`) wrote `workbench/.intake/gate-<runid>.json`
-with five buckets: `exact_dups`, `near_dups`, `update_candidates`,
-`clean_new`, `containers`. This stage assigns each file's final class and
-writes the intake report. It writes NOTHING to `sources/` or `library/` —
-admission and conversion happen only after this stage's confirmations.
+with six buckets: `exact_dups`, `near_dups`, `update_candidates`,
+`clean_new`, `containers`, `inbox_dups`. This stage assigns each file's
+final class and writes the intake report. It writes NOTHING to
+`sources/` or `library/` — admission and conversion happen only after
+this stage's confirmations.
 
 ## Topic matching (do this before classifying)
 
@@ -26,8 +27,9 @@ no new information.
 **`inbox_dups` → the same bytes dropped twice in one batch.** The first
 copy proceeds under its own class; the rest are redundant — report them,
 and clean them out of `inbox/` (delete, signed with a `noted` ledger
-line) per the standing rule of 2026-07-10; a bucket's BUCKET.md
-Conventions may override.
+line): `fusion log noted "inbox duplicate deleted: <name> (same bytes
+as <kept>)" --bucket <root> --as <you>` per the standing rule of
+2026-07-10; a bucket's BUCKET.md Conventions may override.
 
 **`clean_new` → new.** Run the topic match. No overlap → class `new`,
 auto-proceed; the gate adds zero friction to genuinely new content.
@@ -54,11 +56,15 @@ date), conclusions (approved vs rejected). Do NOT flag: facts the
 library is silent on, cosmetic rewording, or a clearly new reporting
 period. On a real conflict, record the claim, both values, both sources —
 and stop. Nothing converts until the human resolves it: accept as
-correction (reconcile), reject (skip), or keep both with a note.
+correction (reconcile), reject (skip) (delete from `inbox/` + `noted`,
+same line as a near-dup skip), or keep both with a note.
 
 **`near_dups` → duplicate (near) (confirm).** Probably a re-export or
 trivial edit. Never auto-skip, never auto-convert: offer skip / treat as
-update / convert as new.
+update / convert as new. A confirmed skip deletes the file from
+`inbox/` and signs it: `fusion log noted "skipped <name>
+(near-duplicate of <source>): <the human's words>" --bucket <root>
+--as <you>` — nothing lives in inbox, not even a rejected guest.
 
 **`containers` → vehicles, not originals.** Report each one (name, size).
 Containers (`.zip`, `.athena`) never enter `sources/` intact — `unpack`
@@ -66,7 +72,10 @@ them beside the container (`inbox/<stem>/` for top-level drops, or a
 nested container's own sub-folder if it lives deeper, keeping that
 context) on the standing rule (or ask first if the container is
 unexpected or its size is surprising), delete the container, sign the
-act `noted`, then gate the extracted contents like any other inbox drop.
+act `noted`: `fusion log noted "unpacked inbox/<name> →
+inbox/<stem>/ (<n> members; container discarded)" --bucket <root>
+--as <you>`, then gate the extracted contents like any other inbox
+drop.
 
 ## The intake report (the prompt surface)
 
@@ -91,7 +100,8 @@ question — ask it, then act only on the answers.
 ## After confirmation
 
 Proceed per SKILL.md steps 2–4 for approved files only. For an `updated`
-file, `prepare` targets the existing document (`--dest`/`--slug` set to
-its current path pieces) and the reconciliation edits that document in
-place. Delete gate run files (`workbench/.intake/gate-*.json`) at the end
-of the run.
+file, `prepare` targets the existing document — pass `--reconcile` plus
+`--dest`/`--slug` set to its current path pieces (without `--reconcile`,
+prepare refuses to touch an existing document) — and the reconciliation
+edits that document in place. Delete gate run files
+(`workbench/.intake/gate-*.json`) at the end of the run.
