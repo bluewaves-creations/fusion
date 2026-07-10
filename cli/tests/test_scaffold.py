@@ -52,3 +52,33 @@ def test_new_bucket_refuses_taken_name(tmp_path):
     with pytest.raises(ScaffoldError, match="already registered"):
         new_bucket(tmp_path / "elsewhere", name="studio",
                    description="d", actor="claude")
+
+
+def test_new_bucket_conformant_with_hostile_description(tmp_path):
+    root, _ = new_bucket(
+        tmp_path / "tricky",
+        description="Music: gear, #1 priority — 100% real",
+        actor="claude",
+    )
+    assert check(root) == []
+    from fusion import bucket
+    assert bucket.load(root).description == "Music: gear, #1 priority — 100% real"
+
+
+def test_hub_path_contraction_respects_boundaries(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path / "bertrand"))
+    (tmp_path / "bertrand").mkdir()
+    new_bucket(tmp_path / "bertrand" / "inside", description="d", actor="c")
+    new_bucket(tmp_path / "bertrand2" / "outside", description="d", actor="c")
+    paths = {e.name: e.path for e in hub.load()}
+    assert paths["inside"] == "~/inside"
+    assert paths["outside"] == str(tmp_path / "bertrand2" / "outside")
+
+
+def test_hub_failure_is_a_warning_not_an_error(tmp_path, monkeypatch):
+    def boom(entry):
+        raise ValueError("hub on fire")
+    monkeypatch.setattr(hub, "add", boom)
+    root, warnings = new_bucket(tmp_path / "b", description="d", actor="c")
+    assert root.exists()
+    assert any("hub registration failed" in w for w in warnings)

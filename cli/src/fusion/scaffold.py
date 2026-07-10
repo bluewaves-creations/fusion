@@ -5,6 +5,8 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
+import yaml
+
 from . import hub, indexer, ledger
 from .bucket import ZONES
 
@@ -18,7 +20,7 @@ inbox_max_age_days: 7
 reflection_cadence: weekly
 ---
 
-{description}
+{description_body}
 
 ## Conventions
 
@@ -26,6 +28,11 @@ reflection_cadence: weekly
 
 ### Delegations
 """
+
+
+def _yaml_scalar(value: str) -> str:
+    """Render a string as a safe single-line YAML scalar (quoted only when needed)."""
+    return yaml.safe_dump(value, default_flow_style=True, allow_unicode=True).split("\n")[0]
 
 MANIFEST_HEADER = (
     "# Manifest\n\n| file | added | by | sha256 | library |\n"
@@ -62,7 +69,9 @@ def new_bucket(
         (root / zone / ".gitkeep").write_text("", encoding="utf-8")
     (root / "BUCKET.md").write_text(
         BUCKET_TEMPLATE.format(
-            name=name, kind=kind, description=description,
+            name=_yaml_scalar(name), kind=_yaml_scalar(kind),
+            description=_yaml_scalar(description),
+            description_body=description,
             created=at.strftime("%Y-%m-%d"),
         ),
         encoding="utf-8",
@@ -94,9 +103,13 @@ def new_bucket(
 
     if register:
         home = Path.home()
-        display = str(root)
-        if display.startswith(str(home)):
-            display = "~" + display[len(str(home)):]
-        hub.add(hub.HubEntry(name, kind, display, description))
+        try:
+            display = "~/" + root.relative_to(home).as_posix()
+        except ValueError:
+            display = str(root)
+        try:
+            hub.add(hub.HubEntry(name, kind, display, description))
+        except (ValueError, OSError) as exc:
+            warnings.append(f"hub registration failed: {exc}")
 
     return root, warnings
