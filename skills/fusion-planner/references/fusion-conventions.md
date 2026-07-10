@@ -119,6 +119,7 @@ or set `FUSION_ACTOR`).
 | `fusion status [--since …]` | one bucket at a glance |
 | `fusion today` | the composed morning across all hub buckets |
 | `fusion agenda` | dated + active items across buckets |
+| `fusion setup` | install/refresh the skills into detected agents |
 
 All take `--json`. `--since last-reflection` scopes to the current
 reflection window. **Exit gate for every skill scenario: `fusion check`

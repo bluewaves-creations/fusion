@@ -236,6 +236,44 @@ def cmd_agenda(args) -> int:
     return 0
 
 
+def cmd_setup(args) -> int:
+    from fusion import setup as setup_mod
+    import os as _os
+    home = Path.home()
+    skills_dir = Path(
+        args.skills_dir
+        or _os.environ.get("FUSION_SKILLS_DIR")
+        or home / ".agents" / "skills")
+    no_agents = args.no_agents or _os.environ.get("FUSION_NO_AGENTS") == "1"
+    try:
+        report = setup_mod.run_setup(home, skills_dir, args.force,
+                                     no_agents, args.remove)
+    except setup_mod.SetupError as exc:
+        return _fail(str(exc), args.json)
+    lines = _render_setup(report)
+    _emit(report, args.json, "\n".join(lines))
+    return 0
+
+
+def _render_setup(report: dict) -> list[str]:
+    lines = []
+    if "removed" in report:
+        for r in report["removed"]:
+            lines.append(f"  {r['action']:>10}  {r['skill']}  ({r['agent']})")
+        lines.append("done. final step: " + report["next"][0])
+        return lines
+    lines.append(f"fusion-cli {report['cli']['version']}")
+    lines.append(f"skills → {report['skills']['dir']}")
+    for r in report["skills"]["results"]:
+        lines.append(f"  {r['action']:>10}  {r['skill']}")
+    for a in report["agents"]:
+        lines.append(f"  {a['agent']}: {a['action']} — {a['detail']}")
+    for adv in report["advice"]:
+        lines.append(f"  advice: {adv['text']}")
+    lines.append("next: " + " · ".join(report["next"]))
+    return lines
+
+
 # ── parser ───────────────────────────────────────────────────────────────
 
 def build_parser() -> argparse.ArgumentParser:
@@ -316,6 +354,20 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("agenda", help="the wider horizon, across the hub", description="The wider horizon across the hub: dated items first (due:/date:), then active work.")
     flag_json(p)
     p.set_defaults(func=cmd_agenda)
+
+    p = sub.add_parser("setup", help="install skills into agents; --remove undoes it",
+                       description="Install the bundled skills to the canonical "
+                       "skills directory and link them into every detected agent. "
+                       "Idempotent; never destroys what it did not create.")
+    p.add_argument("--force", action="store_true",
+                   help="replace foreign entries setup would otherwise leave")
+    p.add_argument("--remove", action="store_true",
+                   help="undo setup (attribution-checked), print the uninstall closer")
+    p.add_argument("--skills-dir", help="canonical destination (default ~/.agents/skills; env FUSION_SKILLS_DIR)")
+    p.add_argument("--no-agents", action="store_true",
+                   help="skip agent fan-out (env FUSION_NO_AGENTS=1)")
+    flag_json(p)
+    p.set_defaults(func=cmd_setup)
 
     return parser
 

@@ -216,3 +216,60 @@ def remove_all(canonical: Path, home: Path) -> list[dict]:
         shutil.rmtree(skill)
         results.append({**row, "action": "removed", "detail": str(skill)})
     return results
+
+
+def environment_advice(home: Path) -> list[dict]:
+    import os as _os
+    import subprocess
+    advice = []
+    if shutil.which("fusion") is None:
+        # spec §4d: fix PATH via uv's own mechanism when allowed
+        if _os.environ.get("FUSION_NO_MODIFY_PATH") != "1" \
+                and shutil.which("uv") is not None:
+            done = subprocess.run(["uv", "tool", "update-shell"],
+                                  capture_output=True).returncode == 0
+            advice.append({
+                "topic": "path",
+                "text": "uv tool update-shell ran — restart your shell so "
+                        "`fusion` resolves" if done else
+                        "uv tool update-shell failed — add uv's tool bin "
+                        "dir to PATH yourself (`uv tool dir --bin`)"})
+        else:
+            advice.append({
+                "topic": "path",
+                "text": "the uv tool bin dir is not on PATH — run: "
+                        "uv tool update-shell (or manage PATH yourself)"})
+    if shutil.which("git") is None:
+        advice.append({
+            "topic": "git",
+            "text": "git not found — buckets are git repos; install git"})
+    if shutil.which("soffice") is None:
+        advice.append({
+            "topic": "libreoffice",
+            "text": "LibreOffice (soffice) not found — only docx/pptx/"
+                    "legacy-office/html intake needs it "
+                    "(brew install --cask libreoffice · apt install "
+                    "libreoffice · winget install LibreOffice.LibreOffice)"})
+    return advice
+
+
+def run_setup(home: Path, skills_dir: Path, force: bool,
+              no_agents: bool, remove: bool) -> dict:
+    if remove:
+        results = remove_all(skills_dir, home)
+        return {"ok": True, "removed": results,
+                "next": ["uv tool uninstall fusion-cli"]}
+    payload = payload_root()
+    skills = install_canonical(payload, skills_dir, force)
+    agents = [] if no_agents else fan_out(
+        skills_dir, detect_agents(home), force)
+    return {
+        "ok": True,
+        "cli": {"version": payload_version()},
+        "skills": {"dir": str(skills_dir), "results": skills},
+        "agents": agents,
+        "advice": environment_advice(home),
+        "next": ["fusion new ~/buckets/personal --kind personal "
+                 "--description \"Home base.\"",
+                 "docs/GETTING-STARTED.md"],
+    }

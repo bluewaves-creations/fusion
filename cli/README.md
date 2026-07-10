@@ -17,7 +17,7 @@ fusion --version
 
 Once published: `uv tool install fusion-cli`.
 
-## The eight commands (there is no ninth)
+## The nine commands (there is no tenth)
 
 | Command | Does |
 |---|---|
@@ -29,6 +29,7 @@ Once published: `uv tool install fusion-cli`.
 | `fusion status [path]` | One bucket at a glance |
 | `fusion today` | The composed day, across every bucket in the hub |
 | `fusion agenda` | The wider horizon — dated and active, across the hub |
+| `fusion setup` | Install the skills into every detected agent — the installer's brain. `--remove` undoes it |
 
 Every command takes `--json` (agents parse, never scrape). `log`, `new`,
 and `index` take `--as <actor>`; the pen defaults to `FUSION_ACTOR`, then
