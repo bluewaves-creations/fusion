@@ -243,6 +243,15 @@ entries appended in order:
 - `restructured` entries SHOULD carry a note with the justification —
   ownership means showing your reasons.
 
+A bucket that lives on more than one machine merges parallel work with
+git's built-in union driver: the reference scaffold writes a
+`.gitattributes` at bucket birth marking `LEDGER.md merge=union` (and
+the manifest, §7), so entries appended on both machines survive the
+merge. The merged ledger may briefly hold two headings for the same
+date — consumers already tolerate this (liberal reader); it is the
+honest record of parallel work. A union merge is the only way LEDGER.md
+bytes change outside the one writer.
+
 ## 7. Sources and MANIFEST.md
 
 `sources/` preserves originals forever, out of the knowledge but never out
@@ -260,6 +269,8 @@ of reach. Files are registered in `sources/MANIFEST.md`:
   hex chars minimum, full hash preferred) pins immutability.
 - `library` column points at the converted document(s), comma-separated —
   or `—` when not (yet) converted.
+- On multi-machine buckets the manifest merges with the same union
+  driver as the ledger (§6): rows admitted on two machines both survive.
 
 ## 8. INDEX.md
 

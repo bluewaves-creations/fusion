@@ -43,6 +43,13 @@ MANIFEST_HEADER = (
     "|---|---|---|---|---|\n"
 )
 
+GITATTRIBUTES = (
+    "# written by fusion new — multi-machine merges stay safe (SPEC §6)\n"
+    "* text=auto eol=lf\n"
+    "LEDGER.md merge=union\n"
+    "sources/MANIFEST.md merge=union\n"
+)
+
 
 class ScaffoldError(Exception):
     pass
@@ -84,6 +91,9 @@ def new_bucket(
     )
     (root / "sources" / "MANIFEST.md").write_text(
         MANIFEST_HEADER, encoding="utf-8", newline="\n"
+    )
+    (root / ".gitattributes").write_text(
+        GITATTRIBUTES, encoding="utf-8", newline="\n"
     )
     ledger.append(root, actor, "created", "BUCKET.md", note="bucket born", at=at)
     indexer.write_indexes(root, actor=None)

@@ -1,0 +1,4 @@
+# written by fusion new — multi-machine merges stay safe (SPEC §6)
+* text=auto eol=lf
+LEDGER.md merge=union
+sources/MANIFEST.md merge=union

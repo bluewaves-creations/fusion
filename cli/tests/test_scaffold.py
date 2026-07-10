@@ -107,3 +107,12 @@ def test_hub_failure_is_a_warning_not_an_error(tmp_path, monkeypatch):
     root, warnings = new_bucket(tmp_path / "b", description="d", actor="c")
     assert root.exists()
     assert any("hub registration failed" in w for w in warnings)
+
+
+def test_new_bucket_writes_gitattributes(tmp_path):
+    root, _ = new_bucket(tmp_path / "b", description="d", actor="test")
+    text = (root / ".gitattributes").read_text(encoding="utf-8")
+    assert "LEDGER.md merge=union" in text
+    assert "sources/MANIFEST.md merge=union" in text
+    assert "* text=auto eol=lf" in text
+    assert "\r" not in text
