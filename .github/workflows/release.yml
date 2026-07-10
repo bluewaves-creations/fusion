@@ -20,8 +20,8 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v8
       - name: Tag must equal pyproject version
         run: |
           V="$(grep -m1 '^version' cli/pyproject.toml | cut -d'"' -f2)"
