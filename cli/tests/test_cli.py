@@ -162,3 +162,36 @@ def test_help_describes_every_command(capsys):
         with pytest.raises(SystemExit):
             main([cmd, "--help"])
         assert needle in capsys.readouterr().out, cmd
+
+
+def test_parent_listing_has_one_liners(capsys):
+    """Verify that 'fusion --help' and 'fusion hub --help' show help= one-liners."""
+    # Top-level: 8 commands with their help= one-liners
+    top_level_help = {
+        "new": "scaffold a bucket and register it",
+        "hub": "list, register, or retire buckets",
+        "log": "append to the ledger, or read it",
+        "index": "regenerate INDEX.md in library/ and activities/",
+        "check": "audit a bucket against the convention",
+        "status": "one bucket at a glance",
+        "today": "the composed day, across the hub",
+        "agenda": "the wider horizon, across the hub",
+    }
+    with pytest.raises(SystemExit) as exc:
+        main(["--help"])
+    assert exc.value.code == 0
+    output = capsys.readouterr().out
+    for cmd, oneliner in top_level_help.items():
+        assert oneliner in output, f"Top-level help missing for '{cmd}': '{oneliner}'"
+
+    # Hub subcommands: add and remove with their help= one-liners
+    hub_sub_help = {
+        "add": "register an existing bucket",
+        "remove": "retire a bucket from the hub",
+    }
+    with pytest.raises(SystemExit) as exc:
+        main(["hub", "--help"])
+    assert exc.value.code == 0
+    output = capsys.readouterr().out
+    for cmd, oneliner in hub_sub_help.items():
+        assert oneliner in output, f"Hub subcommand help missing for '{cmd}': '{oneliner}'"
