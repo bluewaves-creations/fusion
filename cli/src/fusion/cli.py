@@ -243,7 +243,7 @@ def cmd_setup(args) -> int:
     skills_dir = Path(
         args.skills_dir
         or _os.environ.get("FUSION_SKILLS_DIR")
-        or home / ".agents" / "skills")
+        or home / ".agents" / "skills").expanduser()
     no_agents = args.no_agents or _os.environ.get("FUSION_NO_AGENTS") == "1"
     try:
         report = setup_mod.run_setup(home, skills_dir, args.force,

@@ -78,6 +78,17 @@ def install_canonical(payload: Path, skills_dir: Path,
             results.append({"skill": skill.name, "action": "updated",
                             "detail": str(dest)})
             continue
+        if dest.exists():
+            if not force:
+                results.append({"skill": skill.name, "action": "left",
+                                "detail": f"{dest} is a file — "
+                                          f"--force replaces"})
+                continue
+            dest.unlink()
+            shutil.copytree(skill, dest)
+            results.append({"skill": skill.name, "action": "replaced",
+                            "detail": str(dest)})
+            continue
         shutil.copytree(skill, dest)
         results.append({"skill": skill.name, "action": "installed",
                         "detail": str(dest)})
@@ -133,9 +144,13 @@ def fan_out(canonical: Path, agents: list[dict], force: bool) -> list[dict]:
     skills = sorted(canonical.glob("fusion-*"))
     for agent in agents:
         if agent["mode"] == "standard":
+            if canonical.resolve() != agent["skills_dir"].resolve():
+                detail = (f"reads ~/.agents/skills — but your skills are "
+                          f"at {canonical}, which this agent does not read")
+            else:
+                detail = "reads ~/.agents/skills — nothing to do"
             results.append({"agent": agent["name"], "skill": "*",
-                            "action": "standard",
-                            "detail": "reads ~/.agents/skills — nothing to do"})
+                            "action": "standard", "detail": detail})
             continue
         agent["skills_dir"].mkdir(parents=True, exist_ok=True)
         for skill in skills:
@@ -167,6 +182,14 @@ def fan_out(canonical: Path, agents: list[dict], force: bool) -> list[dict]:
                 else:
                     replaced = True
                 shutil.rmtree(target)
+            elif target.exists():
+                if not force:
+                    results.append({**row, "action": "left",
+                                    "detail": f"{target} is a file — "
+                                              f"--force replaces"})
+                    continue
+                target.unlink()
+                replaced = True
             try:
                 os.symlink(skill, target, target_is_directory=True)
                 results.append({**row,
@@ -271,5 +294,6 @@ def run_setup(home: Path, skills_dir: Path, force: bool,
         "advice": environment_advice(home),
         "next": ["fusion new ~/buckets/personal --kind personal "
                  "--description \"Home base.\"",
-                 "docs/GETTING-STARTED.md"],
+                 "https://github.com/bluewaves-creations/fusion/blob/"
+                 "main/docs/GETTING-STARTED.md"],
     }

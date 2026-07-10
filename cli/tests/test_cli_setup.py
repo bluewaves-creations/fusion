@@ -71,6 +71,14 @@ def test_setup_env_vars_apply_and_flags_win(sandbox, capsys, monkeypatch):
     assert out["agents"] == []
 
 
+def test_setup_expands_tilde_in_skills_dir_env(sandbox, capsys, monkeypatch):
+    monkeypatch.setenv("FUSION_SKILLS_DIR", "~/x")
+    assert main(["setup", "--json"]) == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["skills"]["dir"] == str(sandbox / "x")
+    assert (sandbox / "x" / "fusion-intake").is_dir()
+
+
 def test_setup_remove_round_trip(sandbox, capsys):
     assert main(["setup", "--json"]) == 0
     capsys.readouterr()

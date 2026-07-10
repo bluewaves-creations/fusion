@@ -7,15 +7,26 @@ touches them.
 
 ## Install
 
-From a clone (PyPI publication lands with Phase 4):
+One line, installs the CLI and the four skills into every agent that
+reads them:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/bluewaves-creations/fusion/main/install.sh | sh
+```
+
+Just the CLI, from PyPI:
+
+```sh
+uv tool install fusion-cli
+```
+
+From a clone:
 
 ```sh
 git clone https://github.com/bluewaves-creations/fusion.git
 uv tool install ./fusion/cli
 fusion --version
 ```
-
-Once published: `uv tool install fusion-cli`.
 
 ## The nine commands (there is no tenth)
 

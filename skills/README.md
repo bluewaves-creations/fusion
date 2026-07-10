@@ -12,9 +12,8 @@ the judgment.
 
 ## Install
 
-Standard-compliant skills need no installer:
-
-The one-line installer does this for you — see the repository README. Manually:
+Standard-compliant skills need no installer — the repository's one-line
+installer places them for you (see the README), or copy them yourself:
 
 ```bash
 cp -r skills/fusion-* ~/.agents/skills/   # or your agent's skills directory

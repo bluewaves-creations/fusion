@@ -53,6 +53,24 @@ def test_install_canonical_refreshes_and_reports_upgrade(tmp_path):
     assert (dest / "fusion-intake" / "SKILL.md").read_text().startswith("---")
 
 
+def test_install_canonical_leaves_plain_file_unless_forced(tmp_path):
+    payload = make_payload(tmp_path / "payload")
+    dest = tmp_path / "agents-skills"
+    dest.mkdir()
+    (dest / "fusion-intake").write_text("not a skill, just a file\n")
+    results = setup.install_canonical(payload, dest, force=False)
+    by = {r["skill"]: r["action"] for r in results}
+    assert by["fusion-intake"] == "left"
+    assert (dest / "fusion-intake").is_file()
+    assert not (dest / "fusion-intake").is_dir()
+    # --force replaces it with a real dir
+    results = setup.install_canonical(payload, dest, force=True)
+    by = {r["skill"]: r["action"] for r in results}
+    assert by["fusion-intake"] == "replaced"
+    assert (dest / "fusion-intake").is_dir()
+    assert (dest / "fusion-intake" / "references" / "guide.md").read_text() == "guide\n"
+
+
 def test_install_canonical_leaves_foreign_symlink(tmp_path):
     payload = make_payload(tmp_path / "payload")
     dest = tmp_path / "agents-skills"

@@ -1,33 +1,20 @@
 name: release
-# One-time human setup (before first tag): create the PyPI project
-# "fusion-cli" and register this repo + this workflow as a trusted
-# publisher (https://docs.pypi.org/trusted-publishers/). No tokens stored.
+# One-time human setup (before first tag):
+#   1. Create the PyPI project "fusion-cli" and register this repo +
+#      this workflow as a trusted publisher
+#      (https://docs.pypi.org/trusted-publishers/). No tokens stored.
+#   2. Create a GitHub environment named "pypi" (Settings → Environments)
+#      — the publish job pins `environment: pypi`.
 on:
   push:
     tags: ["v*"]
 
 jobs:
-  check:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - working-directory: cli
-        run: uv run --group dev pytest -q
-      - working-directory: cli
-        run: uv run fusion check ../examples/crazy-ones
-      - name: Skills suites (POSIX only — they shell out to POSIX tools)
-        if: runner.os != 'Windows'
-        run: |
-          uv run --with pytest --with pyyaml --with openpyxl --with pymupdf pytest skills/fusion-intake/tests -q
-          uv run --with pytest --with pyyaml pytest skills/fusion-librarian/tests -q
+  ci:
+    uses: ./.github/workflows/ci.yml
 
   publish:
-    needs: check
+    needs: ci
     runs-on: ubuntu-latest
     environment: pypi
     permissions:

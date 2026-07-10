@@ -1,7 +1,8 @@
 # Getting started
 
-Fusion is two moves: install a small CLI, copy four skills. Then you make
-your first bucket and start living in it. Ten minutes, no wizard.
+Fusion is one line: the installer brings uv, the CLI, and the four
+skills. Then you make your first bucket and start living in it. Ten
+minutes, no wizard.
 
 ## What you need
 
@@ -110,8 +111,9 @@ metabolism — the bucket learns.
 
 ## When something goes wrong
 
-- `fusion: command not found` — install from the clone
-  (`uv tool install ./fusion/cli`); PyPI publication lands with Phase 4.
+- `fusion: command not found` — re-run the one-liner, or
+  `uv tool install fusion-cli`, or install from a clone
+  (`uv tool install ./fusion/cli`).
 - `fusion check` is red — every code (E1–E8 errors, W1–W5 warnings) is
   defined in [SPEC.md §11](../SPEC.md#11-conformance); the message names
   the file. And a bucket is a git repo: `git diff` shows what changed,

@@ -67,6 +67,35 @@ def test_fan_out_leaves_foreign_dir_unless_forced(home, canonical):
     assert (home / ".claude" / "skills" / "fusion-intake").is_symlink()
 
 
+def test_fan_out_standard_mode_warns_when_canonical_is_custom(home):
+    payload = make_payload(home / "_payload")
+    custom_canonical = home / "custom-skills"
+    setup.install_canonical(payload, custom_canonical, force=False)
+    (home / ".cursor").mkdir()
+    results = setup.fan_out(custom_canonical, setup.detect_agents(home),
+                            force=False)
+    cursor = [r for r in results if r["agent"] == "Cursor"][0]
+    assert cursor["action"] == "standard"
+    assert "does not read" in cursor["detail"]
+
+
+def test_fan_out_leaves_plain_file_unless_forced(home, canonical):
+    skills_dir = home / ".claude" / "skills"
+    skills_dir.mkdir(parents=True)
+    (skills_dir / "fusion-intake").write_text("just a file\n")
+    results = setup.fan_out(canonical, setup.detect_agents(home), force=False)
+    intake = [r for r in results if r["agent"] == "Claude Code"
+             and r["skill"] == "fusion-intake"][0]
+    assert intake["action"] == "left"
+    assert (skills_dir / "fusion-intake").is_file()
+    assert not (skills_dir / "fusion-intake").is_symlink()
+    results = setup.fan_out(canonical, setup.detect_agents(home), force=True)
+    intake = [r for r in results if r["agent"] == "Claude Code"
+             and r["skill"] == "fusion-intake"][0]
+    assert intake["action"] == "replaced"
+    assert (skills_dir / "fusion-intake").is_symlink()
+
+
 def test_fan_out_copies_when_symlink_unavailable(home, canonical, monkeypatch):
     (home / ".pi").mkdir()
 
