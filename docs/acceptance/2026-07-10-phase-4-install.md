@@ -4,8 +4,8 @@ ROADMAP's open-source gate box: "Open-source pass: no personal paths,
 install-from-clean-machine." An earlier audit had already proven `uv pip
 install ./cli` works in an isolated venv; this run replays it as a played
 acceptance transcript, exercising the **final** Phase 4 behavior — the
-taught `--help` text (Tasks 1–2) and the JSON failure envelopes (an earlier
-Phase 4 task) — not just the bare install.
+taught `--help` text (Task 5) and the JSON failure envelopes (Task 2) —
+not just the bare install.
 
 Played as a brand-new user: clone the repo, install the CLI into an
 isolated venv (never `uv tool install`, which is global), copy the skills,
@@ -75,7 +75,7 @@ options:
 
 One package, one dependency (`pyyaml`), a five-line build — the CLI has no
 hidden weight. The parent `--help` listing carries its one-liners at every
-subcommand (Task 1–2's fix, confirmed live here rather than by reading the
+subcommand (Task 5's fix, confirmed live here rather than by reading the
 diff).
 
 ---

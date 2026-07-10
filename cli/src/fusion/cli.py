@@ -261,7 +261,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--name", help="bucket name (default: directory name)")
     p.add_argument("--kind", default="personal",
                    help="personal · company · studio · club · …")
-    p.add_argument("--description")
+    p.add_argument("--description",
+                   help="one line on what this bucket is for (lands in "
+                        "BUCKET.md and the hub)")
     flag_as(p); flag_json(p)
     p.set_defaults(func=cmd_new)
 

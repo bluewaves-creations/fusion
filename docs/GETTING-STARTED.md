@@ -63,7 +63,7 @@ fusion check        # audit against the convention — 0 errors, carry on
 
 **You never file.** Drop anything — a PDF, a spreadsheet, a mail export —
 into `inbox/` and tell your agent to run intake. The gate classifies it
-(new, update, duplicate, conflicting), preserves the original byte-for-byte
+(new, updated, duplicate, conflicting), preserves the original byte-for-byte
 under `sources/`, converts it losslessly to markdown in the library, and
 signs the ledger. You judge; it operates; the files remember.
 

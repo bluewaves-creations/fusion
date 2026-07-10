@@ -112,8 +112,6 @@ def test_today_skips_hub_entries_without_bucket(tmp_path, monkeypatch):
 def test_views_exclude_archive_aurora_off_archive_paths(two_bucket_hub):
     """A document with aurora: archive should be excluded from today() and
     agenda() even if it's not on an archive/ path."""
-    from fusion.scaffold import new_bucket
-
     # Add a mislabeled document with aurora: archive in activities/mislabeled/
     root = two_bucket_hub / "studio"
     plan_dir = root / "activities" / "mislabeled"
