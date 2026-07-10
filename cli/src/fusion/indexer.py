@@ -25,7 +25,9 @@ def _zone_documents(zone_dir: Path) -> list[Path]:
     return [
         p
         for p in sorted(zone_dir.rglob("*.md"))
-        if p.name != "INDEX.md" and not p.name.startswith(".")
+        if p.name != "INDEX.md"
+        and not any(part.startswith(".")
+                    for part in p.relative_to(zone_dir).parts)
     ]
 
 

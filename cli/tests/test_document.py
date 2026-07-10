@@ -108,3 +108,23 @@ def test_summary_line_is_verbatim(tmp_path):
         encoding="utf-8",
     )
     assert read_document(p).summary_line == "  - an indented first line"
+
+
+def test_read_document_strips_utf8_bom(tmp_path):
+    body = ("---\ntitle: Bom Test\ntype: note\naurora: library\n---\n\n"
+            "## Summary\n\nStill fine.\n\n---\n\nBody.\n")
+    p = tmp_path / "doc.md"
+    p.write_bytes(b"\xef\xbb\xbf" + body.encode("utf-8"))
+    doc = read_document(p)
+    assert doc.frontmatter is not None
+    assert doc.title == "Bom Test"
+
+
+def test_read_document_tolerates_crlf(tmp_path):
+    body = ("---\ntitle: Crlf Test\ntype: note\naurora: library\n---\n\n"
+            "## Summary\n\nStill fine.\n\n---\n\nBody.\n")
+    p = tmp_path / "doc.md"
+    p.write_bytes(body.replace("\n", "\r\n").encode("utf-8"))
+    doc = read_document(p)
+    assert doc.title == "Crlf Test"
+    assert doc.summary_first

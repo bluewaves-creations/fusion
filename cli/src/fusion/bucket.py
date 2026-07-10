@@ -70,6 +70,8 @@ def iter_documents(
         if not zone_dir.is_dir():
             continue
         for path in sorted(zone_dir.rglob("*.md")):
-            if path.name == "INDEX.md" or path.name.startswith("."):
+            rel = path.relative_to(zone_dir)
+            if path.name == "INDEX.md" or any(
+                    part.startswith(".") for part in rel.parts):
                 continue
-            yield zone, path.relative_to(zone_dir), read_document(path)
+            yield zone, rel, read_document(path)

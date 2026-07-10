@@ -80,7 +80,8 @@ def _e3_e4_e5_documents(root: Path) -> list[Finding]:
             findings.append(Finding("error", "E3", path,
                                     f"missing required field: {field}"))
         aurora = doc.frontmatter.get("aurora")
-        if aurora is not None and aurora not in AURORAS:
+        blank = isinstance(aurora, str) and not aurora.strip()
+        if aurora is not None and not blank and aurora not in AURORAS:
             findings.append(Finding("error", "E4", path,
                                     f"aurora '{aurora}' is not one of the eight"))
         if not doc.summary_first:
@@ -107,7 +108,8 @@ def _e7_manifest(root: Path) -> list[Finding]:
         p.relative_to(sources).as_posix()
         for p in sources.rglob("*")
         if p.is_file() and p.name != "MANIFEST.md"
-        and not p.name.startswith(".")
+        and not any(part.startswith(".")
+                    for part in p.relative_to(sources).parts)
     }
     rows = {r.file for r in manifest.read(root)}
     findings = [
@@ -130,7 +132,9 @@ def _e8_filenames(root: Path) -> list[Finding]:
         if not zone_dir.is_dir():
             continue
         for p in sorted(zone_dir.rglob("*")):
-            if not p.is_file() or p.name == "INDEX.md" or p.name.startswith("."):
+            if (not p.is_file() or p.name == "INDEX.md"
+                    or any(part.startswith(".")
+                           for part in p.relative_to(zone_dir).parts)):
                 continue
             rel = f"{zone}/{p.relative_to(zone_dir).as_posix()}"
             if zone == "output" and p.suffix.lower() != ".md":

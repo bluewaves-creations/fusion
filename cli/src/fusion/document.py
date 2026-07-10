@@ -93,7 +93,7 @@ def _links(body: str) -> list[str]:
 
 def read_document(path: Path) -> Document:
     try:
-        text = path.read_text(encoding="utf-8")
+        text = path.read_text(encoding="utf-8-sig")
     except (OSError, UnicodeDecodeError) as exc:
         return Document(
             path=path,

@@ -166,3 +166,28 @@ def test_e2_unreadable_bucket_card(make_bucket):
                                     encoding="utf-8")
     assert any(f.code == "E2" and "unreadable" in f.message
                for f in errors(root))
+
+
+def test_dot_directories_are_invisible(make_bucket):
+    root = make_bucket()
+    trash = root / "library" / ".trash"
+    trash.mkdir()
+    (trash / "Not A Slug.md").write_text("no frontmatter at all",
+                                         encoding="utf-8")
+    cache = root / "sources" / ".cache"
+    cache.mkdir()
+    (cache / "junk file.pdf").write_bytes(b"%PDF-1.4")
+    codes = {f.code for f in check(root)}
+    assert not {"E3", "E5", "E7", "E8"} & codes
+
+
+def test_blank_aurora_reports_e3_only(make_bucket):
+    root = make_bucket()
+    (root / "library" / "blank.md").write_text(
+        '---\ntitle: Blank\ntype: note\naurora: ""\n---\n\n'
+        "## Summary\n\nBlank aurora.\n\n---\n\nBody.\n",
+        encoding="utf-8")
+    findings = [f for f in check(root) if f.path.endswith("blank.md")]
+    codes = [f.code for f in findings]
+    assert "E3" in codes
+    assert "E4" not in codes

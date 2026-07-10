@@ -92,3 +92,14 @@ def test_iter_documents_fixture(fixture_bucket):
         "instruments/pedalboard.md",
         "recipes/tape-echo-settings.md",
     ]
+
+
+def test_iter_documents_skips_dot_directories(tmp_path):
+    lib = tmp_path / "library" / ".obsidian"
+    lib.mkdir(parents=True)
+    (lib / "workspace.md").write_text("junk", encoding="utf-8")
+    (tmp_path / "library" / "real.md").write_text(
+        "---\ntitle: Real\ntype: note\naurora: library\n---\n\n"
+        "## Summary\n\nReal.\n\n---\n\nBody.\n", encoding="utf-8")
+    rels = [rel.as_posix() for _, rel, _ in bucket.iter_documents(tmp_path)]
+    assert rels == ["real.md"]
