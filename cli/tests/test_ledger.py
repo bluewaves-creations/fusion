@@ -83,3 +83,18 @@ def test_resolve_actor(monkeypatch):
     assert ledger.resolve_actor() == "goose"
     monkeypatch.delenv("FUSION_ACTOR")
     assert ledger.resolve_actor()  # falls back to the OS username, non-empty
+
+
+def test_parse_is_liberal_ignores_malformed_lines():
+    text = (
+        "# Ledger\n\n## 2026-07-10\n"
+        "- 09:00 · claude · created · library/a.md\n"
+        "not an entry at all\n"
+        "- 9:0 · bad · time · format\n"
+        "- 09:05 · claude · yeeted · library/b.md\n"
+    )
+    entries = ledger.parse(text)
+    # malformed lines are skipped; unknown verbs are read (validation is E6's job)
+    assert [(e.verb, e.obj) for e in entries] == [
+        ("created", "library/a.md"), ("yeeted", "library/b.md"),
+    ]
