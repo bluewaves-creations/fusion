@@ -362,6 +362,26 @@ def test_html_to_text_direct():
     assert out == "A & B\nC"
 
 
+def test_html_routes_to_libreoffice():
+    assert convert._route(".html") == "libreoffice"
+    assert convert._route(".htm") == "libreoffice"
+    assert ".html" in convert.SUPPORTED_EXTS
+    assert ".htm" in convert.SUPPORTED_EXTS
+
+
+@pytest.mark.skipif(shutil.which("soffice") is None and shutil.which("libreoffice") is None,
+                    reason="LibreOffice not installed")
+def test_html_page_via_libreoffice(bucket):
+    put_inbox(bucket, "report.html", fx.make_html_page)
+    rec = admit(bucket, "report.html")
+    record = convert.prepare(bucket, rec["source"])
+    assert record["path"] == "libreoffice"
+    assert record["page_count"] == len(record["pages"]) >= 1
+    assert len(record["images"]) == record["page_count"]
+    joined = " ".join(p["text"] for p in record["pages"])
+    assert "412000" in joined
+
+
 def test_cell_to_string_floats_verbatim():
     """The lossless contract: numbers verbatim, never rounded away."""
     assert convert.cell_to_string(78.5) == "78.5"

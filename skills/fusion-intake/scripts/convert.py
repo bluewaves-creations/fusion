@@ -39,7 +39,7 @@ AURORAS = ("commitments", "focus", "ops", "collab", "life", "explore",
 
 EXTRACTIVE_EXTS = {".xlsx", ".csv"}
 LIBREOFFICE_EXTS = {".docx", ".pptx", ".doc", ".odt", ".rtf", ".key",
-                    ".pages", ".ppt", ".xls"}
+                    ".pages", ".ppt", ".xls", ".html", ".htm"}
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 MAIL_EXTS = {".eml"}
 TEXT_EXTS = {".md", ".txt"}

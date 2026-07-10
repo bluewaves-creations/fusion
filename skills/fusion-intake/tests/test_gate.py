@@ -116,7 +116,8 @@ def test_main_writes_manifest_into_workbench(bucket):
     assert len(runs) == 1
     data = json.loads(runs[0].read_text(encoding="utf-8"))
     assert data["counts"] == {"exact_dups": 0, "near_dups": 0,
-                              "update_candidates": 0, "clean_new": 1}
+                              "update_candidates": 0, "clean_new": 1,
+                              "inbox_dups": 0}
 
 
 def test_locked_lineage_thresholds():
@@ -146,6 +147,20 @@ def test_binary_pair_is_clean_new_not_near_dup(bucket):
     result = run_gate(bucket)
     assert result["near_dups"] == []
     assert [f["incoming"] for f in result["clean_new"]] == ["img-b.png"]
+
+
+def test_inbox_internal_duplicates_detected(bucket):
+    drop(bucket, "a-report.txt", LONG_A)
+    drop(bucket, "copy-of-a-report.txt", LONG_A)
+    drop(bucket, "different.txt", LONG_B)
+    result = run_gate(bucket)
+    new_names = {e["incoming"] for e in result["clean_new"]}
+    dup_names = {e["incoming"] for e in result["inbox_dups"]}
+    assert new_names == {"a-report.txt", "different.txt"}
+    assert dup_names == {"copy-of-a-report.txt"}
+    dup_entry = result["inbox_dups"][0]
+    assert dup_entry["duplicate_of"] == "a-report.txt"
+    assert dup_entry["auto_skip"] is True
 
 
 def test_git_history_survives_missing_cwd(tmp_path):

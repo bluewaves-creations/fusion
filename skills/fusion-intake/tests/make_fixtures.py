@@ -200,6 +200,19 @@ def make_merged_xlsx(path: Path):
     wb.save(path)
 
 
+def make_html_page(path: Path):
+    """An LLM-artifact-style page: heading, prose, and a real table."""
+    path.write_text(
+        "<html><head><title>Q3 Channel Report</title></head><body>"
+        "<h1>Q3 Channel Report</h1>"
+        "<p>Direct sales carried the quarter; the partner channel is "
+        "recovering after the June outage.</p>"
+        "<table><tr><th>channel</th><th>revenue</th></tr>"
+        "<tr><td>direct</td><td>412000</td></tr>"
+        "<tr><td>partners</td><td>187500</td></tr></table>"
+        "</body></html>", encoding="utf-8")
+
+
 if __name__ == "__main__":
     out = Path("fixtures-preview")
     out.mkdir(exist_ok=True)

@@ -30,6 +30,9 @@ Format-specific notes:
   keys (liberal reader) and merge the required three.
 - **image**: transcribe or describe honestly — a photo gets a faithful
   description, a screenshot of text gets the text.
+- **html** (`path: libreoffice`): an LLM-artifact-style page — headings,
+  prose, real tables — routed through LibreOffice like docx/pptx/legacy
+  office formats. Read it exactly as any other rendered page below.
 
 ## Write the document
 

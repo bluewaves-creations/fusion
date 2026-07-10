@@ -1,8 +1,8 @@
 ---
 name: fusion-intake
-description: "The Fusion intake gate — everything that enters a bucket enters through it, losslessly. Classify what landed in inbox/ (new, updated, duplicate, conflicting), preserve the original in sources/ with its sha256 in the MANIFEST, convert to a faithful summary-first document (xlsx, csv, docx, pptx, pdf, images, .eml mail, markdown/text exports), propose type and aurora, sign the ledger, clear the inbox. Use when the user says 'process the inbox', 'intake', 'ingest', 'convert this file', or drops files into a Fusion bucket's inbox/. For placement, curation, or restructuring of what is already inside, use fusion-librarian; for deliverables out of the bucket, use fusion-analyst."
+description: "The Fusion intake gate — everything that enters a bucket enters through it, losslessly. Classify what landed in inbox/ (new, updated, duplicate, conflicting), preserve the original in sources/ with its sha256 in the MANIFEST, convert to a faithful summary-first document (xlsx, csv, docx, pptx, pdf, html, images, .eml mail, markdown/text exports), propose type and aurora, sign the ledger, clear the inbox. Use when the user says 'process the inbox', 'intake', 'ingest', 'convert this file', or drops files into a Fusion bucket's inbox/. For placement, curation, or restructuring of what is already inside, use fusion-librarian; for deliverables out of the bucket, use fusion-analyst."
 license: MIT
-compatibility: "Requires the fusion CLI on PATH and uv. LibreOffice (soffice on PATH) required for docx/pptx/legacy office formats — fails fast when missing, never silently degrades. Script deps via PEP 723 (openpyxl, PyYAML, pymupdf)."
+compatibility: "Requires the fusion CLI on PATH and uv. LibreOffice (soffice on PATH) required for docx/pptx/legacy office/html formats — fails fast when missing, never silently degrades. Script deps via PEP 723 (openpyxl, PyYAML, pymupdf)."
 ---
 
 # fusion-intake — the gate
@@ -73,6 +73,10 @@ bucket root before calling (the manifest's `run_dir` is bucket-relative).
 | duplicate (near) | re-export / trivial edit | ASK: skip / update / new |
 | updated | newer version of an existing source | ASK, then supersede |
 | conflicting | claims contradict the library | ASK — the gate never picks a winner |
+
+The four classes cover matches against `sources/`; the same bytes dropped
+twice within one inbox batch are reported separately as `inbox_dups` and
+cleaned per the bucket's rules (`references/gate.md`).
 
 **Supersede, the Fusion way:** `sources/` is immutable — a confirmed update
 ADMITS THE NEW FILE as its own source (rename it first if the name

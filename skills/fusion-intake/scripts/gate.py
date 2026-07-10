@@ -146,10 +146,21 @@ def _best_match(incoming_text: str, idx: SourceIndex):
 
 def classify_intake(inbox_dir: Path, sources_dir: Path, idx: SourceIndex) -> dict:
     result = {"exact_dups": [], "near_dups": [],
-              "update_candidates": [], "clean_new": []}
+              "update_candidates": [], "clean_new": [], "inbox_dups": []}
+    seen_in_batch: dict = {}
     for f in _iter_files(Path(inbox_dir)):
         rel = str(f.relative_to(inbox_dir))
         h = sha256_of(f)
+
+        if h in seen_in_batch:
+            result["inbox_dups"].append({
+                "incoming": rel,
+                "duplicate_of": seen_in_batch[h],
+                "hash": h,
+                "auto_skip": True,
+            })
+            continue
+        seen_in_batch[h] = rel
 
         if h in idx.by_hash:
             result["exact_dups"].append({

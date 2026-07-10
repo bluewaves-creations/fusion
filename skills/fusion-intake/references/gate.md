@@ -23,6 +23,12 @@ For every `clean_new` and `update_candidates` entry:
 matched source. Do not convert, do not prompt — an exact re-drop carries
 no new information.
 
+**`inbox_dups` → the same bytes dropped twice in one batch.** The first
+copy proceeds under its own class; the rest are redundant — report them,
+and clean them out of `inbox/` (delete, signed with a `noted` ledger
+line) per the standing rule of 2026-07-10; a bucket's BUCKET.md
+Conventions may override.
+
 **`clean_new` → new.** Run the topic match. No overlap → class `new`,
 auto-proceed; the gate adds zero friction to genuinely new content.
 Topic overlap without contradiction → still `new`, but note
