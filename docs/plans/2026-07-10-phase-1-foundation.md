@@ -40,7 +40,7 @@
 ```markdown
 MIT License
 
-Copyright (c) 2026 Bertrand Dour
+Copyright (c) 2026 Bluewaves Boutique
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -230,8 +230,8 @@ anything a new collaborator (human or AI) should know first.
 
 - [ ] **Step 2: Verify**
 
-Run: `grep -c '^## ' SPEC.md && grep -c 'MUST' SPEC.md | awk '{print ($1>=10) ? "OK" : "FAIL"}'`
-Expected: `4` (sections 0–3) then `OK`
+Run: `grep -cE '^## [0-3]\. ' SPEC.md && grep -c 'MUST' SPEC.md | awk '{print ($1>=10) ? "OK" : "FAIL"}'`
+Expected: `4` (numbered sections 0–3) then `OK`
 
 - [ ] **Step 3: Commit**
 
@@ -468,8 +468,8 @@ ledger is append-only and the bucket is a git repository.
 
 - [ ] **Step 2: Verify structure and closed vocabularies**
 
-Run: `grep -c '^## ' SPEC.md`
-Expected: `12` (sections 0–11)
+Run: `grep -cE '^## ([0-9]|1[01])\. ' SPEC.md`
+Expected: `12` (numbered sections 0–11)
 
 Run: `grep -A11 '^| Aurora |' SPEC.md | grep -c '^| \`'`
 Expected: `8`

@@ -10,10 +10,10 @@ convention, into a versioned SPEC amendment).
 **Ships:** SPEC.md 1.0 · examples/crazy-ones fixture · README · this roadmap.
 
 **Gate:**
-- [ ] Full conformance sweep of the fixture against SPEC §11 — zero
+- [x] Full conformance sweep of the fixture against SPEC §11 — zero
       errors, zero warnings (mechanical, scripted in the phase plan).
-- [ ] Spec ↔ fixture cross-read — every SPEC §2–9 rule demonstrated.
-- [ ] Fresh-eyes read of SPEC.md for contradiction and ambiguity.
+- [x] Spec ↔ fixture cross-read — every SPEC §2–9 rule demonstrated.
+- [x] Fresh-eyes read of SPEC.md for contradiction and ambiguity.
 
 ## Phase 2 — The CLI (the notary)
 
