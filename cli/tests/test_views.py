@@ -107,3 +107,24 @@ def test_today_skips_hub_entries_without_bucket(tmp_path, monkeypatch):
     monkeypatch.setenv("FUSION_HUB", str(tmp_path / "hub.md"))
     hub.add(hub.HubEntry("ghost", "personal", str(tmp_path / "gone"), "missing"))
     assert views.today()["buckets"] == []
+
+
+def test_views_exclude_archive_aurora_off_archive_paths(two_bucket_hub):
+    """A document with aurora: archive should be excluded from today() and
+    agenda() even if it's not on an archive/ path."""
+    from fusion.scaffold import new_bucket
+
+    # Add a mislabeled document with aurora: archive in activities/mislabeled/
+    root = two_bucket_hub / "studio"
+    plan_dir = root / "activities" / "mislabeled"
+    plan_dir.mkdir()
+    doc = ("---\ntitle: Mislabeled\ntype: plan\naurora: archive\n"
+           "status: active\n---\n\n## Summary\n\nShould not compose.\n\n---\n\nBody.\n")
+    (plan_dir / "plan.md").write_text(doc, encoding="utf-8")
+
+    # Check that it does not appear in today()
+    everything = [i["path"] for items in views.today()["groups"].values() for i in items]
+    assert not any("mislabeled" in p for p in everything)
+
+    # Check that it does not appear in agenda()
+    assert not any("mislabeled" in i["path"] for i in views.agenda()["active"])

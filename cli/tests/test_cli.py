@@ -127,3 +127,26 @@ def test_hub_add_resolves_relative_paths(tmp_path, monkeypatch, capsys):
     assert entry.path not in (".", "./")
     from pathlib import Path as P
     assert P(entry.path).expanduser().is_absolute()
+
+
+def test_failure_emits_json_envelope(tmp_path, capsys, monkeypatch):
+    monkeypatch.chdir(tmp_path)          # nowhere near a bucket
+    assert main(["log", "noted", "x", "--json"]) == 1
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload["ok"] is False
+    assert "bucket" in payload["error"]
+    assert captured.err == ""
+
+
+def test_failure_stays_human_without_json(tmp_path, capsys, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    assert main(["log", "noted", "x"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.startswith("fusion: ")
+
+
+def test_check_names_the_missing_path(capsys):
+    assert main(["check", "/nonexistent/nowhere"]) == 1
+    assert "/nonexistent/nowhere" in capsys.readouterr().err

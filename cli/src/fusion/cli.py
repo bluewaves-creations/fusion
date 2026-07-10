@@ -13,8 +13,11 @@ from . import __version__, bucket, checker, hub, indexer, ledger, scaffold, view
 
 # ── plumbing ─────────────────────────────────────────────────────────────
 
-def _fail(message: str) -> int:
-    print(f"fusion: {message}", file=sys.stderr)
+def _fail(message: str, as_json: bool = False) -> int:
+    if as_json:
+        print(json.dumps({"ok": False, "error": message}, ensure_ascii=False))
+    else:
+        print(f"fusion: {message}", file=sys.stderr)
     return 1
 
 
@@ -48,7 +51,7 @@ def cmd_new(args) -> int:
             description=args.description, actor=actor,
         )
     except scaffold.ScaffoldError as exc:
-        return _fail(str(exc))
+        return _fail(str(exc), args.json)
     name = args.name or root.name
     for w in warnings:
         print(f"warning: {w}", file=sys.stderr)
@@ -65,22 +68,22 @@ def cmd_hub(args) -> int:
         root = Path(args.path).expanduser().resolve()
         b = bucket.load(root)
         if b.frontmatter is None:
-            return _fail(f"not a bucket (no readable BUCKET.md): {root}")
+            return _fail(f"not a bucket (no readable BUCKET.md): {root}", args.json)
         missing = [f for f in ("name", "kind", "description")
                    if not str(b.frontmatter.get(f) or "").strip()]
         if missing:
-            return _fail(f"BUCKET.md missing: {', '.join(missing)}")
+            return _fail(f"BUCKET.md missing: {', '.join(missing)}", args.json)
         try:
             hub.add(hub.HubEntry(b.name, b.kind, hub.display_path(root),
                                   b.description))
         except ValueError as exc:
-            return _fail(str(exc))
+            return _fail(str(exc), args.json)
         _emit({"registered": b.name}, args.json,
               f"'{b.name}' registered in the hub.")
         return 0
     if args.hub_cmd == "remove":
         if not hub.remove(args.name):
-            return _fail(f"no bucket named '{args.name}' in the hub")
+            return _fail(f"no bucket named '{args.name}' in the hub", args.json)
         _emit({"removed": args.name}, args.json,
               f"'{args.name}' retired from the hub. The files live on.")
         return 0
@@ -96,7 +99,10 @@ def cmd_hub(args) -> int:
 def cmd_log(args) -> int:
     root = _root_from(args, "bucket")
     if root is None or not (root / "BUCKET.md").is_file():
-        return _fail("not inside a bucket (no BUCKET.md found) — use --bucket")
+        given = getattr(args, "bucket", None)
+        return _fail(f"no bucket at: {given}" if given else
+                     "not inside a bucket (no BUCKET.md found) — use --bucket",
+                     args.json)
     if args.verb is None:
         entries = views.filter_since(ledger.read(root), args.since)
         human = "\n".join(
@@ -105,13 +111,13 @@ def cmd_log(args) -> int:
         _emit([asdict(e) for e in entries], args.json, human)
         return 0
     if args.object is None:
-        return _fail("log needs an object: fusion log <verb> <object>")
+        return _fail("log needs an object: fusion log <verb> <object>", args.json)
     actor = ledger.resolve_actor(args.as_)
     try:
         entry = ledger.append(root, actor, args.verb, args.object,
                               note=args.note, at=_parse_at(args.at))
     except ValueError as exc:
-        return _fail(str(exc))
+        return _fail(str(exc), args.json)
     _emit(asdict(entry), args.json,
           f"logged: {entry.date} {ledger.format_line(entry)[2:]}")
     return 0
@@ -120,7 +126,9 @@ def cmd_log(args) -> int:
 def cmd_index(args) -> int:
     root = _root_from(args)
     if root is None or not (root / "BUCKET.md").is_file():
-        return _fail("not inside a bucket (no BUCKET.md found)")
+        given = getattr(args, "path", None)
+        return _fail(f"no bucket at: {given}" if given else
+                     "not inside a bucket (no BUCKET.md found)", args.json)
     actor = ledger.resolve_actor(args.as_)
     results = indexer.write_indexes(root, actor=actor)
     human = "\n".join(
@@ -135,7 +143,9 @@ def cmd_index(args) -> int:
 def cmd_check(args) -> int:
     root = _root_from(args)
     if root is None:
-        return _fail("no bucket here and no path given")
+        given = getattr(args, "path", None)
+        return _fail(f"no bucket at: {given}" if given else
+                     "not inside a bucket and no path given", args.json)
     findings = checker.check(root)
     errors = [f for f in findings if f.level == "error"]
     warnings = [f for f in findings if f.level == "warning"]
@@ -168,7 +178,9 @@ def cmd_check(args) -> int:
 def cmd_status(args) -> int:
     root = _root_from(args)
     if root is None or not (root / "BUCKET.md").is_file():
-        return _fail("not inside a bucket (no BUCKET.md found)")
+        given = getattr(args, "path", None)
+        return _fail(f"no bucket at: {given}" if given else
+                     "not inside a bucket (no BUCKET.md found)", args.json)
     s = views.status(root, since=args.since)
     lines = [f"{s['bucket']} — {s['documents']} documents"]
     for label in ("auroras", "types", "activities"):

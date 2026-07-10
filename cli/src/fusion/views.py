@@ -80,7 +80,7 @@ def today() -> dict:
     for name, root in _hub_buckets():
         buckets.append(name)
         for zone, rel, doc in bucket.iter_documents(root):
-            if "archive" in rel.parts:
+            if "archive" in rel.parts or doc.aurora == "archive":
                 continue
             is_active_activity = zone == "activities" and doc.status == "active"
             is_commitment = doc.aurora == "commitments"
@@ -99,7 +99,7 @@ def agenda() -> dict:
     dated: list[dict] = []
     active: list[dict] = []
     for name, zone, rel, doc in _hub_documents():
-        if "archive" in rel.parts:
+        if "archive" in rel.parts or doc.aurora == "archive":
             continue
         fm = doc.frontmatter or {}
         raw = fm.get("due") or fm.get("date")
