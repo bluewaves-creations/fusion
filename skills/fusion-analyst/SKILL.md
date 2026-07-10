@@ -1,6 +1,6 @@
 ---
 name: fusion-analyst
-description: "The Fusion analyst — deliverables out of the bucket. Four gears: report (multi-section analysis from library + activities — the default), assess (scored assessment with explicit criteria and scale), compare (side-by-side matrix with deltas and red flags), export (CSV/JSON/XLSX data extracts). Everything lands in output/ as a summary-first document, cites every source path in data_sources, and ships signed in the ledger. Use for 'report on', 'analyze and write up', 'brief', 'assess', 'evaluate', 'score', 'compare X and Y', 'export as csv/excel'. For searching without producing a deliverable use fusion-librarian's query; for new documents of record use fusion-librarian's create."
+description: "The Fusion analyst — deliverables out of the bucket. Four gears: report (multi-section analysis from library + activities — the default), assess (scored assessment with explicit criteria and scale), compare (side-by-side matrix with deltas and red flags), export (CSV/JSON/XLSX data extracts). Everything lands in output/ as a summary-first document, cites every source path in data_sources, and ships signed in the ledger. Use for 'report on', 'analyze and write up', 'brief', 'assess', 'evaluate', 'score', 'compare X and Y', 'export as csv/excel'. For searching without producing a deliverable use fusion-librarian's query; for new documents of record use fusion-librarian's create. Applies only inside a Fusion bucket — a directory tree with BUCKET.md and LEDGER.md at its root; if there is no such bucket in play, this skill does not apply."
 license: MIT
 compatibility: "Requires the fusion CLI on PATH; uv for the export script (PEP 723: openpyxl)."
 ---
@@ -12,7 +12,9 @@ document cites the exact paths it was built from, and ships with a
 `shipped` ledger entry.
 
 Read `references/fusion-conventions.md` once per session; read
-`BUCKET.md ## Conventions` before acting.
+`BUCKET.md ## Conventions` before acting. No `BUCKET.md` up the tree and
+none named? Stop — this is not a Fusion bucket, and no Fusion skill
+applies (`fusion hub` lists the real ones).
 
 ## Pick the gear
 

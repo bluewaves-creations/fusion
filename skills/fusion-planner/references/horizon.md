@@ -14,6 +14,7 @@ Read-mostly; proposes, changes nothing without a yes.
    silence.
 4. Propose the honest corrections: dormant flips, closes, due-date fixes.
    On yes: edit the frontmatter, `fusion log noted "activities/<slug> —
-   status: active → dormant" --bucket <root> --as <you>` per flip ·
-   `fusion index <root>` · `fusion check <root>`. Closes go through the
-   close gear.
+   status: active → dormant" --bucket <root> --as <you>` per flip
+   (several flips confirmed in one pass may share one `noted` line
+   naming them all) · `fusion index <root>` · `fusion check <root>`.
+   Closes go through the close gear.
