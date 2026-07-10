@@ -100,9 +100,9 @@ metabolism — the bucket learns.
 - `fusion: command not found` — install from the clone
   (`uv tool install ./fusion/cli`); PyPI publication lands with Phase 4.
 - `fusion check` is red — every code (E1–E8 errors, W1–W5 warnings) is
-  defined in [SPEC.md §11](../SPEC.md); the message names the file. And a
-  bucket is a git repo: `git diff` shows what changed, `git checkout`
-  undoes it. Nothing is unrecoverable.
+  defined in [SPEC.md §11](../SPEC.md#11-conformance); the message names
+  the file. And a bucket is a git repo: `git diff` shows what changed,
+  `git checkout` undoes it. Nothing is unrecoverable.
 - `git` was missing when you ran `fusion new` — the bucket scaffolded
   without a repo; install git, then `git init && git add -A && git commit`
   inside the bucket.

@@ -41,7 +41,7 @@ not another note app. It refuses the category.
 └── output/          # finished deliverables — documents
 ```
 
-Six zones, two registers, one shape in every bucket forever. The full
+Six zones, two root files, one shape in every bucket forever. The full
 anatomy: [SPEC.md §2](SPEC.md).
 
 ## How it's built

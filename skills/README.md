@@ -20,7 +20,7 @@ cp -r skills/fusion-* ~/.agents/skills/   # or your agent's skills directory
 
 Requirements: the `fusion` CLI on PATH (from a clone: `uv tool install
 ./fusion/cli`), `uv` for the bundled scripts. fusion-intake additionally
-wants LibreOffice (`soffice` on PATH) for docx/pptx/legacy office
+wants LibreOffice (`soffice` on PATH) for docx/pptx/legacy office/html
 formats — it fails fast and loud when missing, never silently degrades.
 
 ## The contract all four obey
