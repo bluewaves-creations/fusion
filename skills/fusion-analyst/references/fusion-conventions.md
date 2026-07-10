@@ -61,7 +61,8 @@ Full body. Cross-links are plain relative markdown links.
 ```
 
 - Required: `title`, `type`, `aurora` — exactly three.
-- Optional: `tags`, `created`/`updated` (ISO dates), `source` (path into
+- Optional: `tags`, `created`/`updated` (ISO dates), `due` (ISO date the
+  thing falls due — `fusion agenda` surfaces it), `source` (path into
   `sources/`), `resource` (URI or bucket path of the thing this document
   describes), `status` (`active`|`done`|`dormant`, activities only),
   `data_sources` (paths list, output only).
@@ -122,6 +123,18 @@ or set `FUSION_ACTOR`).
 All take `--json`. `--since last-reflection` scopes to the current
 reflection window. **Exit gate for every skill scenario: `fusion check`
 green before you call the work done.**
+
+## When you're blocked
+
+- `fusion` not on PATH: stop and tell the human — the install is
+  `uv tool install ./fusion/cli` from a clone of the Fusion repository.
+  Never imitate the notary by hand: no register writes while the CLI is
+  missing.
+- `fusion check` red and you cannot fix it: stop, show the findings
+  verbatim, leave the bucket as it stands, and sign nothing that claims
+  the work is done. A bucket is a git repo — nothing is unrecoverable.
+- The human rejects a proposal: that is a result, not a failure. Record
+  it if the gear's protocol says to (`noted`), and move on.
 
 ## The four accountabilities
 
