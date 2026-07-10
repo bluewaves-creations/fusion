@@ -1,6 +1,7 @@
 """Stage-1 engine: admit -> MANIFEST, extractive conversion, vision prep,
 link, cleanup. The lossless contract, tested."""
 import shutil
+import zipfile
 
 import pytest
 import yaml
@@ -394,3 +395,54 @@ def test_cell_to_string_floats_verbatim():
     assert convert.cell_to_string(78.123456789) == "78.123456789"
     assert convert.cell_to_string(0.00001) == "1e-05"
     assert convert.cell_to_string(-0.00001) == "-1e-05"
+
+
+# ── containers are delivery vehicles, not originals ─────────────────────
+
+def test_unpack_container_into_inbox_folder(bucket):
+    zpath = bucket / "inbox" / "bundle.zip"
+    with zipfile.ZipFile(zpath, "w") as zf:
+        zf.writestr("manifest.json", '{"a": 1}')
+        zf.writestr("notes/a.md", "# note")
+        zf.writestr("assets/b.pdf", "%PDF-1.4 fake")
+    out = convert.unpack(bucket, "bundle.zip")
+    dest = bucket / "inbox" / "bundle"
+    assert (dest / "manifest.json").is_file()
+    assert (dest / "notes" / "a.md").is_file()
+    assert (dest / "assets" / "b.pdf").is_file()
+    assert not zpath.exists()               # the vehicle is discarded
+    assert out["unpacked"] == 3
+    assert out["dir"] == "inbox/bundle"
+
+
+def test_unpack_refuses_zip_slip(bucket):
+    zpath = bucket / "inbox" / "evil.zip"
+    with zipfile.ZipFile(zpath, "w") as zf:
+        zf.writestr("../evil.txt", "pwned")
+    with pytest.raises(convert.IntakeError, match="evil"):
+        convert.unpack(bucket, "evil.zip")
+    # nothing written outside inbox, destination folder not left behind
+    assert not (bucket / "inbox" / "evil").exists()
+    assert not (bucket.parent / "evil.txt").exists()
+    assert zpath.exists()                   # the hostile zip itself is untouched
+
+
+def test_unpack_refuses_existing_destination(bucket):
+    zpath = bucket / "inbox" / "bundle.zip"
+    with zipfile.ZipFile(zpath, "w") as zf:
+        zf.writestr("a.txt", "hi")
+    (bucket / "inbox" / "bundle").mkdir()
+    with pytest.raises(convert.IntakeError, match="exists"):
+        convert.unpack(bucket, "bundle.zip")
+
+
+def test_admit_still_refuses_containers(bucket):
+    (bucket / "inbox" / "bundle.athena").write_bytes(b"not admitted directly")
+    with pytest.raises(convert.IntakeError, match="unsupported"):
+        admit(bucket, "bundle.athena")
+
+
+def test_json_rides_the_text_route():
+    assert convert._route(".json") == "text"
+    assert ".yaml" in convert.SUPPORTED_EXTS
+    assert ".yml" in convert.SUPPORTED_EXTS

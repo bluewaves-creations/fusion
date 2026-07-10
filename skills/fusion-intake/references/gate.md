@@ -1,10 +1,10 @@
 # The intake gate — Stage 2 (judgment)
 
 Stage 1 (`scripts/gate.py`) wrote `workbench/.intake/gate-<runid>.json`
-with four buckets: `exact_dups`, `near_dups`, `update_candidates`,
-`clean_new`. This stage assigns each file's final class and writes the
-intake report. It writes NOTHING to `sources/` or `library/` — admission
-and conversion happen only after this stage's confirmations.
+with five buckets: `exact_dups`, `near_dups`, `update_candidates`,
+`clean_new`, `containers`. This stage assigns each file's final class and
+writes the intake report. It writes NOTHING to `sources/` or `library/` —
+admission and conversion happen only after this stage's confirmations.
 
 ## Topic matching (do this before classifying)
 
@@ -59,6 +59,14 @@ correction (reconcile), reject (skip), or keep both with a note.
 **`near_dups` → duplicate (near) (confirm).** Probably a re-export or
 trivial edit. Never auto-skip, never auto-convert: offer skip / treat as
 update / convert as new.
+
+**`containers` → vehicles, not originals.** Report each one (name, size).
+Containers (`.zip`, `.athena`) never enter `sources/` intact — `unpack`
+them into `inbox/<stem>/` on the standing rule (or ask first if the
+container is unexpected or its size is surprising), delete the container,
+sign the act `noted`, then gate the extracted contents like any other
+inbox drop. A nested container inside an unpacked one repeats the same
+treatment.
 
 ## The intake report (the prompt surface)
 

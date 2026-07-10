@@ -36,6 +36,11 @@ _WORD = re.compile(r"\w+")
 
 SKIP_NAMES = {"MANIFEST.md", "README.md"}
 
+# Containers are delivery vehicles, not originals (skills/fusion-intake
+# scripts/convert.py `unpack`) — the gate reports them and skips all other
+# classification, before hashing (a 144MB zip should not be shingled).
+CONTAINER_EXTS = {".zip", ".athena"}
+
 
 def normalize_filename(name: str) -> str:
     """Strip a leading date prefix, lowercase, collapse separators to '-',
@@ -146,10 +151,16 @@ def _best_match(incoming_text: str, idx: SourceIndex):
 
 def classify_intake(inbox_dir: Path, sources_dir: Path, idx: SourceIndex) -> dict:
     result = {"exact_dups": [], "near_dups": [],
-              "update_candidates": [], "clean_new": [], "inbox_dups": []}
+              "update_candidates": [], "clean_new": [], "inbox_dups": [],
+              "containers": []}
     seen_in_batch: dict = {}
     for f in _iter_files(Path(inbox_dir)):
         rel = str(f.relative_to(inbox_dir))
+
+        if f.suffix.lower() in CONTAINER_EXTS:
+            result["containers"].append({"incoming": rel, "size": f.stat().st_size})
+            continue
+
         h = sha256_of(f)
 
         if h in seen_in_batch:

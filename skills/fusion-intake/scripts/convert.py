@@ -26,6 +26,7 @@ import shutil
 import subprocess
 import sys
 import uuid
+import zipfile
 from datetime import datetime
 from email import policy
 from email.parser import BytesParser
@@ -42,9 +43,14 @@ LIBREOFFICE_EXTS = {".docx", ".pptx", ".doc", ".odt", ".rtf", ".key",
                     ".pages", ".ppt", ".xls", ".html", ".htm"}
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 MAIL_EXTS = {".eml"}
-TEXT_EXTS = {".md", ".txt"}
+TEXT_EXTS = {".md", ".txt", ".json", ".yaml", ".yml"}
 SUPPORTED_EXTS = (EXTRACTIVE_EXTS | LIBREOFFICE_EXTS | IMAGE_EXTS
                   | MAIL_EXTS | TEXT_EXTS | {".pdf"})
+
+# Containers are DELIVERY VEHICLES, not originals: `unpack` extracts them
+# into inbox/ and discards the zip — the members become the originals.
+# They must never join SUPPORTED_EXTS; admit keeps refusing them.
+CONTAINER_EXTS = {".zip", ".athena"}
 
 TEXT_COVERAGE_MIN_CHARS = 100   # below this a page is scanned/figure
 RENDER_DPI = 150
@@ -199,6 +205,67 @@ def admit(root: Path, inbox_rel: str, category: str, actor: str) -> dict:
     rel = f"{category}/{src.name}"
     manifest_append(root, rel, actor, sha)
     return {"source": rel, "sha256": sha, "manifest_row": True}
+
+
+# ── unpack: containers are delivery vehicles, not originals ─────────────
+
+def unpack(root: Path, inbox_rel: str) -> dict:
+    """Extract a container (.zip / .athena) sitting in inbox/ into a sibling
+    folder — the members become the originals, the container is discarded.
+    Does NOT write the ledger: the operator signs a `noted` entry via
+    `fusion log` (single-writer)."""
+    root = Path(root)
+    src = root / "inbox" / inbox_rel
+    if not src.is_file():
+        raise IntakeError(f"not in inbox/: {inbox_rel}")
+    if src.suffix.lower() not in CONTAINER_EXTS:
+        raise IntakeError(
+            f"not a container: {src.suffix.lower()} — unpack only handles "
+            f"{sorted(CONTAINER_EXTS)}")
+    if not zipfile.is_zipfile(src):
+        raise IntakeError(f"not a readable zip: {inbox_rel}")
+
+    stem = src.stem
+    dest = root / "inbox" / stem
+    if dest.exists():
+        raise IntakeError(
+            f"destination already exists: inbox/{stem} — refusing to "
+            "merge a container into existing content")
+
+    with zipfile.ZipFile(src) as zf:
+        members = []
+        for info in zf.infolist():
+            if info.is_dir():
+                continue
+            name = info.filename
+            if name.startswith("__MACOSX/") or Path(name).name.startswith("._"):
+                continue
+            members.append(info)
+
+        # Validate every destination BEFORE writing anything — a hostile
+        # member fails the whole unpack, not just itself.
+        dest_resolved = dest.resolve()
+        targets = []
+        for info in members:
+            target = (dest / info.filename).resolve()
+            if not target.is_relative_to(dest_resolved):
+                raise IntakeError(
+                    f"zip-slip attempt in {inbox_rel}: hostile member "
+                    f"{info.filename!r} escapes inbox/{stem}/ — unpack refused")
+            targets.append((info, target))
+
+        dest.mkdir(parents=True)
+        try:
+            for info, target in targets:
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with zf.open(info) as fh, open(target, "wb") as out:
+                    shutil.copyfileobj(fh, out)
+        except Exception:
+            shutil.rmtree(dest, ignore_errors=True)
+            raise
+
+    src.unlink()
+    return {"unpacked": len(targets), "dir": f"inbox/{stem}"}
 
 
 # ── prepare: routing + engines ───────────────────────────────────────────
@@ -539,6 +606,11 @@ def main(argv=None) -> int:
     p.add_argument("--category", required=True)
     p.add_argument("--actor", required=True)
 
+    p = sub.add_parser("unpack", help="container -> inbox folder "
+                       "(vehicle, not an original)")
+    p.add_argument("--bucket", required=True)
+    p.add_argument("--file", required=True, help="path relative to inbox/")
+
     p = sub.add_parser("prepare", help="route + convert / stage for vision")
     p.add_argument("--bucket", required=True)
     p.add_argument("--source", required=True, help="path relative to sources/")
@@ -563,6 +635,8 @@ def main(argv=None) -> int:
     try:
         if args.cmd == "admit":
             out = admit(Path(args.bucket), args.file, args.category, args.actor)
+        elif args.cmd == "unpack":
+            out = unpack(Path(args.bucket), args.file)
         elif args.cmd == "prepare":
             out = prepare(Path(args.bucket), args.source, dest=args.dest,
                           slug=args.slug, doc_type=args.doc_type,

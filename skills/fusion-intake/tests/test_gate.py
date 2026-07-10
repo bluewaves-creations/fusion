@@ -117,7 +117,7 @@ def test_main_writes_manifest_into_workbench(bucket):
     data = json.loads(runs[0].read_text(encoding="utf-8"))
     assert data["counts"] == {"exact_dups": 0, "near_dups": 0,
                               "update_candidates": 0, "clean_new": 1,
-                              "inbox_dups": 0}
+                              "inbox_dups": 0, "containers": 0}
 
 
 def test_locked_lineage_thresholds():
@@ -165,3 +165,14 @@ def test_inbox_internal_duplicates_detected(bucket):
 
 def test_git_history_survives_missing_cwd(tmp_path):
     assert gate.git_history(Path("sources/x.pdf"), tmp_path / "absent") == []
+
+
+def test_containers_reported_not_classified(bucket):
+    zpath = bucket / "inbox" / "bundle.zip"
+    zpath.write_bytes(b"not really a zip but suffix is what routes it")
+    result = run_gate(bucket)
+    assert len(result["containers"]) == 1
+    entry = result["containers"][0]
+    assert entry["incoming"] == "bundle.zip"
+    assert entry["size"] == zpath.stat().st_size
+    assert [e["incoming"] for e in result["clean_new"]] == []
