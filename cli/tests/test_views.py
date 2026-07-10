@@ -89,3 +89,21 @@ def test_agenda_dated_sorted_then_active(two_bucket_hub):
     assert [i["title"] for i in a["dated"]] == ["Ship It", "Client Call"]
     assert [i["date"] for i in a["dated"]] == ["2026-07-11", "2026-07-12"]
     assert [i["title"] for i in a["active"]] == ["LP"]
+
+
+def test_today_lists_empty_buckets_as_read(tmp_path, monkeypatch):
+    from fusion.scaffold import new_bucket
+
+    monkeypatch.setenv("FUSION_HUB", str(tmp_path / "hub.md"))
+    new_bucket(tmp_path / "emptybucket", description="d", actor="test")
+    t = views.today()
+    assert t["buckets"] == ["emptybucket"]  # read, even with zero documents
+    assert t["groups"] == {}
+
+
+def test_today_skips_hub_entries_without_bucket(tmp_path, monkeypatch):
+    from fusion import hub
+
+    monkeypatch.setenv("FUSION_HUB", str(tmp_path / "hub.md"))
+    hub.add(hub.HubEntry("ghost", "personal", str(tmp_path / "gone"), "missing"))
+    assert views.today()["buckets"] == []

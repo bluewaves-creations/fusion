@@ -44,14 +44,20 @@ def status(root: Path, since: str | None = None) -> dict:
     }
 
 
-def _hub_documents():
-    """Yield (bucket_name, zone, rel, doc) across every readable hub bucket."""
+def _hub_buckets():
+    """Yield (bucket_name, root) for every readable hub bucket — read means
+    a BUCKET.md exists, not that the bucket holds any documents yet."""
     for entry in hub.load():
         root = hub.resolve(entry)
         if not (root / "BUCKET.md").is_file():
             continue
         b = bucket.load(root)
-        name = b.name or entry.name
+        yield (b.name or entry.name), root
+
+
+def _hub_documents():
+    """Yield (bucket_name, zone, rel, doc) across every readable hub bucket."""
+    for name, root in _hub_buckets():
         for zone, rel, doc in bucket.iter_documents(root):
             yield name, zone, rel, doc
 
@@ -71,17 +77,17 @@ def _item(name: str, zone: str, rel, doc, date=None) -> dict:
 def today() -> dict:
     groups: dict[str, list] = {}
     buckets: list[str] = []
-    for name, zone, rel, doc in _hub_documents():
-        if name not in buckets:
-            buckets.append(name)
-        if "archive" in rel.parts:
-            continue
-        is_active_activity = zone == "activities" and doc.status == "active"
-        is_commitment = doc.aurora == "commitments"
-        if is_active_activity or is_commitment:
-            groups.setdefault(doc.aurora or "—", []).append(
-                _item(name, zone, rel, doc)
-            )
+    for name, root in _hub_buckets():
+        buckets.append(name)
+        for zone, rel, doc in bucket.iter_documents(root):
+            if "archive" in rel.parts:
+                continue
+            is_active_activity = zone == "activities" and doc.status == "active"
+            is_commitment = doc.aurora == "commitments"
+            if is_active_activity or is_commitment:
+                groups.setdefault(doc.aurora or "—", []).append(
+                    _item(name, zone, rel, doc)
+                )
     ordered = {a: groups[a] for a in AURORAS if a in groups}
     for aurora, items in groups.items():
         if aurora not in ordered:
