@@ -102,3 +102,11 @@ def test_main_writes_manifest_into_workbench(bucket):
     data = json.loads(runs[0].read_text(encoding="utf-8"))
     assert data["counts"] == {"exact_dups": 0, "near_dups": 0,
                               "update_candidates": 0, "clean_new": 1}
+
+
+def test_locked_lineage_thresholds():
+    """The bands are lineage-locked (plan Global Constraints) — a changed
+    constant is a spec break, not a tuning knob."""
+    assert gate.NEAR_DUP_THRESHOLD == 0.85
+    assert gate.UPDATE_SIM_FLOOR == 0.30
+    assert gate.SHINGLE_K == 3
