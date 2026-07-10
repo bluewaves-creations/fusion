@@ -103,3 +103,13 @@ def test_every_command_has_help(capsys):
             main([cmd, "--help"])
         assert exc.value.code == 0
         assert "--json" in capsys.readouterr().out
+
+
+def test_hub_add_refuses_blank_required_field(tmp_path, capsys):
+    root = tmp_path / "halfcard"
+    root.mkdir()
+    (root / "BUCKET.md").write_text(
+        "---\nname: halfcard\nkind: personal\ndescription:\n---\n\nBody.\n",
+        encoding="utf-8",
+    )
+    assert main(["hub", "add", str(root)]) == 1  # blank description = missing

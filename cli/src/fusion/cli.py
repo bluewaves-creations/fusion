@@ -67,7 +67,7 @@ def cmd_hub(args) -> int:
         if b.frontmatter is None:
             return _fail(f"not a bucket (no readable BUCKET.md): {root}")
         missing = [f for f in ("name", "kind", "description")
-                   if f not in b.frontmatter]
+                   if not str(b.frontmatter.get(f) or "").strip()]
         if missing:
             return _fail(f"BUCKET.md missing: {', '.join(missing)}")
         try:
