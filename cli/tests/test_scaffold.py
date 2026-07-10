@@ -1,4 +1,5 @@
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 
@@ -82,7 +83,15 @@ def test_new_bucket_conformant_with_hostile_description(tmp_path):
 
 
 def test_hub_path_contraction_respects_boundaries(tmp_path, monkeypatch):
-    monkeypatch.setenv("HOME", str(tmp_path / "bertrand"))
+    # hub.display_path() contracts against Path.home() — the one canonical
+    # lookup fusion uses everywhere. Monkeypatch that directly rather than
+    # the HOME env var: on Windows, pathlib/ntpath's expanduser() prefers
+    # USERPROFILE over HOME, so setting HOME alone leaves Path.home()
+    # pointing at the real runner home and this test contracting against
+    # the wrong root. Patching Path.home() controls the actual lookup on
+    # every platform.
+    fake_home = tmp_path / "bertrand"
+    monkeypatch.setattr(Path, "home", lambda: fake_home)
     (tmp_path / "bertrand").mkdir()
     new_bucket(tmp_path / "bertrand" / "inside", description="d", actor="c")
     new_bucket(tmp_path / "bertrand2" / "outside", description="d", actor="c")

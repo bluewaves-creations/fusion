@@ -19,7 +19,14 @@ def test_utf8_streams_reconfigures_cp1252_stdout(monkeypatch):
     print("→ setup complete")
     cp1252_stdout.flush()
 
-    assert buffer.getvalue().decode("utf-8") == "→ setup complete\n"
+    # _utf8_streams() only reconfigures encoding — it leaves newline
+    # translation alone. On Windows, TextIOWrapper's default (universal)
+    # newline mode still writes os.linesep, so '\n' becomes '\r\n' in the
+    # buffer. That is ordinary console behavior, not part of fusion's
+    # contract (the contract is: UTF-8 survives), so normalize it away here
+    # rather than pinning newline="\n" in production stream setup.
+    written = buffer.getvalue().decode("utf-8").replace("\r\n", "\n")
+    assert written == "→ setup complete\n"
 
 
 def test_utf8_streams_reconfigures_cp1252_stderr(monkeypatch):
@@ -32,7 +39,10 @@ def test_utf8_streams_reconfigures_cp1252_stderr(monkeypatch):
     print("· drift, not damage", file=cp1252_stderr)
     cp1252_stderr.flush()
 
-    assert buffer.getvalue().decode("utf-8") == "· drift, not damage\n"
+    # Same rationale as the stdout case above: normalize the platform's
+    # newline translation, not the encoding under test.
+    written = buffer.getvalue().decode("utf-8").replace("\r\n", "\n")
+    assert written == "· drift, not damage\n"
 
 
 def test_utf8_streams_never_raises_on_streams_without_reconfigure(monkeypatch):
