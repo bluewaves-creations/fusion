@@ -106,6 +106,7 @@ thing it got right. The full argument lives in the design spec.
 |---|---|
 | [SPEC.md](SPEC.md) | The convention — normative, versioned, the actual product |
 | [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) | Ten-minute walkthrough |
+| [docs/BUCKETS-EVERYWHERE.md](docs/BUCKETS-EVERYWHERE.md) | Migration, git sync, new machines, external projects |
 | [examples/README.md](examples/README.md) | A finished bucket to wander |
 | [cli/README.md](cli/README.md) | The CLI, command by command |
 | [skills/README.md](skills/README.md) | The four skills |

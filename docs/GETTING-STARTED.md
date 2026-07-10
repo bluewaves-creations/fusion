@@ -135,6 +135,9 @@ installed into (it only removes what it can prove it created), then:
 
 - [A finished bucket to wander](../examples/README.md) — see the
   convention instantiated before you read it abstract.
+- [Buckets everywhere](BUCKETS-EVERYWHERE.md) — migrate a messy folder
+  in, sync a bucket between machines, rebuild the hub on a new one,
+  track a project whose code lives outside.
 - [The convention itself](../SPEC.md) — SPEC.md is the actual product.
 - [The CLI, command by command](../cli/README.md).
 - [The four skills](../skills/README.md).

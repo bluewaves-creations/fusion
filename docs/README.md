@@ -6,6 +6,7 @@ Start at the repository [README](../README.md); the convention itself is
 | Where | What | Read it when |
 |---|---|---|
 | [GETTING-STARTED.md](GETTING-STARTED.md) | The ten-minute walkthrough | You're new |
+| [BUCKETS-EVERYWHERE.md](BUCKETS-EVERYWHERE.md) | Moving in, syncing, new machines, code repos | Your buckets meet the world |
 | [ROADMAP.md](ROADMAP.md) | Phases and their QA gates | You want the state of things |
 | [specs/](specs/) | Dated design rationale — the argument behind SPEC.md | You want the *why* |
 | [plans/](plans/) | Implementation plans, task by task | You're archaeologizing a change |
