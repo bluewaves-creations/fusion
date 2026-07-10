@@ -14,16 +14,24 @@ INDEXED_ZONES: tuple[str, ...] = ("library", "activities")
 def _section_key(section: str) -> tuple[int, str]:
     if section == "./":
         return (0, section)
-    if section == "archive/" or section.startswith("archive/"):
+    if section.startswith("archive/"):
         return (2, section)
     return (1, section)
 
 
+def _zone_documents(zone_dir: Path) -> list[Path]:
+    """Every document file in the zone — the single filter both the index
+    content and the ledger's document count derive from."""
+    return [
+        p
+        for p in sorted(zone_dir.rglob("*.md"))
+        if p.name != "INDEX.md" and not p.name.startswith(".")
+    ]
+
+
 def generate(zone_dir: Path, zone_name: str) -> str:
     sections: dict[str, list] = {}
-    for path in sorted(zone_dir.rglob("*.md")):
-        if path.name == "INDEX.md" or path.name.startswith("."):
-            continue
+    for path in _zone_documents(zone_dir):
         rel = path.relative_to(zone_dir)
         parent = rel.parent.as_posix()
         section = "./" if parent == "." else parent + "/"
@@ -56,11 +64,7 @@ def write_indexes(
         changed = old != content.encode("utf-8")
         if changed:
             index_path.write_text(content, encoding="utf-8")
-        count = sum(
-            1
-            for p in zone_dir.rglob("*.md")
-            if p.name != "INDEX.md" and not p.name.startswith(".")
-        )
+        count = len(_zone_documents(zone_dir))
         if changed and actor:
             plural = "s" if count != 1 else ""
             ledger.append(bucket_root, actor, "indexed",
