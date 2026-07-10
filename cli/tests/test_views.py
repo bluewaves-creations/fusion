@@ -7,17 +7,17 @@ from fusion.ledger import Entry
 def test_status_fixture(fixture_bucket):
     s = views.status(fixture_bucket)
     assert s["bucket"] == "crazy-ones"
-    assert s["documents"] == 6
-    assert s["auroras"] == {"archive": 1, "collab": 1, "focus": 1, "library": 3}
-    assert s["types"] == {"instrument": 2, "plan": 2, "press-kit": 1, "recipe": 1}
-    assert s["activities"] == {"active": 1, "done": 1}
-    assert len(s["ledger"]) == 10  # last ten of seventeen
+    assert s["documents"] == 7
+    assert s["auroras"] == {"archive": 1, "collab": 1, "focus": 2, "library": 3}
+    assert s["types"] == {"instrument": 2, "plan": 3, "press-kit": 1, "recipe": 1}
+    assert s["activities"] == {"active": 2, "done": 1}
+    assert len(s["ledger"]) == 10  # last ten of nineteen
     assert s["ledger"][-1]["verb"] == "reflected"
 
 
 def test_status_since_date(fixture_bucket):
     s = views.status(fixture_bucket, since="2026-07-10")
-    assert len(s["ledger"]) == 5
+    assert len(s["ledger"]) == 7
     assert all(e["date"] == "2026-07-10" for e in s["ledger"])
 
 

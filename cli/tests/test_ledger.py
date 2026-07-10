@@ -15,7 +15,7 @@ def test_verbs_are_the_eleven_verbatim():
 
 def test_parse_fixture(fixture_bucket):
     entries = ledger.read(fixture_bucket)
-    assert len(entries) == 17
+    assert len(entries) == 19
     first = entries[0]
     assert (first.date, first.time, first.actor, first.verb) == (
         "2026-07-08", "09:00", "bertrand", "created"

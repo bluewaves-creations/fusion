@@ -79,10 +79,10 @@ def test_load_bucket(fixture_bucket):
 
 def test_iter_documents_fixture(fixture_bucket):
     docs = list(bucket.iter_documents(fixture_bucket))
-    assert len(docs) == 6
+    assert len(docs) == 7
     from collections import Counter
     zone_counts = Counter(zone for zone, _, _ in docs)
-    assert zone_counts == {"library": 3, "activities": 2, "output": 1}
+    assert zone_counts == {"library": 3, "activities": 3, "output": 1}
     names = {rel.name for _, rel, _ in docs}
     assert "INDEX.md" not in names
     # yields (zone, path relative to the zone, Document)

@@ -89,7 +89,7 @@ def test_index_logs_when_changed(tmp_path, capsys):
 
 def test_status_today_agenda_json(fixture_bucket, capsys):
     assert main(["status", str(fixture_bucket), "--json"]) == 0
-    assert out_json(capsys)["documents"] == 6
+    assert out_json(capsys)["documents"] == 7
     assert main(["today", "--json"]) == 0
     assert out_json(capsys)["groups"] == {}  # empty hub, empty day
     assert main(["agenda", "--json"]) == 0

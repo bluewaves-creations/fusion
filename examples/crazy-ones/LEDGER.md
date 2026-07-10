@@ -21,4 +21,6 @@
 - 09:41 · claude · shipped · output/press-kit.md — "data_sources cited"
 - 10:00 · claude · restructured · library/ (flat files → instruments/ + recipes/) — "taxonomy stopped serving"
 - 10:05 · claude · indexed · library/ (3 documents)
+- 10:20 · bertrand · created · activities/band-site/plan.md — "code stays in its own repo; resource: points at it"
+- 10:21 · claude · indexed · activities/ (3 documents)
 - 10:30 · claude · reflected · bucket — "first reflection: 0 stale, 1 archived activity, conventions updated"
