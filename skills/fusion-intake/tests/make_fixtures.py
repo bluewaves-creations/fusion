@@ -163,6 +163,10 @@ def make_merged_xlsx(path: Path):
     ws.merge_cells("A1:B1")
     ws.append(["item", "amount"])
     ws.append(["strings", 42.5])
+    ws2 = wb.create_sheet("Notes")
+    ws2["A1"] = "Wide title"
+    ws2.merge_cells("A1:B1")
+    ws2["A2"] = "only column A has data"
     wb.save(path)
 
 

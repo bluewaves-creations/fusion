@@ -317,6 +317,8 @@ def test_merged_cells_keep_their_anchor_value(bucket):
     assert "Q3 forecast" in body
     assert "| strings | 42.5 |" in body
     assert "| item | amount |" in body          # column B survived pruning
+    assert "| Q3 forecast | Q3 forecast |" in body   # anchor unfolds across the merge
+    assert "| Wide title | Wide title |" in body     # merge-spanned column survives pruning
 
 
 @pytest.mark.skipif(shutil.which("soffice") is None and shutil.which("libreoffice") is None,
