@@ -36,7 +36,6 @@ def parse_frontmatter(path: Path) -> dict:
     return fm
 
 
-@pytest.mark.xfail(reason="first SKILL.md lands in Task 4", strict=True)
 def test_at_least_one_skill_exists():
     assert skill_dirs(), "skills/ holds no skill directories yet"
 
