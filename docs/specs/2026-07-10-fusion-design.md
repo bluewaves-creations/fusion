@@ -1,7 +1,7 @@
 # Fusion — Design Specification
 
 **Date:** 2026-07-10
-**Status:** Approved design, pre-implementation
+**Status:** Approved design — implemented through Phase 3; kept as the dated rationale behind [SPEC.md](../../SPEC.md) (see [ROADMAP](../ROADMAP.md) for live state)
 **Format version target:** fusion 1.0
 
 ---

@@ -3,7 +3,7 @@
 [`crazy-ones/`](crazy-ones/) is a complete, conformant Fusion bucket for a
 fictional music studio. It is also the project's normative test fixture —
 `fusion check` holds it at zero errors, zero warnings, and the golden tests
-freeze its INDEX files byte-for-byte. Wander it; don't edit it.
+freeze its INDEX files byte-for-byte. Wander it; don't edit it — the freeze is this fixture's, not a rule of Fusion (your own buckets are yours to edit, INDEX.md aside).
 
 Read it in this order:
 
