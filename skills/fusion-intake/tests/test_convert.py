@@ -5,7 +5,7 @@ import zipfile
 
 import pytest
 import yaml
-from conftest import bucket  # noqa: F401 (fixture)
+from conftest import bucket, seed_source  # noqa: F401 (fixture)
 
 import convert
 import make_fixtures as fx
@@ -69,6 +69,23 @@ def test_admit_refuses_manifest_breaking_chars(bucket):
         admit(bucket, "weird | name.csv")
     # nothing moved, nothing registered — the file stays in inbox
     assert (bucket / "inbox" / "weird | name.csv").is_file()
+    manifest_after = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    assert manifest_after == manifest_before
+
+
+def test_admit_refuses_traversal_inbox_path(bucket, tmp_path):
+    # leak.csv sits OUTSIDE the bucket entirely — inbox/../../leak.csv from
+    # bucket/inbox/ climbs out of "scratch" into tmp_path itself, mirroring
+    # test_unpack_refuses_traversal_crafted_file_argument's fixture layout.
+    leak = tmp_path / "leak.csv"
+    leak.write_text("sensitive,data\n1,2\n", encoding="utf-8")
+    manifest_before = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    with pytest.raises(convert.IntakeError, match="escapes"):
+        admit(bucket, "../../leak.csv")
+    # shutil.move would have deleted the original — it must still be there,
+    # byte-for-byte untouched, and nothing registered
+    assert leak.is_file()
+    assert leak.read_text(encoding="utf-8") == "sensitive,data\n1,2\n"
     manifest_after = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
     assert manifest_after == manifest_before
 
@@ -667,3 +684,42 @@ def test_batch_rejects_duplicate_inbox_file_in_two_admits(bucket):
 def test_batch_empty_ops_is_a_noop(bucket):
     out = convert.batch(bucket, {"admits": [], "links": []}, actor="claude")
     assert out == {"admitted": 0, "linked": 0}
+
+
+def test_batch_refuses_disk_only_collision_before_any_mutation(bucket):
+    # z.pdf sits in sources/records/ with NO MANIFEST row — a hand-placed
+    # file, not something admit() ever wrote. Checking existing_rels alone
+    # would let a.csv's admit run before z.pdf's own dest.exists() refusal
+    # fires mid-batch, with no rollback — the disk itself must be checked
+    # in phase 1, before ANY mutation.
+    put_inbox(bucket, "a.csv", fx.make_csv)
+    seed_source(bucket, "records/z.pdf", "not a real pdf, just a placeholder")
+    put_inbox(bucket, "z.pdf", lambda p: p.write_bytes(b"%PDF-1.4 fake"))
+    manifest_before = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    ops = {"admits": [{"file": "a.csv", "category": "records"},
+                      {"file": "z.pdf", "category": "records"}],
+           "links": []}
+    with pytest.raises(convert.IntakeError, match="immutable"):
+        convert.batch(bucket, ops, actor="claude")
+    # a.csv (the good op, ordered first) is still in inbox — nothing moved
+    assert (bucket / "inbox" / "a.csv").is_file()
+    assert (bucket / "inbox" / "z.pdf").is_file()
+    manifest_after = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    assert manifest_after == manifest_before
+
+
+def test_batch_rejects_traversal_doc_path(bucket):
+    # "library/../inbox/evil.md" lexically starts with "library" (passes a
+    # naive split-on-"/" zone check) but normalizes to "inbox/evil.md" —
+    # not a doc zone at all.
+    put_inbox(bucket, "a.csv", fx.make_csv)
+    manifest_before = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    ops = {"admits": [{"file": "a.csv", "category": "records"}],
+           "links": [{"source": "records/a.csv",
+                      "doc": "library/../inbox/evil.md"}]}
+    with pytest.raises(convert.IntakeError, match="zone"):
+        convert.batch(bucket, ops, actor="claude")
+    assert (bucket / "inbox" / "a.csv").is_file()
+    assert not (bucket / "sources" / "records").exists()
+    manifest_after = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    assert manifest_after == manifest_before

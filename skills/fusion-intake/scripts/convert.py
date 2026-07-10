@@ -24,6 +24,7 @@ import argparse
 import csv as csv_mod
 import hashlib
 import json
+import posixpath
 import re
 import shutil
 import subprocess
@@ -201,7 +202,18 @@ def _manifest_rels(root: Path) -> set:
 
 def admit(root: Path, inbox_rel: str, category: str, actor: str) -> dict:
     root = Path(root)
+    # Resolve the inbox root once and require the target to stay under it —
+    # inbox_rel is untrusted (may carry ../ traversal) and a LEXICAL
+    # relative_to() check downstream would accept a resolved parent that has
+    # already escaped. Check this BEFORE any other validation, including
+    # is_file() (mirrors unpack()'s pattern, commit 8851fd3) — admit is the
+    # only writer of sources/MANIFEST.md and every caller (batch included)
+    # goes through this one function, so the guard lives here once.
+    inbox_root = (root / "inbox").resolve()
     src = root / "inbox" / inbox_rel
+    src_resolved = src.resolve()
+    if not src_resolved.is_relative_to(inbox_root):
+        raise IntakeError(f"inbox path escapes inbox/: {inbox_rel!r}")
     if not src.is_file():
         raise IntakeError(f"not in inbox/: {inbox_rel}")
     if src.suffix.lower() not in SUPPORTED_EXTS:
@@ -679,7 +691,11 @@ def batch(root: Path, ops: dict, actor: str) -> dict:
                 f"admits[{i}]: '|' and newlines break the manifest "
                 f"grammar: {src.name!r}")
         rel = f"{category}/{src.name}"
-        if rel in existing_rels:
+        # A hand-placed file in sources/ with no MANIFEST row is a collision
+        # too — checking existing_rels alone lets a mixed batch admit past
+        # it, then fail mid-batch at admit()'s own dest.exists() with no
+        # rollback, breaking the all-or-nothing promise (references/delivery.md).
+        if rel in existing_rels or (root / "sources" / rel).exists():
             raise IntakeError(
                 f"admits[{i}]: sources/ is immutable and {rel} already "
                 "exists — rename the incoming file before admitting it")
@@ -696,10 +712,21 @@ def batch(root: Path, ops: dict, actor: str) -> dict:
             raise IntakeError(f"links[{i}]: source required")
         if not doc:
             raise IntakeError(f"links[{i}]: doc required")
-        if doc.split("/", 1)[0] not in DOC_ZONES:
+        # Normalize before judging the zone — a LEXICAL split on the raw
+        # string ("library/../inbox/evil.md".split("/",1)[0] == "library")
+        # passes a path that actually resolves outside every zone. Collapse
+        # ".." segments first, then require: no leftover ".." (it climbed
+        # above the zone root), not absolute, first segment in DOC_ZONES.
+        norm_doc = posixpath.normpath(doc)
+        doc_parts = norm_doc.split("/")
+        if (posixpath.isabs(norm_doc) or doc_parts[0] == ".."
+                or doc_parts[0] not in DOC_ZONES):
             raise IntakeError(
                 f"links[{i}]: doc must be zone-relative under "
                 f"{sorted(DOC_ZONES)}: {doc!r}")
+        op["doc"] = norm_doc   # store/compare the NORMALIZED path — later
+                                # phases (doc-exists check, link()) read
+                                # this same op dict, never the raw input
         if source not in existing_rels and source not in batch_rels:
             raise IntakeError(
                 f"links[{i}]: link source will not exist: {source!r} — "

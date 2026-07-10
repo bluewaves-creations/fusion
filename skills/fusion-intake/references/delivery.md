@@ -83,11 +83,13 @@ Prints `{"admitted": n, "linked": m}`.
 1. Every admit and every link is checked structurally BEFORE anything
    moves: admit files exist in `inbox/` with a supported extension,
    `(category, basename)` is unique both within the batch and against
-   every row already in `sources/MANIFEST.md`, the actor is a single
-   token, and each link's `doc` is zone-relative while its `source`
-   either already has a MANIFEST row or is declared by this same batch's
-   admits. One bad op anywhere aborts the whole call — nothing moves,
-   nothing is appended, not even the good ops ahead of it in the list.
+   every row already in `sources/MANIFEST.md` (and against any file
+   already sitting on disk in `sources/` even without a row), the actor
+   is a single token, and each link's `doc` is zone-relative while its
+   `source` either already has a MANIFEST row or is declared by this same
+   batch's admits. One bad op anywhere aborts the whole call — nothing
+   moves, nothing is appended, not even the good ops ahead of it in the
+   list.
 2. All admits then run (reusing `admit()` — still the only writer of
    `sources/MANIFEST.md`). This half does not roll back.
 3. Before any link is written, every link's `doc` is checked to exist on
