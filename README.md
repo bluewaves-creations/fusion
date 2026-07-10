@@ -20,19 +20,37 @@ not another note app. It refuses the category.
   commitments, focus, ops, collab, life, explore, archive, library. An
   attention system, not a taxonomy. It's what makes this calm instead of a
   hoard.
-- **The librarian owns the library.** You never file. The AI colleague
-  places, names, curates, restructures — and signs every act in an
-  append-only ledger. Ownership with a paper trail.
+- **The librarian — your AI colleague wearing its curator hat — owns the
+  library.** You never file. It places, names, curates, restructures — and
+  signs every act in an append-only ledger.
 - **The metabolism** — buckets reflect, prune, and learn. What a bucket
   learns lands in its conventions; trust widens through explicit, recorded
   delegations.
 
+## The shape of a bucket
+
+```
+<bucket>/
+├── BUCKET.md        # identity card + learned conventions
+├── LEDGER.md        # append-only collaboration record
+├── inbox/           # drop zone — things arrive, nothing lives here
+├── sources/         # immutable originals + MANIFEST.md
+├── library/         # settled knowledge — documents
+├── activities/      # live work — documents + status
+├── workbench/       # ephemeral human+AI space — NO format rules
+└── output/          # finished deliverables — documents
+```
+
+Six zones, two registers, one shape in every bucket forever. The full
+anatomy: [SPEC.md §2](SPEC.md).
+
 ## How it's built
 
 Three layers: a **convention** ([SPEC.md](SPEC.md) — the actual product),
-a small **CLI** (`fusion` — the notary: ledger, registers, hub, checks,
-your cross-bucket day), and a **skill family** (the judgment: intake,
-librarian, planner, analyst) for any agent that reads
+a small **[CLI](cli/README.md)** (`fusion` — the notary: ledger, registers,
+hub, checks, your cross-bucket day), and a
+**[skill family](skills/README.md)** (the judgment: intake, librarian,
+planner, analyst) for any agent that reads
 [Agent Skills](https://agentskills.io) — Claude Code, Pi, Goose, and
 whatever comes next.
 
@@ -41,8 +59,17 @@ fictional studio bucket, fully conformant, ledger and all.
 
 ## Get started
 
-Two moves — install the CLI, copy the skills — then make your first
-bucket. The walkthrough: [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
+```bash
+git clone https://github.com/bluewaves-creations/fusion.git
+uv tool install ./fusion/cli                       # move one — the CLI
+cp -r fusion/skills/fusion-* ~/.agents/skills/     # move two — the skills
+fusion new ~/buckets/personal --kind personal \
+  --description "Home base: admin, health, house, money."
+fusion today
+```
+
+Ten minutes, no wizard. The walkthrough:
+[docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
 
 ## Status
 
@@ -62,6 +89,22 @@ Fusion is the deliberate synthesis of four systems — Google's
 [Knowledge Catalog](https://github.com/GoogleCloudPlatform/knowledge-catalog) open format ("OKF" in our design spec), and
 Bluewaves' Athena, Gizmo, and Shaping Room — keeping from each the one
 thing it got right. The full argument lives in the design spec.
+
+## Docs map
+
+| Doc | What |
+|---|---|
+| [SPEC.md](SPEC.md) | The convention — normative, versioned, the actual product |
+| [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md) | Ten-minute walkthrough |
+| [examples/README.md](examples/README.md) | A finished bucket to wander |
+| [cli/README.md](cli/README.md) | The CLI, command by command |
+| [skills/README.md](skills/README.md) | The four skills |
+| [docs/README.md](docs/README.md) | The rest: design rationale, roadmap, build records |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | The spec is the contribution |
+
+`SPEC.md` is the contract — root, stable name, changes rarely and only
+versioned. `docs/specs/` holds the dated design rationale behind it — the
+argument, not the contract.
 
 ## License
 

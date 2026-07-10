@@ -7,9 +7,15 @@ touches them.
 
 ## Install
 
+From a clone (PyPI publication lands with Phase 4):
+
 ```sh
-uv tool install fusion-cli
+git clone https://github.com/bluewaves-creations/fusion.git
+uv tool install ./fusion/cli
+fusion --version
 ```
+
+Once published: `uv tool install fusion-cli`.
 
 ## The eight commands (there is no ninth)
 
