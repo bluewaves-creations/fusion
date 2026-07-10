@@ -69,9 +69,20 @@ def append(
     note: str | None = None,
     at: datetime | None = None,
 ) -> Entry:
-    """The one writer. Strict: refuses verbs outside the eleven."""
+    """The one writer. Strict: refuses verbs outside the eleven.
+
+    Actors must be single tokens; objects and notes are collapsed to one
+    line — the register must round-trip through its own reader.
+    """
     if verb not in VERBS:
         raise ValueError(f"verb must be one of: {', '.join(VERBS)}")
+    if not actor or actor != actor.strip() or any(c.isspace() for c in actor) or "·" in actor:
+        raise ValueError(
+            f"actor must be a single token with no spaces or '·': {actor!r}"
+        )
+    obj = " ".join(obj.split())
+    if note is not None:
+        note = " ".join(note.split())
     at = at or datetime.now()
     entry = Entry(at.strftime("%Y-%m-%d"), at.strftime("%H:%M"),
                   actor, verb, obj, note)

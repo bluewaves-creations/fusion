@@ -21,6 +21,14 @@ def hub_path() -> Path:
     return Path(os.environ.get("FUSION_HUB", "~/.fusion/hub.md")).expanduser()
 
 
+def display_path(root: Path) -> str:
+    """Absolute path, ~-contracted when under the user's home."""
+    try:
+        return "~/" + root.relative_to(Path.home()).as_posix()
+    except ValueError:
+        return str(root)
+
+
 def load() -> list[HubEntry]:
     path = hub_path()
     if not path.exists():
@@ -33,12 +41,17 @@ def load() -> list[HubEntry]:
     return entries
 
 
+def _one_line(value: str) -> str:
+    return " ".join(str(value).split())
+
+
 def save(entries: list[HubEntry]) -> None:
     path = hub_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = ["# Fusion Hub", ""]
     lines += [
-        f"- **{e.name}** · {e.kind} · {e.path} — {e.description}"
+        f"- **{_one_line(e.name)}** · {_one_line(e.kind)} · "
+        f"{_one_line(e.path)} — {_one_line(e.description)}"
         for e in entries
     ]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")

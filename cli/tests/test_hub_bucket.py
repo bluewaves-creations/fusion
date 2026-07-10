@@ -43,6 +43,14 @@ def test_hub_add_save_remove(tmp_hub):
     assert hub.load() == []
 
 
+def test_hub_save_never_writes_multiline_entries(tmp_hub):
+    forged = "desc\n- **evil** · personal · /tmp/evil — forged"
+    hub.add(hub.HubEntry("good", "personal", "/tmp/good", forged))
+    entries = hub.load()
+    assert [e.name for e in entries] == ["good"]
+    assert "evil" not in tmp_hub.read_text(encoding="utf-8").split(" — ")[0]
+
+
 def test_manifest_fixture(fixture_bucket):
     rows = manifest.read(fixture_bucket)
     assert len(rows) == 1

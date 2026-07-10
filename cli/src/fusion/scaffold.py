@@ -1,6 +1,7 @@
 """fusion new — a complete bucket, born conformant (SPEC §2, §3)."""
 from __future__ import annotations
 
+import os
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -61,6 +62,8 @@ def new_bucket(
     description = description or f"A {kind} bucket. Describe me."
     at = at or datetime.now()
 
+    if root.exists() and not root.is_dir():
+        raise ScaffoldError(f"target exists and is not a directory: {root}")
     if root.exists() and any(root.iterdir()):
         raise ScaffoldError(f"target exists and is not empty: {root}")
     if register and any(e.name == name for e in hub.load()):
@@ -93,7 +96,8 @@ def new_bucket(
     ):
         try:
             result = subprocess.run(
-                cmd, cwd=root, capture_output=True, text=True
+                cmd, cwd=root, capture_output=True, text=True, timeout=30,
+                env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
             )
             if result.returncode != 0:
                 warnings.append(
@@ -103,15 +107,13 @@ def new_bucket(
         except FileNotFoundError:
             warnings.append("git not found — bucket created without a repository")
             break
+        except subprocess.TimeoutExpired:
+            warnings.append(f"{' '.join(cmd)}: timed out after 30s")
+            break
 
     if register:
-        home = Path.home()
         try:
-            display = "~/" + root.relative_to(home).as_posix()
-        except ValueError:
-            display = str(root)
-        try:
-            hub.add(hub.HubEntry(name, kind, display, " ".join(description.split())))
+            hub.add(hub.HubEntry(name, kind, hub.display_path(root), description))
         except (ValueError, OSError) as exc:
             warnings.append(f"hub registration failed: {exc}")
 

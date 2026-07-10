@@ -47,6 +47,13 @@ def test_new_bucket_refuses_non_empty_target(tmp_path):
         new_bucket(target, actor="claude")
 
 
+def test_new_bucket_refuses_file_target(tmp_path):
+    target = tmp_path / "afile"
+    target.write_text("x", encoding="utf-8")
+    with pytest.raises(ScaffoldError, match="not a directory"):
+        new_bucket(target, actor="claude")
+
+
 def test_new_bucket_refuses_taken_name(tmp_path):
     new_bucket(tmp_path / "studio", description="d", actor="claude")
     with pytest.raises(ScaffoldError, match="already registered"):

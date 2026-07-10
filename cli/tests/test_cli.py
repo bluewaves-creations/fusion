@@ -113,3 +113,17 @@ def test_hub_add_refuses_blank_required_field(tmp_path, capsys):
         encoding="utf-8",
     )
     assert main(["hub", "add", str(root)]) == 1  # blank description = missing
+
+
+def test_hub_add_resolves_relative_paths(tmp_path, monkeypatch, capsys):
+    main(["new", str(tmp_path / "b"), "--description", "d"])
+    main(["hub", "remove", "b"])
+    capsys.readouterr()
+    monkeypatch.chdir(tmp_path / "b")
+    assert main(["hub", "add", "."]) == 0
+    capsys.readouterr()
+    from fusion import hub
+    entry = hub.load()[0]
+    assert entry.path not in (".", "./")
+    from pathlib import Path as P
+    assert P(entry.path).expanduser().is_absolute()

@@ -62,7 +62,7 @@ def cmd_new(args) -> int:
 
 def cmd_hub(args) -> int:
     if args.hub_cmd == "add":
-        root = Path(args.path).expanduser()
+        root = Path(args.path).expanduser().resolve()
         b = bucket.load(root)
         if b.frontmatter is None:
             return _fail(f"not a bucket (no readable BUCKET.md): {root}")
@@ -71,7 +71,8 @@ def cmd_hub(args) -> int:
         if missing:
             return _fail(f"BUCKET.md missing: {', '.join(missing)}")
         try:
-            hub.add(hub.HubEntry(b.name, b.kind, str(root), b.description))
+            hub.add(hub.HubEntry(b.name, b.kind, hub.display_path(root),
+                                  b.description))
         except ValueError as exc:
             return _fail(str(exc))
         _emit({"registered": b.name}, args.json,

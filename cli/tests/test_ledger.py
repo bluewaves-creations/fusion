@@ -68,6 +68,20 @@ def test_append_rejects_unknown_verb(tmp_path):
         ledger.append(tmp_path, "claude", "yeeted", "x")
 
 
+def test_append_rejects_multiword_actor(tmp_path):
+    with pytest.raises(ValueError, match="single token"):
+        ledger.append(tmp_path, "Claude Code", "noted", "x")
+
+
+def test_append_collapses_newlines_in_object_and_note(tmp_path):
+    entry = ledger.append(tmp_path, "claude", "noted", "a\nb",
+                          note="line one\nline two",
+                          at=datetime(2026, 7, 10, 9, 0))
+    assert entry.obj == "a b" and entry.note == "line one line two"
+    read = ledger.read(tmp_path)[0]
+    assert (read.obj, read.note) == ("a b", "line one line two")
+
+
 def test_round_trip_note_with_em_dash(tmp_path):
     ledger.append(tmp_path, "claude", "restructured", "library/",
                   note="taxonomy — it stopped serving",
