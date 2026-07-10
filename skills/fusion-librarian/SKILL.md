@@ -46,7 +46,8 @@ them only on a yes (or a standing delegation).
 | archive | `archived` |
 | restructure | `restructured` — always with a `--note` giving the reasons |
 | reflect | `reflected` to sign the cycle; `noted` for each convention change |
-| query / cross-reference | nothing — reading is free |
+| query | nothing — reading is free |
+| cross-reference | nothing — unless approved link edits are applied, then `noted` |
 
 All writes via `fusion log … --as <you>`. After any gear that adds, moves,
 or edits documents: `fusion index`, then `fusion check` — green before you

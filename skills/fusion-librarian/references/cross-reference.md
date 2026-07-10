@@ -9,5 +9,7 @@ Read-only. For a target document or topic:
 3. Report three buckets, every line carrying a path:
    **Direct references** · **Shared attributes** · **Thematic connections**.
 4. Offer (don't apply) link edits: "these two documents should point at
-   each other" — applying them is a content change the user approves,
-   then edit, `fusion index`, `fusion check`.
+   each other" — applying them is a content change the user approves.
+   On a yes: edit, then sign the write —
+   `fusion log noted "<path> — cross-linked to <other>" --as <you>` —
+   then `fusion index`, `fusion check`.
