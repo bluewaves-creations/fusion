@@ -209,7 +209,7 @@ def _w5_untouched_activities(root: Path) -> list[Finding]:
     window = entries[reflections[-2] + 1 : reflections[-1]]
     findings = []
     for zone, rel, doc in iter_documents(root, zones=("activities",)):
-        if doc.status != "active" or "archive" in rel.parts:
+        if doc.status != "active":
             continue
         doc_path = f"activities/{rel.as_posix()}"
         activity_dir = f"activities/{rel.parent.as_posix()}/"
