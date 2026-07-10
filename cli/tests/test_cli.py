@@ -93,7 +93,7 @@ def test_status_today_agenda_json(fixture_bucket, capsys):
     assert main(["today", "--json"]) == 0
     assert out_json(capsys)["groups"] == {}  # empty hub, empty day
     assert main(["agenda", "--json"]) == 0
-    assert out_json(capsys) == {"dated": [], "active": []}
+    assert out_json(capsys) == {"dated": [], "active": [], "missing": []}
 
 
 def test_every_command_has_help(capsys):
@@ -223,3 +223,43 @@ def test_parent_listing_has_one_liners(capsys):
     output = capsys.readouterr().out
     for cmd, oneliner in hub_sub_help.items():
         assert oneliner in output, f"Hub subcommand help missing for '{cmd}': '{oneliner}'"
+
+
+def test_hub_list_flags_missing(tmp_path, capsys, monkeypatch):
+    from fusion import hub
+
+    monkeypatch.setenv("FUSION_HUB", str(tmp_path / "hub.md"))
+    hub.add(hub.HubEntry("ghost", "personal", str(tmp_path / "gone"), "x"))
+    assert main(["hub"]) == 0
+    out = capsys.readouterr().out
+    assert "ghost" in out and "fusion hub remove ghost" in out
+    assert main(["hub", "--json"]) == 0
+    assert out_json(capsys)[0]["missing"] is True
+
+
+def test_check_hub_mode(tmp_path, capsys, monkeypatch):
+    from fusion import hub
+
+    monkeypatch.setenv("FUSION_HUB", str(tmp_path / "hub.md"))
+    hub.add(hub.HubEntry("ghost", "personal", str(tmp_path / "gone"), "x"))
+    assert main(["check", "--hub", "--json"]) == 0  # warnings never fail
+    payload = out_json(capsys)
+    assert payload["ok"] is False
+    assert payload["warnings"][0]["code"] == "H1"
+    # outside any bucket, path-less check falls back to the hub audit
+    monkeypatch.chdir(tmp_path)
+    assert main(["check"]) == 0
+    assert "H1" in capsys.readouterr().out
+
+
+def test_today_agenda_note_missing_buckets(tmp_path, capsys, monkeypatch):
+    from fusion import hub
+
+    monkeypatch.setenv("FUSION_HUB", str(tmp_path / "hub.md"))
+    hub.add(hub.HubEntry("ghost", "personal", str(tmp_path / "gone"), "x"))
+    assert main(["today"]) == 0
+    assert "ghost" in capsys.readouterr().err
+    assert main(["agenda", "--json"]) == 0
+    captured = capsys.readouterr()
+    assert "ghost" in captured.err
+    assert json.loads(captured.out)["missing"][0]["name"] == "ghost"

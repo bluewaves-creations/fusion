@@ -62,6 +62,16 @@ def _hub_documents():
             yield name, zone, rel, doc
 
 
+def missing_hub_entries() -> list[dict]:
+    """Hub entries whose path holds no readable BUCKET.md — a bucket not
+    yet cloned to this machine, moved, or gone."""
+    return [
+        {"name": entry.name, "path": entry.path}
+        for entry in hub.load()
+        if not (hub.resolve(entry) / "BUCKET.md").is_file()
+    ]
+
+
 def _item(name: str, zone: str, rel, doc, date=None) -> dict:
     return {
         "bucket": name,
@@ -92,7 +102,7 @@ def today() -> dict:
     for aurora, items in groups.items():
         if aurora not in ordered:
             ordered[aurora] = items
-    return {"buckets": buckets, "groups": ordered}
+    return {"buckets": buckets, "groups": ordered, "missing": missing_hub_entries()}
 
 
 def agenda() -> dict:
@@ -108,4 +118,4 @@ def agenda() -> dict:
         elif zone == "activities" and doc.status == "active":
             active.append(_item(name, zone, rel, doc))
     dated.sort(key=lambda i: i["date"])
-    return {"dated": dated, "active": active}
+    return {"dated": dated, "active": active, "missing": missing_hub_entries()}

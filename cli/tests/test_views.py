@@ -106,7 +106,11 @@ def test_today_skips_hub_entries_without_bucket(tmp_path, monkeypatch):
 
     monkeypatch.setenv("FUSION_HUB", str(tmp_path / "hub.md"))
     hub.add(hub.HubEntry("ghost", "personal", str(tmp_path / "gone"), "missing"))
-    assert views.today()["buckets"] == []
+    t = views.today()
+    assert t["buckets"] == []
+    assert t["missing"] == [
+        {"name": "ghost", "path": str(tmp_path / "gone")}
+    ]
 
 
 def test_views_exclude_archive_aurora_off_archive_paths(two_bucket_hub):

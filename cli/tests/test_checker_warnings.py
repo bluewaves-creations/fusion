@@ -225,3 +225,33 @@ def test_w5_directory_mention_suppresses(make_bucket):
     from fusion import indexer
     indexer.write_indexes(root)
     assert not [f for f in warnings(root) if f.code == "W5"]
+
+
+def test_check_hub_dangling_and_drift(tmp_path, monkeypatch):
+    from fusion import checker, hub
+    from fusion.scaffold import new_bucket
+
+    monkeypatch.setenv("FUSION_HUB", str(tmp_path / "hub.md"))
+    new_bucket(tmp_path / "here", description="d", actor="test")
+    hub.add(hub.HubEntry("ghost", "personal", str(tmp_path / "gone"), "x"))
+    drifted, _ = new_bucket(tmp_path / "drift", name="oldname",
+                            description="d", actor="test")
+    text = (drifted / "BUCKET.md").read_text(encoding="utf-8")
+    (drifted / "BUCKET.md").write_text(
+        text.replace("name: oldname", "name: newname"), encoding="utf-8"
+    )
+    findings = checker.check_hub()
+    assert [(f.code, f.level) for f in findings] == [
+        ("H1", "warning"), ("H2", "warning")
+    ]
+    assert "ghost" in findings[0].message
+    assert "newname" in findings[1].message
+
+
+def test_check_hub_all_present_is_empty(tmp_path, monkeypatch):
+    from fusion import checker
+    from fusion.scaffold import new_bucket
+
+    monkeypatch.setenv("FUSION_HUB", str(tmp_path / "hub.md"))
+    new_bucket(tmp_path / "here", description="d", actor="test")
+    assert checker.check_hub() == []

@@ -63,4 +63,4 @@ def test_round_trip(tmp_path, capsys):
     today = out_json(capsys)
     assert today["buckets"] == ["scratch"]
     assert main(["agenda", "--json"]) == 0
-    assert out_json(capsys) == {"dated": [], "active": []}
+    assert out_json(capsys) == {"dated": [], "active": [], "missing": []}

@@ -6,7 +6,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import indexer, ledger, manifest
+from . import hub, indexer, ledger, manifest
 from .bucket import DOC_ZONES, REQUIRED_BUCKET_FIELDS, ZONES, load, iter_documents
 from .document import AURORAS, FILENAME_RE, MAX_STEM
 
@@ -19,7 +19,7 @@ EXPORT_FILENAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z0-9]+$")
 @dataclass
 class Finding:
     level: str  # "error" | "warning"
-    code: str   # E1..E8, W1..W5
+    code: str   # E1..E8, W1..W5 — plus H1..H2 from check_hub (CLI vocabulary, not SPEC)
     path: str   # bucket-relative, "" when bucket-wide
     message: str
 
@@ -245,4 +245,31 @@ def _w5_untouched_activities(root: Path) -> list[Finding]:
             "warning", "W5", doc_path,
             "active activity with no ledger mention across the last "
             "reflection window"))
+    return findings
+
+
+def check_hub() -> list[Finding]:
+    """The hub's own audit — dangling entries and name drift.
+
+    H-codes are CLI vocabulary, not SPEC conformance codes: the hub is a
+    per-machine register and consumers must tolerate anything in it. All
+    findings are warnings; a hub audit never fails.
+    """
+    findings: list[Finding] = []
+    for entry in hub.load():
+        root = hub.resolve(entry)
+        if not (root / "BUCKET.md").is_file():
+            findings.append(Finding(
+                "warning", "H1", entry.path,
+                f"'{entry.name}' — no bucket at this path; clone it "
+                f"there, or `fusion hub remove {entry.name}`",
+            ))
+            continue
+        name = load(root).name
+        if name and name != entry.name:
+            findings.append(Finding(
+                "warning", "H2", entry.path,
+                f"hub says '{entry.name}' but BUCKET.md says '{name}' — "
+                "re-register: `fusion hub remove` then `fusion hub add`",
+            ))
     return findings

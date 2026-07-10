@@ -88,11 +88,20 @@ def cmd_hub(args) -> int:
               f"'{args.name}' retired from the hub. The files live on.")
         return 0
     entries = hub.load()
-    human = "\n".join(
-        f"- **{e.name}** · {e.kind} · {e.path} — {e.description}"
-        for e in entries
-    ) or "the hub is empty — `fusion new` a bucket."
-    _emit([asdict(e) for e in entries], args.json, human)
+    flagged = [
+        (e, not (hub.resolve(e) / "BUCKET.md").is_file()) for e in entries
+    ]
+    lines = []
+    for e, missing in flagged:
+        lines.append(f"- **{e.name}** · {e.kind} · {e.path} — {e.description}")
+        if missing:
+            lines.append(
+                f"  ⚠ no bucket at that path — clone it there, "
+                f"or `fusion hub remove {e.name}`"
+            )
+    human = "\n".join(lines) or "the hub is empty — `fusion new` a bucket."
+    _emit([{**asdict(e), "missing": missing} for e, missing in flagged],
+          args.json, human)
     return 0
 
 
@@ -140,12 +149,36 @@ def cmd_index(args) -> int:
     return 0
 
 
+def _check_hub(args) -> int:
+    findings = checker.check_hub()
+    entries = hub.load()
+    if args.json:
+        _emit({
+            "hub": str(hub.hub_path()),
+            "buckets": len(entries),
+            "ok": not findings,
+            "warnings": [asdict(f) for f in findings],
+        }, True, "")
+    else:
+        for f in findings:
+            print(f"  {f.code} · {f.path} — {f.message}")
+        n, w = len(entries), len(findings)
+        verdict = ("every bucket answers." if not findings
+                   else "some buckets are not where the hub says.")
+        print(f"hub: {n} bucket{'s' if n != 1 else ''} · "
+              f"{w} warning{'s' if w != 1 else ''} — {verdict}")
+    return 0
+
+
 def cmd_check(args) -> int:
+    if getattr(args, "hub", False):
+        return _check_hub(args)
     root = _root_from(args)
     if root is None:
         given = getattr(args, "path", None)
-        return _fail(f"no bucket at: {given}" if given else
-                     "not inside a bucket and no path given", args.json)
+        if given is None:
+            return _check_hub(args)  # outside any bucket: audit the hub
+        return _fail(f"no bucket at: {given}", args.json)
     findings = checker.check(root)
     errors = [f for f in findings if f.level == "error"]
     warnings = [f for f in findings if f.level == "warning"]
@@ -207,6 +240,12 @@ def _render_items(items) -> list[str]:
 
 def cmd_today(args) -> int:
     t = views.today()
+    for m in t["missing"]:
+        print(
+            f"note: hub bucket '{m['name']}' is not at {m['path']} — "
+            f"clone it there, or `fusion hub remove {m['name']}`",
+            file=sys.stderr,
+        )
     lines = [f"Today across {len(t['buckets'])} bucket"
              f"{'s' if len(t['buckets']) != 1 else ''}"]
     for aurora, items in t["groups"].items():
@@ -220,6 +259,12 @@ def cmd_today(args) -> int:
 
 def cmd_agenda(args) -> int:
     a = views.agenda()
+    for m in a["missing"]:
+        print(
+            f"note: hub bucket '{m['name']}' is not at {m['path']} — "
+            f"clone it there, or `fusion hub remove {m['name']}`",
+            file=sys.stderr,
+        )
     lines = []
     if a["dated"]:
         lines.append("dated:")
@@ -336,8 +381,10 @@ def build_parser() -> argparse.ArgumentParser:
     flag_as(p); flag_json(p)
     p.set_defaults(func=cmd_index)
 
-    p = sub.add_parser("check", help="audit a bucket against the convention", description="Audit a bucket against the convention (SPEC §11). Exit 1 on errors; warnings never fail the check.")
+    p = sub.add_parser("check", help="audit a bucket against the convention", description="Audit a bucket against the convention (SPEC §11). Exit 1 on errors; warnings never fail the check. --hub (or running outside any bucket) audits the hub instead: every registered bucket present and answering to its name.")
     p.add_argument("path", nargs="?", help="bucket root (default: walk up from the current directory)")
+    p.add_argument("--hub", action="store_true",
+                   help="audit the hub instead: every entry answers at its path")
     flag_json(p)
     p.set_defaults(func=cmd_check)
 
