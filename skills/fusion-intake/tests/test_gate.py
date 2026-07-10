@@ -1,5 +1,6 @@
 """Stage-1 gate: deterministic classification of inbox/ against sources/."""
 import json
+from pathlib import Path
 
 from conftest import drop, seed_source
 
@@ -110,3 +111,22 @@ def test_locked_lineage_thresholds():
     assert gate.NEAR_DUP_THRESHOLD == 0.85
     assert gate.UPDATE_SIM_FLOOR == 0.30
     assert gate.SHINGLE_K == 3
+
+
+def test_similarity_no_evidence_is_zero():
+    assert gate.similarity("", "") == 0.0
+    assert gate.similarity("... !!! ---", "%%% ***") == 0.0
+
+
+def test_binary_pair_is_clean_new_not_near_dup(bucket):
+    noise_a = b"\x89PNG\r\n\x1a\n" + b"\x00\x01\x02\xff\xfe" * 24
+    noise_b = b"\x89PNG\r\n\x1a\n" + b"\x03\x04\x05\xfd\xfc" * 24
+    (bucket / "sources" / "img-a.png").write_bytes(noise_a)
+    (bucket / "inbox" / "img-b.png").write_bytes(noise_b)
+    result = run_gate(bucket)
+    assert result["near_dups"] == []
+    assert [f["incoming"] for f in result["clean_new"]] == ["img-b.png"]
+
+
+def test_git_history_survives_missing_cwd(tmp_path):
+    assert gate.git_history(Path("sources/x.pdf"), tmp_path / "absent") == []

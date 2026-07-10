@@ -92,15 +92,15 @@ def index_sources(sources_dir: Path) -> SourceIndex:
 def _shingles(text: str, k: int = SHINGLE_K) -> set:
     tokens = _WORD.findall(text.lower())
     if len(tokens) < k:
-        return set(tokens)
+        return set()
     return {" ".join(tokens[i:i + k]) for i in range(len(tokens) - k + 1)}
 
 
 def similarity(a: str, b: str) -> float:
-    """Jaccard over word k-shingles: 0.0 disjoint .. 1.0 identical."""
+    """Jaccard over word k-shingles: 0.0 disjoint .. 1.0 identical.
+    Zero shingles on either side is absence of evidence, never identity —
+    exact duplicates are sha256's catch upstream, not this function's."""
     sa, sb = _shingles(a), _shingles(b)
-    if not sa and not sb:
-        return 1.0
     if not sa or not sb:
         return 0.0
     union = len(sa | sb)
@@ -116,7 +116,7 @@ def git_history(path: Path, cwd: Path, limit: int = 10) -> list:
              f"-n{limit}", "--format=%ad\t%s", "--", str(path)],
             cwd=str(cwd), capture_output=True, text=True, timeout=30,
         )
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.SubprocessError):
         return []
     if out.returncode != 0:
         return []
