@@ -62,12 +62,11 @@ update / convert as new.
 
 **`containers` → vehicles, not originals.** Report each one (name, size).
 Containers (`.zip`, `.athena`) never enter `sources/` intact — `unpack`
-them into `inbox/<stem>/` on the standing rule (or ask first if the
-container is unexpected or its size is surprising), delete the container,
-sign the act `noted`, then gate the extracted contents like any other
-inbox drop. Members land beside the container, not at `inbox/` root — a
-nested container inside an unpacked one unpacks into its own sub-folder
-and keeps that context, repeating the same treatment.
+them beside the container (`inbox/<stem>/` for top-level drops, or a
+nested container's own sub-folder if it lives deeper, keeping that
+context) on the standing rule (or ask first if the container is
+unexpected or its size is surprising), delete the container, sign the
+act `noted`, then gate the extracted contents like any other inbox drop.
 
 ## The intake report (the prompt surface)
 

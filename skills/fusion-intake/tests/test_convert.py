@@ -446,6 +446,16 @@ def test_unpack_refuses_zip_slip(bucket):
     assert zpath.exists()                   # the hostile zip itself is untouched
 
 
+def test_unpack_refuses_traversal_crafted_file_argument(bucket, tmp_path):
+    evil = tmp_path / "evil.zip"          # OUTSIDE the bucket
+    import zipfile
+    with zipfile.ZipFile(evil, "w") as z:
+        z.writestr("payload.txt", "boo")
+    with pytest.raises(convert.IntakeError, match="escapes"):
+        convert.unpack(bucket, "../../evil.zip")
+    assert not (tmp_path / "evil").exists()   # nothing written outside
+
+
 def test_unpack_refuses_existing_destination(bucket):
     zpath = bucket / "inbox" / "bundle.zip"
     with zipfile.ZipFile(zpath, "w") as zf:

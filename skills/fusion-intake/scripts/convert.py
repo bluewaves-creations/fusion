@@ -215,7 +215,16 @@ def unpack(root: Path, inbox_rel: str) -> dict:
     Does NOT write the ledger: the operator signs a `noted` entry via
     `fusion log` (single-writer)."""
     root = Path(root)
+    # Resolve the inbox root once and require every path we touch to stay
+    # under it — inbox_rel is untrusted (may carry ../ traversal) and a
+    # LEXICAL relative_to() check downstream would accept a resolved parent
+    # that has already escaped. Check this BEFORE any other validation.
+    inbox_root = (root / "inbox").resolve()
     src = root / "inbox" / inbox_rel
+    src_resolved = src.resolve()
+    if not src_resolved.is_relative_to(inbox_root):
+        raise IntakeError(
+            f"container path escapes inbox/: {inbox_rel!r}")
     if not src.is_file():
         raise IntakeError(f"not in inbox/: {inbox_rel}")
     if src.suffix.lower() not in CONTAINER_EXTS:
@@ -225,10 +234,16 @@ def unpack(root: Path, inbox_rel: str) -> dict:
     if not zipfile.is_zipfile(src):
         raise IntakeError(f"not a readable zip: {inbox_rel}")
 
-    stem = src.stem
-    dest = src.parent / stem   # sibling of the container — nested vehicles
-                                # keep their folder context, not inbox root
-    dest_rel = str(dest.relative_to(root))
+    stem = src_resolved.stem
+    dest = src_resolved.parent / stem   # sibling of the container — nested
+                                # vehicles keep their folder context, not
+                                # inbox root — computed from the RESOLVED
+                                # src so a traversal-crafted parent can't
+                                # smuggle a dest outside inbox/ either.
+    if not dest.is_relative_to(inbox_root):
+        raise IntakeError(
+            f"container path escapes inbox/: {inbox_rel!r}")
+    dest_rel = str(dest.relative_to(inbox_root.parent))
     if dest.exists():
         raise IntakeError(
             f"destination already exists: {dest_rel} — refusing to "

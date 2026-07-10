@@ -45,9 +45,9 @@ bucket root before calling (the manifest's `run_dir` is bucket-relative).
 
 Containers (`.zip`, `.athena`) are delivery vehicles, not originals:
 `uv run <skill>/scripts/convert.py unpack --bucket <root> --file <name>`
-extracts one into `inbox/<stem>/` and deletes the container — the members
-become the originals, signed `noted` in the ledger — then gate the
-contents normally (step 1).
+extracts one beside the container (`inbox/<stem>/` for top-level drops)
+and deletes the container — the members become the originals, signed
+`noted` in the ledger — then gate the contents normally (step 1).
 
 1. **Classify:** `uv run <skill>/scripts/gate.py --bucket <root>`
    → read the printed manifest path, then load `references/gate.md` and
