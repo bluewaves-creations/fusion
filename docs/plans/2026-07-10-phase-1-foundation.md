@@ -19,7 +19,7 @@
 - **Filenames:** lowercase, hyphen-separated, `.md` for documents, ≤60 chars before extension.
 - **Error posture:** liberal reader, strict writer — spec language must encode this (consumers MUST NOT reject; producers MUST validate).
 - **No personal paths** anywhere in committed files (this repo will be open-sourced). Example bucket uses fictional content only.
-- **License:** MIT, copyright Bertrand Dour.
+- **License:** MIT, copyright Bluewaves Boutique.
 - **Git:** work directly on `main`, linear history, commit per task, **never push** (user pushes manually).
 - **Format version:** `fusion_version: "1.0"` everywhere it appears.
 
