@@ -86,7 +86,10 @@ def test_e7_both_directions(make_bucket):
     # a manifest row whose file is gone
     with (root / "sources" / "MANIFEST.md").open("a", encoding="utf-8") as fh:
         fh.write("| ghost.pdf | 2026-07-10 | test | deadbeef00000000 | — |\n")
-    assert any(f.code == "E7" and "ghost.pdf" in f.message for f in errors(root))
+    found = [f for f in errors(root) if f.code == "E7" and "ghost.pdf" in f.message]
+    assert found
+    assert ("manifest row's file is missing or invisible "
+            "(dot-directories are not scanned): ghost.pdf") in found[0].message
 
 
 def test_e7_exemptions(make_bucket):

@@ -119,7 +119,8 @@ def _e7_manifest(root: Path) -> list[Finding]:
     ]
     findings += [
         Finding("error", "E7", "sources/MANIFEST.md",
-                f"manifest row's file is gone: {f}")
+                f"manifest row's file is missing or invisible "
+                f"(dot-directories are not scanned): {f}")
         for f in sorted(rows - on_disk)
     ]
     return findings

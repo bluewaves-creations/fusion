@@ -17,6 +17,42 @@ MAX_STEM = 60
 
 _LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 _EXTERNAL = ("http://", "https://", "mailto:", "#")
+_FENCE_OPEN_RE = re.compile(r"^(\s*)(`{3,}|~{3,})")
+_INLINE_CODE_RE = re.compile(r"`[^`\n]*?`")
+
+
+def _blank_code(body: str) -> str:
+    """Blank fenced blocks and inline code spans so link scanning never
+    reads code as prose (SPEC's W4 is about prose links, not examples).
+    Fenced blocks — a ``` or ~~~ opener to its closer inclusive — are
+    replaced with equal-length whitespace, line by line; an unterminated
+    fence is liberal by design and swallows to end of file rather than
+    risk a false-positive broken link. Inline `` `...` `` spans on a
+    single line are blanked the same way, non-greedy."""
+    lines = body.split("\n")
+    out = []
+    i = 0
+    n = len(lines)
+    while i < n:
+        opener = _FENCE_OPEN_RE.match(lines[i])
+        if not opener:
+            out.append(lines[i])
+            i += 1
+            continue
+        fence_char, fence_len = opener.group(2)[0], len(opener.group(2))
+        closer_re = re.compile(
+            r"^\s*" + re.escape(fence_char) + "{" + str(fence_len) + ",}\\s*$"
+        )
+        out.append(" " * len(lines[i]))
+        i += 1
+        while i < n:
+            out.append(" " * len(lines[i]))
+            closed = bool(closer_re.match(lines[i]))
+            i += 1
+            if closed:
+                break
+    blanked = "\n".join(out)
+    return _INLINE_CODE_RE.sub(lambda m: " " * len(m.group(0)), blanked)
 
 
 @dataclass
@@ -85,7 +121,7 @@ def _summary(body: str) -> tuple[bool, str | None]:
 
 def _links(body: str) -> list[str]:
     out = []
-    for target in _LINK_RE.findall(body):
+    for target in _LINK_RE.findall(_blank_code(body)):
         if not target.startswith(_EXTERNAL):
             out.append(target)
     return out

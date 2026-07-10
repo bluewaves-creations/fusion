@@ -164,6 +164,34 @@ def test_help_describes_every_command(capsys):
         assert needle in capsys.readouterr().out, cmd
 
 
+def test_unexpected_exception_emits_json_envelope(monkeypatch, capsys):
+    def _boom(args):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("fusion.cli.cmd_today", _boom)
+    assert main(["today", "--json"]) == 1
+    payload = out_json(capsys)
+    assert payload["ok"] is False
+    assert payload["error"] == "unexpected: RuntimeError: boom"
+
+
+def test_unexpected_exception_stays_human_without_json(monkeypatch, capsys):
+    def _boom(args):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("fusion.cli.cmd_today", _boom)
+    assert main(["today"]) == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.strip() == "fusion: unexpected: RuntimeError: boom"
+
+
+def test_argparse_exit_untouched_by_exception_handling(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["nope"])
+    assert exc.value.code == 2
+
+
 def test_parent_listing_has_one_liners(capsys):
     """Verify that 'fusion --help' and 'fusion hub --help' show help= one-liners."""
     # Top-level: 8 commands with their help= one-liners

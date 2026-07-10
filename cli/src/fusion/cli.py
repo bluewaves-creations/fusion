@@ -326,7 +326,13 @@ def main(argv: list[str] | None = None) -> int:
     if not getattr(args, "func", None):
         parser.print_help()
         return 0
-    return args.func(args)
+    try:
+        return args.func(args)
+    except SystemExit:
+        raise
+    except Exception as exc:  # the notary reports surprises, never crashes bare
+        return _fail(f"unexpected: {type(exc).__name__}: {exc}",
+                    getattr(args, "json", False))
 
 
 def main_entry() -> None:  # console-script shim

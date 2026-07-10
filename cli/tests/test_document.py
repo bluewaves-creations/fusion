@@ -128,3 +128,49 @@ def test_read_document_tolerates_crlf(tmp_path):
     doc = read_document(p)
     assert doc.title == "Crlf Test"
     assert doc.summary_first
+
+
+# ── code is not prose ───────────────────────────────────────────────────
+
+def _doc(body: str) -> str:
+    return ("---\ntitle: X\ntype: note\naurora: library\n---\n\n"
+            "## Summary\n\nS.\n\n---\n\n" + body)
+
+
+def test_links_ignores_fenced_block_only_link(tmp_path):
+    body = "Text before.\n\n```\nSee [x](broken.md) for an example.\n```\n\nText after.\n"
+    p = tmp_path / "x.md"
+    p.write_text(_doc(body), encoding="utf-8")
+    assert read_document(p).links == []
+
+
+def test_links_ignores_inline_code_span(tmp_path):
+    body = "Inline: `[x](gone.md)` is not a real link.\n"
+    p = tmp_path / "x.md"
+    p.write_text(_doc(body), encoding="utf-8")
+    assert read_document(p).links == []
+
+
+def test_links_finds_real_link_between_two_fences(tmp_path):
+    body = (
+        "```\n[a](fenced-one.md)\n```\n\n"
+        "See [real](real.md) here.\n\n"
+        "```\n[b](fenced-two.md)\n```\n"
+    )
+    p = tmp_path / "x.md"
+    p.write_text(_doc(body), encoding="utf-8")
+    assert read_document(p).links == ["real.md"]
+
+
+def test_links_unterminated_fence_swallows_to_eof(tmp_path):
+    body = "Before [real](real.md).\n\n```\n[a](fenced.md)\nno closer here\n"
+    p = tmp_path / "x.md"
+    p.write_text(_doc(body), encoding="utf-8")
+    assert read_document(p).links == ["real.md"]
+
+
+def test_links_tilde_fence_also_blanked(tmp_path):
+    body = "~~~\n[a](fenced.md)\n~~~\n\nSee [real](real.md).\n"
+    p = tmp_path / "x.md"
+    p.write_text(_doc(body), encoding="utf-8")
+    assert read_document(p).links == ["real.md"]
