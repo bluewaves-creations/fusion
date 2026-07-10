@@ -115,4 +115,5 @@ def test_new_bucket_writes_gitattributes(tmp_path):
     assert "LEDGER.md merge=union" in text
     assert "sources/MANIFEST.md merge=union" in text
     assert "* text=auto eol=lf" in text
+    assert "sources/** -text" in text
     assert "\r" not in text

@@ -247,7 +247,7 @@ A bucket that lives on more than one machine merges parallel work with
 git's built-in union driver: the reference scaffold writes a
 `.gitattributes` at bucket birth marking `LEDGER.md merge=union` (and
 the manifest, §7), so entries appended on both machines survive the
-merge. The merged ledger may briefly hold two headings for the same
+merge. The merged ledger may hold two headings for the same
 date — consumers already tolerate this (liberal reader); it is the
 honest record of parallel work. A union merge is the only way LEDGER.md
 bytes change outside the one writer.

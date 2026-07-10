@@ -50,6 +50,7 @@ parallel work merge safely:
 ```gitattributes
 # written by fusion new — multi-machine merges stay safe (SPEC §6)
 * text=auto eol=lf
+sources/** -text
 LEDGER.md merge=union
 sources/MANIFEST.md merge=union
 ```
@@ -64,7 +65,7 @@ git push -u origin main
 
 Work on both machines, push and pull as you go. When both sides
 appended to the ledger, git's union driver keeps both sets of entries —
-the merged ledger may briefly hold two headings for the same date,
+the merged ledger may hold two headings for the same date,
 which every Fusion reader tolerates; it is the honest record of
 parallel work. After any merge, settle the registers:
 
@@ -73,7 +74,7 @@ fusion index && fusion check
 ```
 
 A bucket born before this page (no `.gitattributes` at its root) gets
-one by copying the four lines above into `<bucket>/.gitattributes` and
+one by copying the five lines above into `<bucket>/.gitattributes` and
 committing.
 
 Two things deliberately do not sync: the hub (`~/.fusion/hub.md` is

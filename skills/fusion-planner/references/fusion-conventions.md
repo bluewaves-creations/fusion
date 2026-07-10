@@ -139,7 +139,8 @@ green before you call the work done.**
   in the hub. Guide the human toward few, bold, life-domain buckets
   (personal, one per company, a studio).
 - `fusion` not on PATH: stop and tell the human — the install is
-  `uv tool install ./fusion/cli` from a clone of the Fusion repository.
+  `uv tool install fusion-cli` (or, from a clone of the Fusion
+  repository, `uv tool install ./fusion/cli`).
   Never imitate the notary by hand: no register writes while the CLI is
   missing.
 - `fusion check` red and you cannot fix it: stop, show the findings

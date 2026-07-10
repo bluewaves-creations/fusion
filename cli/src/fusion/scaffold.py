@@ -46,6 +46,7 @@ MANIFEST_HEADER = (
 GITATTRIBUTES = (
     "# written by fusion new — multi-machine merges stay safe (SPEC §6)\n"
     "* text=auto eol=lf\n"
+    "sources/** -text\n"
     "LEDGER.md merge=union\n"
     "sources/MANIFEST.md merge=union\n"
 )
