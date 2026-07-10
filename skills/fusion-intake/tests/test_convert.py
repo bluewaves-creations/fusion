@@ -415,6 +415,25 @@ def test_unpack_container_into_inbox_folder(bucket):
     assert out["dir"] == "inbox/bundle"
 
 
+def test_unpack_nested_container_stays_beside_parent(bucket):
+    # A container that already lives inside an unpacked delivery's
+    # sub-folder must unpack beside itself, not fly back up to inbox root
+    # and lose its folder context.
+    nested_dir = bucket / "inbox" / "delivery" / "assets"
+    nested_dir.mkdir(parents=True)
+    zpath = nested_dir / "inner.zip"
+    with zipfile.ZipFile(zpath, "w") as zf:
+        zf.writestr("payload.txt", "nested contents")
+    out = convert.unpack(bucket, "delivery/assets/inner.zip")
+    dest = nested_dir / "inner"
+    assert (dest / "payload.txt").is_file()
+    assert not zpath.exists()
+    assert out["unpacked"] == 1
+    assert out["dir"] == "inbox/delivery/assets/inner"
+    # sibling of the container, NOT flattened up to inbox root
+    assert not (bucket / "inbox" / "inner").exists()
+
+
 def test_unpack_refuses_zip_slip(bucket):
     zpath = bucket / "inbox" / "evil.zip"
     with zipfile.ZipFile(zpath, "w") as zf:

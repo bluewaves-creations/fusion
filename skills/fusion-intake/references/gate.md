@@ -65,8 +65,9 @@ Containers (`.zip`, `.athena`) never enter `sources/` intact — `unpack`
 them into `inbox/<stem>/` on the standing rule (or ask first if the
 container is unexpected or its size is surprising), delete the container,
 sign the act `noted`, then gate the extracted contents like any other
-inbox drop. A nested container inside an unpacked one repeats the same
-treatment.
+inbox drop. Members land beside the container, not at `inbox/` root — a
+nested container inside an unpacked one unpacks into its own sub-folder
+and keeps that context, repeating the same treatment.
 
 ## The intake report (the prompt surface)
 

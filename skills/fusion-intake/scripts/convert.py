@@ -226,10 +226,12 @@ def unpack(root: Path, inbox_rel: str) -> dict:
         raise IntakeError(f"not a readable zip: {inbox_rel}")
 
     stem = src.stem
-    dest = root / "inbox" / stem
+    dest = src.parent / stem   # sibling of the container — nested vehicles
+                                # keep their folder context, not inbox root
+    dest_rel = str(dest.relative_to(root))
     if dest.exists():
         raise IntakeError(
-            f"destination already exists: inbox/{stem} — refusing to "
+            f"destination already exists: {dest_rel} — refusing to "
             "merge a container into existing content")
 
     with zipfile.ZipFile(src) as zf:
@@ -251,7 +253,7 @@ def unpack(root: Path, inbox_rel: str) -> dict:
             if not target.is_relative_to(dest_resolved):
                 raise IntakeError(
                     f"zip-slip attempt in {inbox_rel}: hostile member "
-                    f"{info.filename!r} escapes inbox/{stem}/ — unpack refused")
+                    f"{info.filename!r} escapes {dest_rel}/ — unpack refused")
             targets.append((info, target))
 
         dest.mkdir(parents=True)
@@ -265,7 +267,7 @@ def unpack(root: Path, inbox_rel: str) -> dict:
             raise
 
     src.unlink()
-    return {"unpacked": len(targets), "dir": f"inbox/{stem}"}
+    return {"unpacked": len(targets), "dir": dest_rel}
 
 
 # ── prepare: routing + engines ───────────────────────────────────────────
