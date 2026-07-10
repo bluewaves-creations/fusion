@@ -91,3 +91,20 @@ def test_read_document_never_raises(tmp_path):
     doc = read_document(p)
     assert isinstance(doc, Document)
     assert doc.frontmatter is None and doc.title is None
+
+
+def test_read_document_tolerates_undecodable_bytes(tmp_path):
+    p = tmp_path / "binary.md"
+    p.write_bytes(b"\xff\xfe\x00garbage")
+    doc = read_document(p)
+    assert doc.frontmatter is None
+    assert "unreadable" in doc.fm_error
+
+
+def test_summary_line_is_verbatim(tmp_path):
+    p = tmp_path / "indented.md"
+    p.write_text(
+        "---\ntitle: I\n---\n\n## Summary\n\n  - an indented first line\n\n---\n\nBody.\n",
+        encoding="utf-8",
+    )
+    assert read_document(p).summary_line == "  - an indented first line"

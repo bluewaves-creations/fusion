@@ -79,7 +79,7 @@ def _summary(body: str) -> tuple[bool, str | None]:
         if stripped == "---":
             return first is not None, first
         if stripped and first is None:
-            first = stripped
+            first = line
     return False, first
 
 
@@ -92,7 +92,17 @@ def _links(body: str) -> list[str]:
 
 
 def read_document(path: Path) -> Document:
-    text = path.read_text(encoding="utf-8")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        return Document(
+            path=path,
+            frontmatter=None,
+            fm_error=f"unreadable file: {exc}",
+            summary_first=False,
+            summary_line=None,
+            links=[],
+        )
     fm, fm_error, body = split_frontmatter(text)
     summary_first, summary_line = _summary(body)
     return Document(
