@@ -214,3 +214,12 @@ def test_cleanup_removes_only_the_run_dir(bucket):
 def test_slugify():
     assert convert.slugify("Q1 Scores (FINAL).xlsx") == "q1-scores-final"
     assert len(convert.slugify("x" * 200)) <= 60
+
+
+def test_cell_to_string_floats_verbatim():
+    """The lossless contract: numbers verbatim, never rounded away."""
+    assert convert.cell_to_string(78.5) == "78.5"
+    assert convert.cell_to_string(91.0) == "91"
+    assert convert.cell_to_string(78.123456789) == "78.123456789"
+    assert convert.cell_to_string(0.00001) == "1e-05"
+    assert convert.cell_to_string(-0.00001) == "-1e-05"

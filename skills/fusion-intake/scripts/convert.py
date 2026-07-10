@@ -83,9 +83,9 @@ def cell_to_string(cell) -> str:
     if isinstance(cell, bool):
         return str(cell)
     if isinstance(cell, float):
-        if cell == int(cell):
+        if cell.is_integer():
             return str(int(cell))
-        return f"{cell:.4f}".rstrip("0").rstrip(".")
+        return repr(cell)   # shortest round-trippable form — verbatim, never rounded
     if isinstance(cell, int):
         return str(cell)
     if isinstance(cell, datetime):
