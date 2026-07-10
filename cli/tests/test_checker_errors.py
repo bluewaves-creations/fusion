@@ -112,3 +112,30 @@ def test_e8_exemptions(make_bucket):
     root = make_bucket()
     (root / "library" / ".gitkeep").write_text("", encoding="utf-8")
     assert "E8" not in codes(root)  # INDEX.md and dotfiles are invisible
+
+
+def test_e3_null_or_blank_required_field(make_bucket):
+    root = make_bucket()
+    (root / "library" / "nulled.md").write_text(
+        "---\ntitle: Nulled\ntype: note\naurora:\n---\n\n"
+        "## Summary\n\nx\n\n---\n\nBody.\n",
+        encoding="utf-8",
+    )
+    (root / "library" / "blank.md").write_text(
+        '---\ntitle: ""\ntype: note\naurora: library\n---\n\n'
+        "## Summary\n\nx\n\n---\n\nBody.\n",
+        encoding="utf-8",
+    )
+    found = errors(root)
+    assert any(f.code == "E3" and f.path == "library/nulled.md"
+               and "aurora" in f.message for f in found)
+    assert any(f.code == "E3" and f.path == "library/blank.md"
+               and "title" in f.message for f in found)
+
+
+def test_e2_unreadable_bucket_card(make_bucket):
+    root = make_bucket()
+    (root / "BUCKET.md").write_text("---\nname: [unclosed\n---\n\nBody.\n",
+                                    encoding="utf-8")
+    assert any(f.code == "E2" and "unreadable" in f.message
+               for f in errors(root))

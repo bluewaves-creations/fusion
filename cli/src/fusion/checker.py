@@ -17,6 +17,15 @@ class Finding:
     message: str
 
 
+def _missing_fields(mapping: dict, fields: tuple[str, ...]) -> list[str]:
+    """A required field is missing when absent, None, or blank."""
+    return [
+        f for f in fields
+        if mapping.get(f) is None
+        or (isinstance(mapping.get(f), str) and not mapping.get(f).strip())
+    ]
+
+
 def check(root: Path) -> list[Finding]:
     errors: list[Finding] = []
     errors += _e1_zones(root)
@@ -48,8 +57,7 @@ def _e2_bucket_card(root: Path) -> list[Finding]:
     return [
         Finding("error", "E2", "BUCKET.md",
                 f"BUCKET.md missing required field: {field}")
-        for field in REQUIRED_BUCKET_FIELDS
-        if field not in b.frontmatter
+        for field in _missing_fields(b.frontmatter, REQUIRED_BUCKET_FIELDS)
     ]
 
 
@@ -61,10 +69,9 @@ def _e3_e4_e5_documents(root: Path) -> list[Finding]:
             findings.append(Finding("error", "E3", path,
                                     f"unreadable frontmatter: {doc.fm_error}"))
             continue
-        for field in ("title", "type", "aurora"):
-            if field not in doc.frontmatter:
-                findings.append(Finding("error", "E3", path,
-                                        f"missing required field: {field}"))
+        for field in _missing_fields(doc.frontmatter, ("title", "type", "aurora")):
+            findings.append(Finding("error", "E3", path,
+                                    f"missing required field: {field}"))
         aurora = doc.frontmatter.get("aurora")
         if aurora is not None and aurora not in AURORAS:
             findings.append(Finding("error", "E4", path,
