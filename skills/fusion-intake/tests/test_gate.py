@@ -1,10 +1,29 @@
 """Stage-1 gate: deterministic classification of inbox/ against sources/."""
 import json
+import random
 from pathlib import Path
 
 from conftest import drop, seed_source
 
 import gate
+
+_VOCAB = ["alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf",
+          "hotel", "india", "juliet", "kilo", "lima", "mike", "november",
+          "oscar", "papa", "quebec", "romeo", "sierra", "tango", "uniform",
+          "victor", "whiskey", "xray", "yankee", "zulu"]
+
+
+def _prefix_at_least(nbytes: int, seed: int = 1) -> str:
+    """A deterministic, ascii-only word stream at least nbytes long — long
+    enough that its first SIMILARITY_READ_CAP bytes are pure vocabulary,
+    never touching a tail appended after it."""
+    rng = random.Random(seed)
+    words, total = [], 0
+    while total < nbytes:
+        w = rng.choice(_VOCAB)
+        words.append(w)
+        total += len(w) + 1
+    return " ".join(words)
 
 
 # Non-repeating texts: word shingles must be distinct enough that a prefix
@@ -165,6 +184,49 @@ def test_inbox_internal_duplicates_detected(bucket):
 
 def test_git_history_survives_missing_cwd(tmp_path):
     assert gate.git_history(Path("sources/x.pdf"), tmp_path / "absent") == []
+
+
+def test_similarity_read_cap_pinned():
+    """Guard constant, not a lineage threshold — pinned literally so a
+    future edit can't silently widen or shrink the read window."""
+    assert gate.SIMILARITY_READ_CAP == 524288
+
+
+def test_similarity_cap_still_catches_reexport_by_shared_prefix(bucket):
+    # A >cap source and its re-export share every byte through the cap;
+    # only their tails (beyond the cap) differ. The gate must still see
+    # them as a near-dup — it never reads past SIMILARITY_READ_CAP.
+    prefix = _prefix_at_least(gate.SIMILARITY_READ_CAP + 4096)
+    seed_source(bucket, "reports/big.csv", prefix + " SOURCE ONLY TAIL DIFFERS HERE AND ONLY HERE")
+    drop(bucket, "big-reexport.csv", prefix + " INCOMING ONLY TAIL DIFFERS ELSEWHERE ENTIRELY")
+    result = run_gate(bucket)
+    assert len(result["near_dups"]) == 1
+    entry = result["near_dups"][0]
+    assert entry["matched_source"] == "reports/big.csv"
+    assert entry["similarity"] >= gate.NEAR_DUP_THRESHOLD
+
+
+def test_binary_incoming_skips_best_match_entirely(bucket, monkeypatch):
+    # A handful of real-looking sources — enough to prove the mechanism
+    # without building a 200-file fixture.
+    for i in range(5):
+        seed_source(bucket, f"reports/src-{i}.csv",
+                    LONG_A + f" variant {i} extra trailing words to keep "
+                    "each source's shingles distinct from the others")
+    (bucket / "inbox" / "photo.bin").write_bytes(
+        b"\x00\x01\x02\xff\xfe\x03\x04\x05\xfd\xfc" * 40)
+
+    calls = []
+    real_similarity = gate.similarity
+
+    def counting_similarity(a, b):
+        calls.append(1)
+        return real_similarity(a, b)
+
+    monkeypatch.setattr(gate, "similarity", counting_similarity)
+    result = run_gate(bucket)
+    assert calls == []
+    assert [e["incoming"] for e in result["clean_new"]] == ["photo.bin"]
 
 
 def test_containers_reported_not_classified(bucket):

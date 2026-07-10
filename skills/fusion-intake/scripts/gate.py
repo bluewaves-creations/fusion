@@ -30,6 +30,8 @@ NEAR_DUP_THRESHOLD = 0.85   # best content sim >= this (and not exact) -> near-d
 UPDATE_SIM_FLOOR = 0.30     # [floor, near): name match -> update candidate
 SHINGLE_K = 3               # word-shingle size for similarity
 
+SIMILARITY_READ_CAP = 512 * 1024  # bytes of text considered for similarity — enough to catch any real re-export/update
+
 _DATE_PREFIX = re.compile(r"^(?:\d{4}-\d{2}-\d{2}|\d{8})[_-]")
 _SEP_RUN = re.compile(r"[\s_-]+")
 _WORD = re.compile(r"\w+")
@@ -63,9 +65,12 @@ def sha256_of(path: Path) -> str:
 def extract_text(path: Path) -> str:
     """Text for similarity scoring. Binary formats decode to noise and
     effectively compare on filename only — full content comparison is
-    Stage 2's judgment work."""
+    Stage 2's judgment work. Reads at most SIMILARITY_READ_CAP bytes: a
+    144MB delivery must not be fully decoded just to shingle it."""
     try:
-        return path.read_text(encoding="utf-8", errors="ignore")
+        with path.open("rb") as fh:
+            data = fh.read(SIMILARITY_READ_CAP)
+        return data.decode("utf-8", errors="ignore")
     except OSError:
         return ""
 
@@ -98,19 +103,26 @@ def index_sources(sources_dir: Path) -> SourceIndex:
     return idx
 
 
-def _shingles(text: str, k: int = SHINGLE_K) -> set:
+def _shingles(text, k: int = SHINGLE_K) -> set:
     """Produce word k-shingles from text. Texts below k word tokens yield NO
-    shingles—there is no linguistic evidence at sub-k thresholds by design."""
+    shingles—there is no linguistic evidence at sub-k thresholds by design.
+    Idempotent on an already-shingled set (cheap passthrough) so callers can
+    thread precomputed/cached shingles through the same call sites that
+    otherwise take raw text."""
+    if isinstance(text, set):
+        return text
     tokens = _WORD.findall(text.lower())
     if len(tokens) < k:
         return set()
     return {" ".join(tokens[i:i + k]) for i in range(len(tokens) - k + 1)}
 
 
-def similarity(a: str, b: str) -> float:
+def similarity(a, b) -> float:
     """Jaccard over word k-shingles: 0.0 disjoint .. 1.0 identical. Texts
     under SHINGLE_K words always score 0.0—no evidence, not identity. Exact
-    duplicates are sha256's catch upstream, not this function's."""
+    duplicates are sha256's catch upstream, not this function's. Accepts
+    raw text or a precomputed shingle set (idempotent via _shingles) so
+    the gate's cached best-match path can reuse shingles across sources."""
     sa, sb = _shingles(a), _shingles(b)
     if not sa or not sb:
         return 0.0
@@ -139,11 +151,16 @@ def git_history(path: Path, cwd: Path, limit: int = 10) -> list:
     return history
 
 
-def _best_match(incoming_text: str, idx: SourceIndex):
-    """Best (path, sim) over ALL sources — catches renamed near-dups."""
+def _best_match(incoming_shingles: set, idx: SourceIndex, shingle_cache: dict):
+    """Best (path, sim) over ALL sources — catches renamed near-dups.
+    Source shingles are cached on first use (shingle_cache, one dict per
+    run) so a batch with many incoming files never re-shingles the same
+    source text twice."""
     best_path, best_sim = None, 0.0
     for path, src_text in idx.text_by_path.items():
-        s = similarity(incoming_text, src_text)
+        if path not in shingle_cache:
+            shingle_cache[path] = _shingles(src_text)
+        s = similarity(incoming_shingles, shingle_cache[path])
         if s >= best_sim:
             best_path, best_sim = path, s
     return best_path, best_sim
@@ -154,6 +171,7 @@ def classify_intake(inbox_dir: Path, sources_dir: Path, idx: SourceIndex) -> dic
               "update_candidates": [], "clean_new": [], "inbox_dups": [],
               "containers": []}
     seen_in_batch: dict = {}
+    shingle_cache: dict = {}   # source path -> shingle set, cached for this run only
     for f in _iter_files(Path(inbox_dir)):
         rel = str(f.relative_to(inbox_dir))
 
@@ -183,7 +201,14 @@ def classify_intake(inbox_dir: Path, sources_dir: Path, idx: SourceIndex) -> dic
             continue
 
         name_match = normalize_filename(f.name) in idx.by_name
-        match_path, sim = _best_match(extract_text(f), idx)
+        incoming_shingles = _shingles(extract_text(f))
+        if incoming_shingles:
+            match_path, sim = _best_match(incoming_shingles, idx, shingle_cache)
+        else:
+            # No word-level evidence (binary/empty) — hash matching already
+            # ran above, and empty shingles can never score above 0.0, so
+            # skip the whole sources scan rather than pay for it.
+            match_path, sim = None, 0.0
 
         if match_path is not None and sim >= NEAR_DUP_THRESHOLD:
             result["near_dups"].append({
