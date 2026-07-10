@@ -72,7 +72,7 @@ def new_bucket(
     for zone in ZONES:
         (root / zone).mkdir(parents=True, exist_ok=True)
     for zone in ("inbox", "workbench", "output"):
-        (root / zone / ".gitkeep").write_text("", encoding="utf-8")
+        (root / zone / ".gitkeep").write_text("", encoding="utf-8", newline="\n")
     (root / "BUCKET.md").write_text(
         BUCKET_TEMPLATE.format(
             name=_yaml_scalar(name), kind=_yaml_scalar(kind),
@@ -80,10 +80,10 @@ def new_bucket(
             description_body=description,
             created=at.strftime("%Y-%m-%d"),
         ),
-        encoding="utf-8",
+        encoding="utf-8", newline="\n",
     )
     (root / "sources" / "MANIFEST.md").write_text(
-        MANIFEST_HEADER, encoding="utf-8"
+        MANIFEST_HEADER, encoding="utf-8", newline="\n"
     )
     ledger.append(root, actor, "created", "BUCKET.md", note="bucket born", at=at)
     indexer.write_indexes(root, actor=None)

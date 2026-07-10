@@ -154,12 +154,12 @@ def manifest_append(root: Path, rel: str, actor: str, sha: str) -> None:
     path = _manifest_path(root)
     if not path.is_file():
         path.write_text("# Manifest\n\n| file | added | by | sha256 | library |\n"
-                        "|---|---|---|---|---|\n", encoding="utf-8")
+                        "|---|---|---|---|---|\n", encoding="utf-8", newline="\n")
     text = path.read_text(encoding="utf-8")
     if not text.endswith("\n"):
         text += "\n"
     text += f"| {rel} | {TODAY} | {actor} | {sha} | — |\n"
-    path.write_text(text, encoding="utf-8")
+    path.write_text(text, encoding="utf-8", newline="\n")
 
 
 def manifest_link(root: Path, rel: str, doc: str) -> None:
@@ -179,7 +179,7 @@ def manifest_link(root: Path, rel: str, doc: str) -> None:
             break
     if not hit:
         raise IntakeError(f"source not in manifest: {rel}")
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
 def _manifest_rels(root: Path) -> set:
@@ -570,7 +570,8 @@ def prepare(root: Path, source_rel: str, dest: str | None = None,
         if reconcile and out.exists():
             seed = _merge_reconcile_fm(_read_frontmatter(out), seed)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(render_document(seed, summary, body), encoding="utf-8")
+        out.write_text(render_document(seed, summary, body), encoding="utf-8",
+                       newline="\n")
         return {"path": "extractive", "done": True, "source": source_rel,
                 "output_file": out_rel, "front_matter_seed": seed,
                 "reconcile": reconcile}
@@ -627,7 +628,8 @@ def prepare(root: Path, source_rel: str, dest: str | None = None,
 
     record["page_count"] = len(record["pages"])
     manifest = work / "manifest.json"
-    manifest.write_text(json.dumps(record, indent=2), encoding="utf-8")
+    manifest.write_text(json.dumps(record, indent=2), encoding="utf-8",
+                        newline="\n")
     record["manifest"] = str(manifest.relative_to(root))
     return record
 

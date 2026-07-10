@@ -65,7 +65,7 @@ def write_indexes(
         old = index_path.read_bytes() if index_path.exists() else None
         changed = old != content.encode("utf-8")
         if changed:
-            index_path.write_text(content, encoding="utf-8")
+            index_path.write_text(content, encoding="utf-8", newline="\n")
         count = len(_zone_documents(zone_dir))
         if changed and actor:
             plural = "s" if count != 1 else ""

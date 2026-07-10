@@ -387,5 +387,20 @@ def main(argv: list[str] | None = None) -> int:
                     getattr(args, "json", False))
 
 
+def _utf8_streams() -> None:
+    """Reconfigure stdout/stderr to UTF-8. Windows consoles default to a
+    legacy codepage (cp1252, etc.) that can't encode arrows, mid-dots, and
+    other prose characters the CLI's output contract relies on. Guarded:
+    detached or otherwise odd streams (embedded contexts, redirected
+    pipes without a reconfigure method) must never crash the CLI."""
+    for _stream in (sys.stdout, sys.stderr):
+        if hasattr(_stream, "reconfigure"):
+            try:
+                _stream.reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
+
 def main_entry() -> None:  # console-script shim
+    _utf8_streams()
     sys.exit(main())

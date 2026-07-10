@@ -198,7 +198,8 @@ def fan_out(canonical: Path, agents: list[dict], force: bool) -> list[dict]:
             except OSError:
                 shutil.copytree(skill, target)
                 (target / ".fusion-setup").write_text(
-                    f"{payload_version()}\n{tree_digest(skill)}\n")
+                    f"{payload_version()}\n{tree_digest(skill)}\n",
+                    encoding="utf-8", newline="\n")
                 results.append({**row,
                                 "action": "replaced" if replaced else "copied",
                                 "detail": f"{target} (symlinks unavailable — "

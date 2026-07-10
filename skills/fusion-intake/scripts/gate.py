@@ -257,7 +257,8 @@ def main(argv=None) -> int:
     out = Path(args.out) if args.out else (
         root / "workbench" / ".intake" / f"gate-{uuid.uuid4().hex[:12]}.json")
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    out.write_text(json.dumps(manifest, indent=2), encoding="utf-8",
+                   newline="\n")
     print(f"gate: {manifest['counts']} -> {out}")
     return 0
 

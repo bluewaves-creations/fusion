@@ -326,7 +326,7 @@ def apply_proposals(root: Path, proposals: list) -> int:
             new_text = new_text.replace(f"]({link})", f"]({target})")
         if new_text != text:
             new_text = _bump_updated(new_text, rel)
-            doc_path.write_text(new_text, encoding="utf-8")
+            doc_path.write_text(new_text, encoding="utf-8", newline="\n")
             changed += 1
     return changed
 

@@ -97,7 +97,7 @@ def append(
         lines.append(format_line(entry))
     else:
         lines.extend(["", heading, format_line(entry)])
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
     return entry
 
 

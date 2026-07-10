@@ -43,7 +43,7 @@ def main(argv=None) -> int:
         records = ([dict(zip(headers, r)) for r in rows]
                    if headers else rows)
         out.write_text(json.dumps(records, indent=2, ensure_ascii=False),
-                       encoding="utf-8")
+                       encoding="utf-8", newline="\n")
     else:
         import openpyxl
         wb = openpyxl.Workbook()
