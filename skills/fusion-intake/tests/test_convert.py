@@ -1,0 +1,216 @@
+"""Stage-1 engine: admit -> MANIFEST, extractive conversion, vision prep,
+link, cleanup. The lossless contract, tested."""
+import shutil
+
+import pytest
+from conftest import bucket  # noqa: F401 (fixture)
+
+import convert
+import make_fixtures as fx
+
+
+def admit(root, name, category="records", actor="claude"):
+    return convert.admit(root, name, category=category, actor=actor)
+
+
+def put_inbox(root, name, maker):
+    p = root / "inbox" / name
+    maker(p)
+    return p
+
+
+# ── admit ────────────────────────────────────────────────────────────────
+
+def test_admit_moves_and_registers(bucket):
+    put_inbox(bucket, "scores.xlsx", fx.make_xlsx)
+    rec = admit(bucket, "scores.xlsx")
+    assert rec["source"] == "records/scores.xlsx"
+    assert len(rec["sha256"]) == 64
+    assert not (bucket / "inbox" / "scores.xlsx").exists()
+    assert (bucket / "sources" / "records" / "scores.xlsx").is_file()
+    manifest = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    row = manifest.strip().splitlines()[-1]
+    cells = [c.strip() for c in row.strip("|").split("|")]
+    assert cells[0] == "records/scores.xlsx"
+    assert cells[2] == "claude"
+    assert cells[3] == rec["sha256"]
+    assert cells[4] == "—"
+
+
+def test_admit_refuses_source_collision(bucket):
+    put_inbox(bucket, "scores.xlsx", fx.make_xlsx)
+    admit(bucket, "scores.xlsx")
+    put_inbox(bucket, "scores.xlsx", fx.make_xlsx)
+    with pytest.raises(convert.IntakeError, match="immutable"):
+        admit(bucket, "scores.xlsx")
+
+
+def test_admit_missing_file(bucket):
+    with pytest.raises(convert.IntakeError, match="inbox"):
+        admit(bucket, "ghost.xlsx")
+
+
+# ── extractive paths ─────────────────────────────────────────────────────
+
+def test_xlsx_extractive_is_born_conformant(bucket):
+    put_inbox(bucket, "Q1 Scores.xlsx", fx.make_xlsx)
+    rec = admit(bucket, "Q1 Scores.xlsx")
+    out = convert.prepare(bucket, rec["source"])
+    assert out["done"] is True
+    doc = (bucket / out["output_file"]).read_text(encoding="utf-8")
+    # frontmatter
+    assert doc.startswith("---\n")
+    assert "title:" in doc and "type:" in doc and "aurora: library" in doc
+    assert "source: sources/records/Q1 Scores.xlsx" in doc
+    # summary-first
+    body = doc.split("---\n", 2)[2]
+    assert body.lstrip().startswith("## Summary")
+    assert "\n---\n" in body
+    # lossless table facts: exact numbers, pipe escaped, empty col pruned
+    assert "78.5" in doc and "| 91 |" in doc
+    assert "steady \\| improving" in doc
+    assert "| supplier | score | notes |" in doc   # all-empty column pruned
+    assert "## Scores" in doc and "## Meta" in doc
+    # slug filename
+    assert out["output_file"].endswith("library/records/q1-scores.md")
+
+
+def test_csv_extractive_bom_and_numbers(bucket):
+    put_inbox(bucket, "inventory.csv", fx.make_csv)
+    rec = admit(bucket, "inventory.csv")
+    out = convert.prepare(bucket, rec["source"])
+    doc = (bucket / out["output_file"]).read_text(encoding="utf-8")
+    assert "12500.50" in doc          # verbatim, never rounded
+    assert "﻿" not in doc      # BOM consumed
+    assert "Jazzmaster 1962" in doc
+
+
+def test_invalid_aurora_refused(bucket):
+    put_inbox(bucket, "inventory.csv", fx.make_csv)
+    rec = admit(bucket, "inventory.csv")
+    with pytest.raises(convert.IntakeError, match="aurora"):
+        convert.prepare(bucket, rec["source"], aurora="vibes")
+
+
+def test_dest_and_type_overrides(bucket):
+    put_inbox(bucket, "inventory.csv", fx.make_csv)
+    rec = admit(bucket, "inventory.csv", category="gear")
+    out = convert.prepare(bucket, rec["source"], dest="library/instruments",
+                          doc_type="inventory", slug="pedal-inventory")
+    assert out["output_file"] == "library/instruments/pedal-inventory.md"
+    doc = (bucket / out["output_file"]).read_text(encoding="utf-8")
+    assert "type: inventory" in doc
+
+
+# ── vision prep paths ────────────────────────────────────────────────────
+
+def test_text_pdf_spotcheck(bucket):
+    put_inbox(bucket, "audit.pdf", fx.make_text_pdf)
+    rec = admit(bucket, "audit.pdf")
+    out = convert.prepare(bucket, rec["source"])
+    assert out["done"] is False and out["path"] == "pdf_text"
+    assert out["page_count"] == 2 == len(out["pages"])
+    assert all(not p["needs_vision"] for p in out["pages"])
+    assert out["images"] == []        # nothing to spot-check
+    assert out["front_matter_seed"]["aurora"] == "library"
+    assert out["front_matter_seed"]["source"] == "sources/records/audit.pdf"
+    assert (bucket / out["manifest"]).is_file()
+
+
+def test_scanned_pdf_all_pages_rendered(bucket):
+    put_inbox(bucket, "scan.pdf", fx.make_scanned_pdf)
+    rec = admit(bucket, "scan.pdf")
+    out = convert.prepare(bucket, rec["source"])
+    assert out["path"] == "pdf_scanned"
+    assert out["pages"][0]["needs_vision"] is True
+    assert len(out["images"]) == out["page_count"] == 1
+
+
+def test_image_path(bucket):
+    put_inbox(bucket, "photo.png", fx.make_png)
+    rec = admit(bucket, "photo.png")
+    out = convert.prepare(bucket, rec["source"])
+    assert out["path"] == "image"
+    assert out["pages"] == [{"page": 1, "text": "", "text_chars": 0,
+                             "needs_vision": True}]
+    assert len(out["images"]) == 1
+
+
+def test_eml_path_extracts_text_and_attachments(bucket):
+    put_inbox(bucket, "mail.eml", fx.make_eml)
+    rec = admit(bucket, "mail.eml")
+    out = convert.prepare(bucket, rec["source"])
+    assert out["path"] == "mail"
+    text = out["pages"][0]["text"]
+    assert "Subject: Re: rehearsal schedule" in text
+    assert "Bring the Jazzmaster" in text
+    assert out["attachments"] == ["setlist.csv"]
+    assert (bucket / out["run_dir"] / "setlist.csv").is_file()
+
+
+def test_markdown_passthrough(bucket):
+    (bucket / "inbox" / "note.md").write_text(
+        "# A note\n\nJust words.\n", encoding="utf-8")
+    rec = admit(bucket, "note.md")
+    out = convert.prepare(bucket, rec["source"])
+    assert out["path"] == "text"
+    assert out["pages"][0]["text"] == "# A note\n\nJust words.\n"
+    assert out["pages"][0]["needs_vision"] is False
+
+
+@pytest.mark.skipif(shutil.which("soffice") is None,
+                    reason="LibreOffice not on PATH")
+def test_docx_libreoffice_path(bucket):
+    put_inbox(bucket, "procedure.docx", fx.make_docx)
+    rec = admit(bucket, "procedure.docx")
+    out = convert.prepare(bucket, rec["source"])
+    assert out["path"] == "libreoffice"
+    assert out["intermediate_pdf"].endswith(".pdf")
+    assert out["page_count"] == len(out["pages"]) >= 1
+    assert len(out["images"]) == out["page_count"]   # ALL pages rendered
+    joined = " ".join(p["text"] for p in out["pages"])
+    assert "Onboarding procedure" in joined
+
+
+def test_docx_fails_fast_without_soffice(bucket, monkeypatch):
+    put_inbox(bucket, "procedure.docx", fx.make_docx)
+    rec = admit(bucket, "procedure.docx")
+    monkeypatch.setattr(shutil, "which", lambda _: None)
+    with pytest.raises(convert.IntakeError, match="LibreOffice"):
+        convert.prepare(bucket, rec["source"])
+
+
+# ── link + cleanup ───────────────────────────────────────────────────────
+
+def test_link_sets_library_column(bucket):
+    put_inbox(bucket, "inventory.csv", fx.make_csv)
+    rec = admit(bucket, "inventory.csv")
+    convert.link(bucket, rec["source"], "library/records/inventory.md")
+    manifest = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    row = manifest.strip().splitlines()[-1]
+    assert row.split("|")[-2].strip() == "library/records/inventory.md"
+    # a second link comma-appends
+    convert.link(bucket, rec["source"], "library/records/inventory-2.md")
+    manifest = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    assert manifest.count("inventory.md, library/records/inventory-2.md") == 1
+
+
+def test_link_unknown_source_refused(bucket):
+    with pytest.raises(convert.IntakeError, match="manifest"):
+        convert.link(bucket, "records/ghost.csv", "library/x.md")
+
+
+def test_cleanup_removes_only_the_run_dir(bucket):
+    put_inbox(bucket, "photo.png", fx.make_png)
+    rec = admit(bucket, "photo.png")
+    out = convert.prepare(bucket, rec["source"])
+    run_dir = bucket / out["run_dir"]
+    assert run_dir.is_dir()
+    convert.cleanup(run_dir)
+    assert not run_dir.exists()
+    assert (bucket / "workbench" / ".intake").is_dir()
+
+
+def test_slugify():
+    assert convert.slugify("Q1 Scores (FINAL).xlsx") == "q1-scores-final"
+    assert len(convert.slugify("x" * 200)) <= 60
