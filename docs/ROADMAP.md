@@ -52,8 +52,11 @@ open-source readiness.
 - [ ] One full reflection cycle per bucket: proposals → judgment →
       conventions updated → `reflected` signed.
 - [ ] A week of real use; frictions recorded and triaged.
-- [ ] Open-source pass: no personal paths, install-from-clean-machine
+- [x] Open-source pass: no personal paths, install-from-clean-machine
       test, README truthful.
+      Evidence: sweep clean (test_skill_family + repo audit, 2026-07-10) ·
+      docs/acceptance/2026-07-10-phase-4-install.md · README claims
+      re-verified against the tree in the Task-7 commit.
 
 ## The improvement loop (all phases)
 
