@@ -97,6 +97,47 @@ def test_scan_notes_sibling_rename_pattern(bucket):
     }]
 
 
+def test_scan_ignores_fenced_placeholder_even_with_real_match(bucket):
+    # The reviewer's named risk: a real file with a placeholder basename
+    # must no longer be proposable from a fenced code example — code is
+    # not prose, and a fence's contents were never a link.
+    seed_source(bucket, "cat/x.pdf", "pdf bytes")
+    write_doc(bucket, "library/notes/doc.md",
+              "Example:\n\n```\nSee [the file](assets/x.pdf).\n```\n")
+
+    result = lr.scan(bucket)
+
+    assert result["proposals"] == []
+    assert result["unrepairable"] == []
+
+
+def test_scan_ignores_inline_code_span(bucket):
+    write_doc(bucket, "library/notes/doc.md",
+              "Inline: `[x](assets/gone.md)` is not a real link.")
+
+    result = lr.scan(bucket)
+
+    assert result["proposals"] == []
+    assert result["unrepairable"] == []
+
+
+def test_scan_real_broken_link_outside_fence_still_proposed(bucket):
+    seed_source(bucket, "cat/x.pdf", "pdf bytes")
+    write_doc(bucket, "library/notes/doc.md",
+              "```\nSee [placeholder](assets/x.pdf).\n```\n\n"
+              "Real: [the file](assets/x.pdf).\n")
+
+    result = lr.scan(bucket)
+
+    assert result["proposals"] == [{
+        "doc": "library/notes/doc.md",
+        "link": "assets/x.pdf",
+        "target": "../../sources/cat/x.pdf",
+        "confidence": "exact",
+    }]
+    assert result["unrepairable"] == []
+
+
 def test_scan_activities_zone_is_walked_too(bucket):
     seed_source(bucket, "cat/y.pdf", "pdf bytes")
     write_doc(bucket, "activities/proj/doc.md", "See [it](assets/y.pdf).")

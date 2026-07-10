@@ -61,6 +61,44 @@ SKIP_NAMES = {"MANIFEST.md", "INDEX.md"}
 LINK_RE = re.compile(r"\]\(([^)#][^)]*)\)")
 _SCHEME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
 
+# Code is not prose: fenced blocks and inline code spans never carry a
+# real relative link, so they're blanked out before extraction — the
+# same fix as cli/src/fusion/document.py's `_blank_code` (twin
+# implementation, kept independent so this skill stays self-contained).
+_FENCE_OPEN_RE = re.compile(r"^(\s*)(`{3,}|~{3,})")
+_INLINE_CODE_RE = re.compile(r"`[^`\n]*?`")
+
+
+def _blank_code(body: str) -> str:
+    """Blank fenced blocks (opener to closer inclusive, unterminated
+    fences swallow to EOF) and single-line inline code spans, replacing
+    each with equal-length whitespace so link extraction never reads
+    code as prose."""
+    lines = body.split("\n")
+    out = []
+    i = 0
+    n = len(lines)
+    while i < n:
+        opener = _FENCE_OPEN_RE.match(lines[i])
+        if not opener:
+            out.append(lines[i])
+            i += 1
+            continue
+        fence_char, fence_len = opener.group(2)[0], len(opener.group(2))
+        closer_re = re.compile(
+            r"^\s*" + re.escape(fence_char) + "{" + str(fence_len) + ",}\\s*$"
+        )
+        out.append(" " * len(lines[i]))
+        i += 1
+        while i < n:
+            out.append(" " * len(lines[i]))
+            closed = bool(closer_re.match(lines[i]))
+            i += 1
+            if closed:
+                break
+    blanked = "\n".join(out)
+    return _INLINE_CODE_RE.sub(lambda m: " " * len(m.group(0)), blanked)
+
 
 class RepairError(Exception):
     """Strict-writer refusal — named loudly, never silently skipped."""
@@ -120,8 +158,9 @@ def _index_candidates(root: Path):
 def _extract_links(text: str):
     """Yield (raw_target, path_part, anchor) for every candidate relative
     link — http(s)/mailto skipped by scheme, anchor-only already excluded
-    by LINK_RE's negative first-char class."""
-    for m in LINK_RE.finditer(text):
+    by LINK_RE's negative first-char class, and fenced/inline code
+    blanked first so code is never read as prose."""
+    for m in LINK_RE.finditer(_blank_code(text)):
         target = m.group(1)
         if _SCHEME_RE.match(target):
             continue
