@@ -37,8 +37,10 @@ inbox/ ─► STAGE 1 gate (scripts/gate.py)      deterministic: hash, similarit
 
 ## Running it
 
-Every command runs with the bucket root as `--bucket`; `<skill>` is this
-skill's directory.
+`admit`, `prepare`, `link`, and `gate.py` take the bucket root as
+`--bucket`; `cleanup` takes only `--run-dir` — resolve it against the
+bucket root before calling (the manifest's `run_dir` is bucket-relative).
+`<skill>` is this skill's directory.
 
 1. **Classify:** `uv run <skill>/scripts/gate.py --bucket <root>`
    → read the printed manifest path, then load `references/gate.md` and

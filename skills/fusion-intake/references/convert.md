@@ -52,7 +52,9 @@ Write it from the content — never "converted from X.">
 <the reconstructed body>
 ```
 
-Aurora guidance (the eight are the eight):
+Aurora guidance — seven of the eight; `archive` is deliberately absent
+(nothing enters a bucket already archived — archiving is the librarian's
+act, moving path and aurora together per SPEC §9):
 | Content | Aurora |
 |---|---|
 | Settled reference: manuals, records, data, mail worth keeping | `library` |
