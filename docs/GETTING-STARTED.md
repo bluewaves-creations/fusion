@@ -6,10 +6,12 @@ your first bucket and start living in it. Ten minutes, no wizard.
 ## What you need
 
 - [uv](https://docs.astral.sh/uv/) — installs and runs the CLI.
+- `git` — every bucket is its own repo; `fusion new` runs `git init` and
+  the first commit for you (and only warns if git is missing).
 - An agent that reads [Agent Skills](https://agentskills.io) — Claude Code,
   Pi, Goose, or whatever comes next.
 - Optional: LibreOffice (`soffice` on PATH) — only fusion-intake's
-  docx/pptx/legacy-office route needs it.
+  docx/pptx/legacy-office/html route needs it.
 
 ## Move one — the CLI
 
@@ -67,6 +69,21 @@ into `inbox/` and tell your agent to run intake. The gate classifies it
 under `sources/`, converts it losslessly to markdown in the library, and
 signs the ledger. You judge; it operates; the files remember.
 
+It looks like this:
+
+```
+You:    process the inbox
+Agent:  Intake report — 3 files.
+        contract.pdf     → new        converting
+        brochure.pdf     → duplicate  auto-skipped (exact)
+        q1-report.xlsx   → updated    supersede q1-report.xlsx — confirm?
+You:    yes
+Agent:  Admitted, converted, ledger signed, fusion check green.
+```
+
+"Process the inbox", "run intake", "archive this", "what's on my plate",
+"report on X" — plain words; the skills know their triggers.
+
 Each morning:
 
 ```bash
@@ -78,9 +95,22 @@ And once a week, ask the librarian to **reflect**: it reads the ledger,
 proposes prunes and conventions, you judge, it signs `reflected`. That's the
 metabolism — the bucket learns.
 
+## When something goes wrong
+
+- `fusion: command not found` — install from the clone
+  (`uv tool install ./fusion/cli`); PyPI publication lands with Phase 4.
+- `fusion check` is red — every code (E1–E8 errors, W1–W5 warnings) is
+  defined in [SPEC.md §11](../SPEC.md); the message names the file. And a
+  bucket is a git repo: `git diff` shows what changed, `git checkout`
+  undoes it. Nothing is unrecoverable.
+- `git` was missing when you ran `fusion new` — the bucket scaffolded
+  without a repo; install git, then `git init && git add -A && git commit`
+  inside the bucket.
+
 ## Where to go next
 
+- [A finished bucket to wander](../examples/README.md) — see the
+  convention instantiated before you read it abstract.
 - [The convention itself](../SPEC.md) — SPEC.md is the actual product.
-- [A finished bucket to wander](../examples/README.md) — the crazy-ones tour.
 - [The CLI, command by command](../cli/README.md).
 - [The four skills](../skills/README.md).
