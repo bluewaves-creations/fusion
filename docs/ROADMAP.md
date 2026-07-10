@@ -21,14 +21,14 @@ convention, into a versioned SPEC amendment).
 today, agenda; `--json` everywhere; `--since` on status/log.
 
 **Gate:**
-- [ ] `fusion check examples/crazy-ones` → 0 errors, 0 warnings.
-- [ ] `fusion index` regenerates the fixture's INDEX files byte-identical
+- [x] `fusion check examples/crazy-ones` → 0 errors, 0 warnings.
+- [x] `fusion index` regenerates the fixture's INDEX files byte-identical
       (golden-file test).
-- [ ] pytest suite green; every SPEC §11 rule has a failing-fixture test
+- [x] pytest suite green; every SPEC §11 rule has a failing-fixture test
       proving detection.
-- [ ] Round-trip: `fusion new` a scratch bucket → log all 11 verbs →
+- [x] Round-trip: `fusion new` a scratch bucket → log all 11 verbs →
       check green → status/today/agenda sane.
-- [ ] Docs: `--help` complete for all 8 commands; README Status updated.
+- [x] Docs: `--help` complete for all 8 commands; README Status updated.
 
 ## Phase 3 — The skill family (the judgment)
 
