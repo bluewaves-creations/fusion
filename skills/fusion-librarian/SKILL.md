@@ -1,6 +1,6 @@
 ---
 name: fusion-librarian
-description: "The Fusion librarian — the accountable owner of a bucket's order. One entry, eight gears: query (natural-language search over the bucket — the default), create (a new conformant document), tag (bulk frontmatter metadata), cross-reference (map what relates to what), promote (workbench → a real zone, validated), archive (out of the way, path + aurora agreeing), restructure (reorganize and sign your reasons), reflect (the reflection ritual: introspect the ledger, propose curation, land what was learned). Use for 'find', 'search', 'where is', 'create a document', 'tag', 'what links to', 'promote', 'archive this', 'reorganize', 'restructure', 'run a reflection'. For files arriving from outside use fusion-intake; for activity planning use fusion-planner; for reports and exports use fusion-analyst. Applies only inside a Fusion bucket — a directory tree with BUCKET.md and LEDGER.md at its root; if there is no such bucket in play, this skill does not apply."
+description: "The Fusion librarian — the accountable owner of a bucket's order. One entry, eight gears: query (natural-language search over the bucket — the default), create (a new conformant document), tag (bulk frontmatter metadata), cross-reference (map what relates to what), promote (workbench → a real zone, validated), archive (out of the way, path + aurora agreeing), restructure (reorganize and sign your reasons), reflect (the reflection ritual: introspect the ledger, propose curation, land what was learned). Use for 'find', 'search', 'where is', 'create a document', 'tag', 'what links to', 'promote', 'archive this', 'reorganize', 'restructure', 'run a reflection'. For files arriving from outside use fusion-intake; for activity planning use fusion-planner; for reports and exports use fusion-analyst. Applies only inside a Fusion bucket — a directory tree with BUCKET.md and LEDGER.md at its root; if there is no such bucket in play, offer to create one with `fusion new` instead of improvising structure."
 license: MIT
 compatibility: "Requires the fusion CLI on PATH."
 ---
@@ -14,8 +14,11 @@ ledger with its reasons.
 Read `references/fusion-conventions.md` once per session. Before any gear:
 read the bucket's `BUCKET.md` — `### Rules` bind how this bucket files
 things; `### Delegations` say what you may do without asking. No
-`BUCKET.md` up the tree and none named? Stop — this is not a Fusion
-bucket, and no Fusion skill applies (`fusion hub` lists the real ones).
+`BUCKET.md` up the tree and none named? Then nothing here is a Fusion
+bucket and no Fusion skill applies — but offer the door instead of
+walking away: `fusion new <path>` scaffolds a conformant bucket and
+registers it in the hub (`fusion hub` lists the ones that exist).
+Buckets are life-domains — few and bold — never improvised by hand.
 
 ## Pick the gear
 

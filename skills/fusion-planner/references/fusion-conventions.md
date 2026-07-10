@@ -107,6 +107,11 @@ shell. The ledger verbs (closed set of eleven): `created`, `converted`,
 `shipped`, `reflected`, `noted`. Sign with your agent name (`--as claude`,
 or set `FUSION_ACTOR`).
 
+On a bucket that lives on more than one machine, git's union driver
+(`.gitattributes`, written at bucket birth) merges parallel `LEDGER.md`
+and `MANIFEST.md` appends. After any git merge: `fusion index`, then
+`fusion check`.
+
 ## The CLI crib
 
 | Command | What it does |
@@ -116,6 +121,7 @@ or set `FUSION_ACTOR`).
 | `fusion log <verb> <object>` | append a signed ledger entry |
 | `fusion index` | regenerate INDEX files (logs `indexed` when changed) |
 | `fusion check [path]` | conformance: errors, warnings, honest exit codes |
+| `fusion check --hub` | is every registered bucket where the hub says? |
 | `fusion status [--since …]` | one bucket at a glance |
 | `fusion today` | the composed morning across all hub buckets |
 | `fusion agenda` | dated + active items across buckets |
@@ -127,6 +133,11 @@ green before you call the work done.**
 
 ## When you're blocked
 
+- No bucket in play anywhere: never improvise Fusion structure by hand.
+  Offer `fusion new <path> --kind <kind> --description "…"` — six zones,
+  BUCKET.md, an opened ledger, a merge-safe `.gitattributes`, registered
+  in the hub. Guide the human toward few, bold, life-domain buckets
+  (personal, one per company, a studio).
 - `fusion` not on PATH: stop and tell the human — the install is
   `uv tool install ./fusion/cli` from a clone of the Fusion repository.
   Never imitate the notary by hand: no register writes while the CLI is

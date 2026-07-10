@@ -1,6 +1,6 @@
 ---
 name: fusion-intake
-description: "The Fusion intake gate — everything that enters a bucket enters through it, losslessly. Classify what landed in inbox/ (new, updated, duplicate, conflicting), preserve the original in sources/ with its sha256 in the MANIFEST, convert to a faithful summary-first document (xlsx, csv, docx, pptx, pdf, html, images, .eml mail, markdown/text exports), propose type and aurora, sign the ledger, clear the inbox. Use when the user says 'process the inbox', 'intake', 'ingest', 'convert this file', or drops files into a Fusion bucket's inbox/. For placement, curation, or restructuring of what is already inside, use fusion-librarian; for deliverables out of the bucket, use fusion-analyst. Applies only inside a Fusion bucket — a directory tree with BUCKET.md and LEDGER.md at its root; if there is no such bucket in play, this skill does not apply."
+description: "The Fusion intake gate — everything that enters a bucket enters through it, losslessly. Classify what landed in inbox/ (new, updated, duplicate, conflicting), preserve the original in sources/ with its sha256 in the MANIFEST, convert to a faithful summary-first document (xlsx, csv, docx, pptx, pdf, html, images, .eml mail, markdown/text exports), propose type and aurora, sign the ledger, clear the inbox. Use when the user says 'process the inbox', 'intake', 'ingest', 'convert this file', or drops files into a Fusion bucket's inbox/. For placement, curation, or restructuring of what is already inside, use fusion-librarian; for deliverables out of the bucket, use fusion-analyst. Applies only inside a Fusion bucket — a directory tree with BUCKET.md and LEDGER.md at its root; if there is no such bucket in play, offer to create one with `fusion new` instead of improvising structure."
 license: MIT
 compatibility: "Requires the fusion CLI on PATH and uv. LibreOffice (soffice on PATH) required for docx/pptx/legacy office/html formats — fails fast when missing, never silently degrades. Script deps via PEP 723 (openpyxl, PyYAML, pymupdf)."
 ---
@@ -14,8 +14,11 @@ that isn't clean and new.
 Read `references/fusion-conventions.md` once per session. Then, before
 touching anything: read the bucket's `BUCKET.md` — `## Conventions` may
 contain filing rules and standing delegations that bind this whole run.
-No `BUCKET.md` up the tree and none named? Stop — this is not a Fusion
-bucket, and no Fusion skill applies (`fusion hub` lists the real ones).
+No `BUCKET.md` up the tree and none named? Then nothing here is a
+Fusion bucket and no Fusion skill applies — but offer the door instead
+of walking away: `fusion new <path>` scaffolds a conformant bucket and
+registers it in the hub (`fusion hub` lists the ones that exist).
+Buckets are life-domains — few and bold — never improvised by hand.
 
 ## The pipeline
 

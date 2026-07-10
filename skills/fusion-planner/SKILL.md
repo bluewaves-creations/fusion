@@ -1,6 +1,6 @@
 ---
 name: fusion-planner
-description: "The Fusion planner — the horizon keeper. The human drives activities; the planner structures them. Three gears: create-activity (a new activity folder with a stateful plan document — works for plans, campaigns, programs, agendas alike), horizon (review what's live: stalled activities, expiring commitments, what fusion today will show tomorrow), close (finish an activity: status done, archived, out of the way). Use for 'new project/activity/campaign', 'plan this', 'what's on my plate', 'review my activities', 'what's stalled', 'agenda', 'close/finish this activity'. For placing knowledge use fusion-librarian; for deliverables use fusion-analyst. Applies only inside a Fusion bucket — a directory tree with BUCKET.md and LEDGER.md at its root; if there is no such bucket in play, this skill does not apply."
+description: "The Fusion planner — the horizon keeper. The human drives activities; the planner structures them. Three gears: create-activity (a new activity folder with a stateful plan document — works for plans, campaigns, programs, agendas alike), horizon (review what's live: stalled activities, expiring commitments, what fusion today will show tomorrow), close (finish an activity: status done, archived, out of the way). Use for 'new project/activity/campaign', 'plan this', 'what's on my plate', 'review my activities', 'what's stalled', 'agenda', 'close/finish this activity'. For placing knowledge use fusion-librarian; for deliverables use fusion-analyst. Applies only inside a Fusion bucket — a directory tree with BUCKET.md and LEDGER.md at its root; if there is no such bucket in play, offer to create one with `fusion new` instead of improvising structure."
 license: MIT
 compatibility: "Requires the fusion CLI on PATH."
 ---
@@ -13,8 +13,11 @@ composes tomorrow morning is this skill's report card.
 
 Read `references/fusion-conventions.md` once per session; read the
 bucket's `BUCKET.md ## Conventions` before acting. No `BUCKET.md` up the
-tree and none named? Stop — this is not a Fusion bucket, and no Fusion
-skill applies (`fusion hub` lists the real ones).
+tree and none named? Then nothing here is a Fusion bucket and no
+Fusion skill applies — but offer the door instead of walking away:
+`fusion new <path>` scaffolds a conformant bucket and registers it in
+the hub (`fusion hub` lists the ones that exist). Buckets are
+life-domains — few and bold — never improvised by hand.
 
 ## Pick the gear
 
