@@ -1,4 +1,4 @@
-# Fusion installer (Windows, preview) — https://github.com/bluewaves-creations/fusion
+# Fusion installer (Windows) — https://github.com/bluewaves-creations/fusion
 # Usage: powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/bluewaves-creations/fusion/main/install.ps1 | iex"
 # Env:   FUSION_VERSION, FUSION_PACKAGE_SPEC, FUSION_SKILLS_DIR,
 #        FUSION_NO_AGENTS, FUSION_NO_MODIFY_PATH

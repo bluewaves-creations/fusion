@@ -63,7 +63,7 @@ fictional studio bucket, fully conformant, ledger and all.
 curl -fsSL https://raw.githubusercontent.com/bluewaves-creations/fusion/main/install.sh | sh
 ```
 
-Windows (preview):
+Windows:
 
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/bluewaves-creations/fusion/main/install.ps1 | iex"
