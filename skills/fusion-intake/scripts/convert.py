@@ -70,7 +70,7 @@ def sha256_of(path: Path) -> str:
 
 def slugify(name: str) -> str:
     """SPEC §4 filename: lowercase, hyphen-separated, stem <=60 chars."""
-    stem = re.sub(r"\.(xlsx|docx|pptx|csv|pdf|eml|md|txt|png|jpe?g|webp|gif)$",
+    stem = re.sub(r"\.(xlsx|docx|pptx|csv|pdf|eml|md|txt|png|jpe?g|webp|gif|html?)$",
                   "", name, flags=re.IGNORECASE)
     stem = stem.lower()
     stem = re.sub(r"[^a-z0-9]+", "-", stem).strip("-")

@@ -283,6 +283,11 @@ def test_slugify():
     assert len(convert.slugify("x" * 200)) <= 60
 
 
+def test_slugify_strips_html_extensions():
+    assert convert.slugify("Q3 Channel Report.html") == "q3-channel-report"
+    assert convert.slugify("client-portal.htm") == "client-portal"
+
+
 # ── fidelity hardening: merged cells, html mail, colliding attachments ────
 
 def test_html_only_mail_reads_clean(bucket):
