@@ -44,8 +44,8 @@ today, agenda; `--json` everywhere; `--since` on status/log.
 
 ## Phase 4 — Dogfood + release (the life)
 
-**Ships:** real buckets (it turned out to be three: personal, bluewaves, ocean-way), first reflection cycles,
-open-source readiness.
+**Ships:** real buckets (it turned out to be three: personal, bluewaves,
+ocean-way), first reflection cycles, open-source readiness.
 
 **Gate:**
 - [ ] `fusion today` composes a real morning correctly across buckets.
