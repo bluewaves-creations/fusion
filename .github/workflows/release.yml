@@ -1,0 +1,43 @@
+name: release
+# One-time human setup (before first tag): create the PyPI project
+# "fusion-cli" and register this repo + this workflow as a trusted
+# publisher (https://docs.pypi.org/trusted-publishers/). No tokens stored.
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  check:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - working-directory: cli
+        run: uv run --group dev pytest -q
+      - working-directory: cli
+        run: uv run fusion check ../examples/crazy-ones
+
+  publish:
+    needs: check
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Tag must equal pyproject version
+        run: |
+          V="$(grep -m1 '^version' cli/pyproject.toml | cut -d'"' -f2)"
+          [ "v$V" = "${GITHUB_REF_NAME}" ] || { echo "tag ${GITHUB_REF_NAME} != v$V"; exit 1; }
+      - name: Build (hook bundles the skills)
+        working-directory: cli
+        run: uv build --out-dir ../dist
+      - name: Publish to PyPI (trusted publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist

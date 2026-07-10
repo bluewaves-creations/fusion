@@ -13,9 +13,24 @@ your first bucket and start living in it. Ten minutes, no wizard.
 - Optional: LibreOffice (`soffice` on PATH) — only fusion-intake's
   docx/pptx/legacy-office/html route needs it.
 
-## Move one — the CLI
+## One line
 
-From a clone (or once published on PyPI: `uv tool install fusion-cli`):
+```bash
+curl -fsSL https://raw.githubusercontent.com/bluewaves-creations/fusion/main/install.sh | sh
+```
+
+Windows (preview):
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/bluewaves-creations/fusion/main/install.ps1 | iex"
+```
+
+One line installs uv (which brings Python), the `fusion` CLI, and the
+four skills into every agent on your machine that reads them.
+
+## The manual way
+
+No script between you and the steps it runs:
 
 ```bash
 git clone https://github.com/bluewaves-creations/fusion.git
@@ -26,8 +41,6 @@ fusion --version
 The CLI is the notary: it records (ledger), registers (hub, manifest,
 indexes), checks (the convention), and composes your day. It never judges —
 that's the skills' job.
-
-## Move two — the skills
 
 ```bash
 cp -r fusion/skills/fusion-* ~/.agents/skills/
@@ -106,6 +119,15 @@ metabolism — the bucket learns.
 - `git` was missing when you ran `fusion new` — the bucket scaffolded
   without a repo; install git, then `git init && git add -A && git commit`
   inside the bucket.
+- The installer failed partway — every step prints the manual command it
+  was running; finish by hand from there. The three steps are: install
+  uv, `uv tool install fusion-cli`, `fusion setup`.
+
+## Leaving cleanly
+
+`fusion setup --remove` takes the skills back out of every agent it
+installed into (it only removes what it can prove it created), then:
+`uv tool uninstall fusion-cli`. Buckets are yours — nothing touches them.
 
 ## Where to go next
 

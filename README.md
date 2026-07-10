@@ -60,9 +60,19 @@ fictional studio bucket, fully conformant, ledger and all.
 ## Get started
 
 ```bash
-git clone https://github.com/bluewaves-creations/fusion.git
-uv tool install ./fusion/cli                       # move one — the CLI
-cp -r fusion/skills/fusion-* ~/.agents/skills/     # move two — the skills
+curl -fsSL https://raw.githubusercontent.com/bluewaves-creations/fusion/main/install.sh | sh
+```
+
+Windows (preview):
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/bluewaves-creations/fusion/main/install.ps1 | iex"
+```
+
+One line installs uv (which brings Python), the `fusion` CLI, and the
+four skills into every agent on your machine that reads them. Then:
+
+```bash
 fusion new ~/buckets/personal --kind personal \
   --description "Home base: admin, health, house, money."
 fusion today
