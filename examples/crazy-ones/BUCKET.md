@@ -3,7 +3,7 @@ name: crazy-ones
 kind: studio
 description: A fictional one-person studio — music, gear, and one album that refuses to be reasonable.
 fusion_version: "1.0"
-created: 2026-07-10
+created: 2026-07-08
 inbox_max_age_days: 7
 reflection_cadence: weekly
 ---
