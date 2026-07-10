@@ -1,0 +1,84 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+
+jobs:
+  suites:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: CLI suite (incl. build-payload + setup)
+        working-directory: cli
+        run: uv run --group dev pytest -q
+      - name: Fixture conformance
+        working-directory: cli
+        run: uv run fusion check ../examples/crazy-ones
+      - name: Skills suites (POSIX only — they shell out to POSIX tools)
+        if: runner.os != 'Windows'
+        run: |
+          uv run --with pytest --with pyyaml --with openpyxl --with pymupdf pytest skills/fusion-intake/tests -q
+          uv run --with pytest --with pyyaml pytest skills/fusion-librarian/tests -q
+
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - run: shellcheck install.sh
+
+  installer-e2e:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Build the wheel
+        working-directory: cli
+        run: uv build --wheel --out-dir ../dist
+      - name: Run install.sh against the local wheel (sandbox HOME)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          SANDBOX="$(mktemp -d)"
+          mkdir -p "$SANDBOX/.claude"
+          WHEEL="$(ls "$PWD"/dist/fusion_cli-*.whl)"
+          export HOME="$SANDBOX"
+          export UV_TOOL_DIR="$SANDBOX/uvtools"
+          export UV_TOOL_BIN_DIR="$SANDBOX/bin"
+          FUSION_PACKAGE_SPEC="fusion-cli@$WHEEL" sh install.sh
+          BIN="$(uv tool dir --bin)"
+          "$BIN/fusion" --version
+          test -d "$SANDBOX/.agents/skills/fusion-intake"
+          test -L "$SANDBOX/.claude/skills/fusion-intake"
+          # idempotent re-run
+          FUSION_PACKAGE_SPEC="fusion-cli@$WHEEL" sh install.sh
+          # remove leaves no trace
+          "$BIN/fusion" setup --remove
+          test ! -e "$SANDBOX/.agents/skills/fusion-intake"
+          test ! -e "$SANDBOX/.claude/skills/fusion-intake"
+      - name: Run install.ps1 against the local wheel (sandbox profile)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $sandbox = Join-Path $env:RUNNER_TEMP "fusion-sandbox"
+          New-Item -ItemType Directory -Force -Path (Join-Path $sandbox ".claude") | Out-Null
+          $env:HOME = $sandbox
+          $env:USERPROFILE = $sandbox
+          $env:UV_TOOL_DIR = Join-Path $sandbox "uvtools"
+          $env:UV_TOOL_BIN_DIR = Join-Path $sandbox "bin"
+          $env:FUSION_PACKAGE_SPEC = "fusion-cli@" + (Get-ChildItem dist\fusion_cli-*.whl).FullName
+          .\install.ps1
+          $bin = (uv tool dir --bin).Trim()
+          & (Join-Path $bin "fusion.exe") --version
+          if (-not (Test-Path (Join-Path $sandbox ".agents\skills\fusion-intake"))) { exit 1 }
+          & (Join-Path $bin "fusion.exe") setup --remove
+          if (Test-Path (Join-Path $sandbox ".agents\skills\fusion-intake")) { exit 1 }
