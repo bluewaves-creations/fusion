@@ -8,5 +8,5 @@
    averaged away).
 3. Inline answer for a quick question; `output/reports/<slug>.md` with
    the full contract when it is a deliverable.
-4. Deliverable path: `fusion log shipped …` · `fusion index` ·
-   `fusion check`.
+4. Deliverable path: `fusion log shipped … --bucket <root> --as <you>` ·
+   `fusion index <root>` · `fusion check <root>`.

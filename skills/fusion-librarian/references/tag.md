@@ -7,6 +7,7 @@
    the body untouched. `updated:` does NOT bump (metadata, not content).
 3. Report a table: file · field · old → new.
 4. One ledger entry for the batch:
-   `fusion log classified "<scope> — <field>: <value> (<N> documents)" --as <you>`
-   then `fusion index` (summaries unchanged, but titles/auroras may have
-   moved in the index) and `fusion check`.
+   `fusion log classified "<scope> — <field>: <value> (<N> documents)"
+   --bucket <root> --as <you>` then `fusion index <root>` (summaries
+   unchanged, but titles/auroras may have moved in the index) and
+   `fusion check <root>`.

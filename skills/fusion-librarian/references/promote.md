@@ -20,5 +20,5 @@ promotion, nothing moves):
 Fix what the user wants fixed, or leave it in the workbench.
 
 Then: move the file (Write new + delete old, or `mv`), then
-`fusion log promoted "workbench/<x> → <zone>/<path>" --as <you>` ·
-`fusion index` · `fusion check` green.
+`fusion log promoted "workbench/<x> → <zone>/<path>" --bucket <root>
+--as <you>` · `fusion index <root>` · `fusion check <root>` green.

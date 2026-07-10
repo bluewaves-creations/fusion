@@ -3,6 +3,7 @@ link, cleanup. The lossless contract, tested."""
 import shutil
 
 import pytest
+import yaml
 from conftest import bucket  # noqa: F401 (fixture)
 
 import convert
@@ -60,6 +61,17 @@ def test_admit_refuses_unsupported_format(bucket):
     assert "mystery.xyz" not in manifest
 
 
+def test_admit_refuses_manifest_breaking_chars(bucket):
+    manifest_before = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    put_inbox(bucket, "weird | name.csv", fx.make_csv)
+    with pytest.raises(convert.IntakeError, match="manifest grammar"):
+        admit(bucket, "weird | name.csv")
+    # nothing moved, nothing registered — the file stays in inbox
+    assert (bucket / "inbox" / "weird | name.csv").is_file()
+    manifest_after = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    assert manifest_after == manifest_before
+
+
 # ── extractive paths ─────────────────────────────────────────────────────
 
 def test_xlsx_extractive_is_born_conformant(bucket):
@@ -100,6 +112,43 @@ def test_invalid_aurora_refused(bucket):
     rec = admit(bucket, "inventory.csv")
     with pytest.raises(convert.IntakeError, match="aurora"):
         convert.prepare(bucket, rec["source"], aurora="vibes")
+
+
+def test_prepare_refuses_slug_collision(bucket):
+    put_inbox(bucket, "inventory.csv", fx.make_csv)
+    rec = admit(bucket, "inventory.csv")
+    convert.prepare(bucket, rec["source"])
+    put_inbox(bucket, "inventory-2.csv", fx.make_csv)
+    rec2 = admit(bucket, "inventory-2.csv")
+    with pytest.raises(convert.IntakeError, match="exists"):
+        convert.prepare(bucket, rec2["source"], slug="inventory")
+
+
+def test_prepare_reconcile_merges_frontmatter(bucket):
+    # a librarian-curated document already sits in the library: an old
+    # created: date and an unknown key that must survive untouched
+    existing = bucket / "library" / "records" / "inventory.md"
+    existing.parent.mkdir(parents=True, exist_ok=True)
+    existing_fm = {"title": "Inventory (curated)", "type": "record",
+                   "aurora": "library",
+                   "source": "sources/records/inventory-old.csv",
+                   "created": "2020-01-01", "flavor": "umami"}
+    existing.write_text(convert.render_document(
+        existing_fm, "Old summary.", "Old body."), encoding="utf-8")
+
+    put_inbox(bucket, "inventory-v2.csv", fx.make_csv)
+    rec = admit(bucket, "inventory-v2.csv")
+    out = convert.prepare(bucket, rec["source"], slug="inventory",
+                          reconcile=True)
+    assert out["reconcile"] is True
+    doc = existing.read_text(encoding="utf-8")
+    fm = yaml.safe_load(doc.split("---\n", 2)[1])
+    assert fm["created"] == "2020-01-01"          # original preserved
+    assert fm["flavor"] == "umami"                # unknown key preserved
+    assert fm["updated"] == convert.TODAY         # bumped
+    assert fm["title"] == "Inventory (curated)"   # existing value wins
+    assert fm["source"] == "sources/records/inventory-v2.csv"  # repointed
+    assert "12500.50" in doc                      # new content written
 
 
 def test_dest_and_type_overrides(bucket):
@@ -219,6 +268,14 @@ def test_cleanup_removes_only_the_run_dir(bucket):
     convert.cleanup(run_dir)
     assert not run_dir.exists()
     assert (bucket / "workbench" / ".intake").is_dir()
+
+
+def test_cleanup_refuses_outside_workbench_intake(tmp_path):
+    stray = tmp_path / "not-a-run-dir"
+    stray.mkdir()
+    with pytest.raises(convert.IntakeError, match="refusing"):
+        convert.cleanup(stray)
+    assert stray.exists()
 
 
 def test_slugify():

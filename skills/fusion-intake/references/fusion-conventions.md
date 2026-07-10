@@ -29,6 +29,8 @@ something is missing or unknown. Never write into `library/`, `activities/`,
   ledger-logged act.
 - Fusion holds knowledge and work, never media or code — documents point
   (`resource:`) at big things, they never swallow them.
+- `output/` may also hold non-markdown deliverable files (exports); their
+  names are still lowercase-hyphen slugs with a lowercase extension.
 
 ## Before acting — always
 
@@ -60,8 +62,9 @@ Full body. Cross-links are plain relative markdown links.
 
 - Required: `title`, `type`, `aurora` — exactly three.
 - Optional: `tags`, `created`/`updated` (ISO dates), `source` (path into
-  `sources/`), `resource` (external URI), `status` (`active`|`done`|`dormant`,
-  activities only), `data_sources` (paths list, output only).
+  `sources/`), `resource` (URI or bucket path of the thing this document
+  describes), `status` (`active`|`done`|`dormant`, activities only),
+  `data_sources` (paths list, output only).
 - Body MUST be summary-first: `## Summary`, the lines, a `---` separator,
   then everything else.
 - Filenames: lowercase, hyphen-separated, `.md`, stem ≤60 chars.

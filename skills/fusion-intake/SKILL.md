@@ -32,7 +32,8 @@ inbox/ ─► STAGE 1 gate (scripts/gate.py)      deterministic: hash, similarit
               │        fidelity checklist, summary, type + aurora
               ▼
           CLOSE       link MANIFEST → fusion log → fusion index → fusion check
-                      inbox file deleted ONLY when check is green
+                      admit already moved the original into sources/ —
+                      close just needs the register trail green
 ```
 
 ## Running it
@@ -56,11 +57,12 @@ bucket root before calling (the manifest's `run_dir` is bucket-relative).
    Everything else returns a work-dir manifest — load
    `references/convert.md` and reconstruct.
 4. **Close** (per file): refine the document summary if it's the
-   deterministic placeholder, then
+   deterministic placeholder, then — admit already moved the original into
+   `sources/`, so closing is just the register trail:
    `uv run <skill>/scripts/convert.py link --bucket <root> --source <cat>/<name> --doc <zone-rel-doc>`
-   `fusion log converted "sources/<cat>/<name> → <doc>" --as <you>`
-   `fusion index` · `fusion check <root>` — green, then and only then
-   delete the inbox file and `cleanup --run-dir <dir>`.
+   `fusion log converted "sources/<cat>/<name> → <doc>" --bucket <root> --as <you>`
+   `fusion index <root>` · `fusion check <root>` — green, then
+   `cleanup --run-dir <dir>`. Nothing remains in inbox for this file.
 
 ## The four classes (locked)
 
@@ -86,10 +88,12 @@ original. One document, no `-v2` twin. The old original stays in
   text layer can't cover is flagged `needs_vision` and YOU read its image.
 - Tables: every row, every column. Numbers verbatim — never rounded,
   never paraphrased. Figures get a one-line caption.
-- Doubtful fidelity (blurry scan, unreadable region)? Flag it to the human
-  and leave the file in inbox. A lossy conversion is a failed conversion.
-- The inbox file is deleted only after MANIFEST link + ledger + green
-  `fusion check`.
+- Doubtful fidelity (blurry scan, unreadable region)? If caught BEFORE
+  admit, the file simply stays in inbox. If caught AFTER admit, the
+  original is already safe in `sources/` — withhold the document instead
+  (or flag the gap loudly inside it) and leave the MANIFEST row unlinked
+  (`—`) until the human decides. A lossy conversion is a failed conversion.
+- Close only after MANIFEST link + ledger + green `fusion check`.
 
 ## Never
 

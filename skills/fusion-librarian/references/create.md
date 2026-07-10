@@ -7,5 +7,5 @@
 2. Write the document: the three required fields (plus `created:` today,
    `tags:` when useful), `## Summary` (2–3 lines), `---`, then the body.
    Filename: lowercase-hyphen slug, ≤60 chars.
-3. `fusion log created "<zone>/<path>" --as <you>` · `fusion index` ·
-   `fusion check` green.
+3. `fusion log created "<zone>/<path>" --bucket <root> --as <you>` ·
+   `fusion index <root>` · `fusion check <root>` green.

@@ -36,8 +36,8 @@ Read `references/fusion-conventions.md` once per session; read
   the human asks for the full ceremony, or written directly to `output/`
   when the ask was a deliverable from the start).
 - Sign every deliverable:
-  `fusion log shipped "output/<path>" --as <you>` · `fusion index` ·
-  `fusion check` green.
+  `fusion log shipped "output/<path>" --bucket <root> --as <you>` ·
+  `fusion index <root>` · `fusion check <root>` green.
 
 ## Never
 

@@ -33,6 +33,6 @@
    - <today> — created.
    ```
 
-4. `fusion log created "activities/<slug>/plan.md" --as <you>` ·
-   `fusion index` · `fusion check` green. Then show the human what
-   `fusion today` now includes.
+4. `fusion log created "activities/<slug>/plan.md" --bucket <root>
+   --as <you>` · `fusion index <root>` · `fusion check <root>` green.
+   Then show the human what `fusion today` now includes.

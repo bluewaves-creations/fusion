@@ -14,6 +14,7 @@ propose → confirm → execute → sign.
 3. **Execute.** Move files; update relative links in affected documents
    (grep for the old paths); keep filenames conformant.
 4. **Sign.** One ledger entry for the operation:
-   `fusion log restructured "<zone>/<scope>" --note "<the reason>" --as <you>`
-   — the note is not optional here. Then `fusion index` and
-   `fusion check` (W4 watches the links you just moved).
+   `fusion log restructured "<zone>/<scope>" --note "<the reason>"
+   --bucket <root> --as <you>` — the note is not optional here. Then
+   `fusion index <root>` and `fusion check <root>` (W4 watches the links
+   you just moved).

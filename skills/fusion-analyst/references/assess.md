@@ -8,4 +8,5 @@
 3. Write `output/assessments/<slug>.md`: summary + `---` + scores table
    (criterion · score · evidence path) + per-criterion rationale +
    `## Sources`.
-4. `fusion log shipped …` · `fusion index` · `fusion check`.
+4. `fusion log shipped … --bucket <root> --as <you>` · `fusion index <root>`
+   · `fusion check <root>`.

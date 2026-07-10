@@ -49,9 +49,9 @@ them only on a yes (or a standing delegation).
 | query | nothing — reading is free |
 | cross-reference | nothing — unless approved link edits are applied, then `noted` |
 
-All writes via `fusion log … --as <you>`. After any gear that adds, moves,
-or edits documents: `fusion index`, then `fusion check` — green before you
-report done.
+All writes via `fusion log … --bucket <root> --as <you>`. After any gear
+that adds, moves, or edits documents: `fusion index <root>`, then
+`fusion check <root>` — green before you report done.
 
 ## Never
 

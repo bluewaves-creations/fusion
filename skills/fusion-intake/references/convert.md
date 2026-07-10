@@ -81,15 +81,17 @@ report. The bucket's own Rules (BUCKET.md) override this table.
 
 ## Close the loop (per file, in this order)
 
+admit already moved the original into `sources/` — closing is just the
+register trail; nothing remains in inbox for this file.
+
 ```bash
 uv run <skill>/scripts/convert.py link --bucket <root> --source <cat>/<file> --doc <output_file>
-fusion log converted "sources/<cat>/<file> → <output_file>" --as <you>
-fusion index
+fusion log converted "sources/<cat>/<file> → <output_file>" --bucket <root> --as <you>
+fusion index <root>
 fusion check <root>
 ```
 
-Green check → delete the inbox file, then
-`uv run <skill>/scripts/convert.py cleanup --run-dir <run_dir>`.
+Green check → `uv run <skill>/scripts/convert.py cleanup --run-dir <run_dir>`.
 Extractive files (`done: true`) skip reconstruction but get the same
 close: refine their placeholder summary and title from the tables first
 (Edit the document — that is a content change, so bump nothing else),

@@ -6,7 +6,7 @@
    `aurora: archive`. Add a final Log line summarizing the outcome.
 3. Move the whole folder to `activities/archive/<slug>/`.
 4. `fusion log archived "activities/<slug>/ → activities/archive/<slug>/"
-   --as <you>` · `fusion index` · `fusion check` green — path and aurora
-   agree or W3 objects.
+   --bucket <root> --as <you>` · `fusion index <root>` ·
+   `fusion check <root>` green — path and aurora agree or W3 objects.
 5. If deliverables shipped from this activity, remind the human where
    they live in `output/` (the analyst's ledger entries say).

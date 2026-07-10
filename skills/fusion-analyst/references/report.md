@@ -9,5 +9,5 @@
    `## Summary` (the 2–3-line triage), `---`, then: Key findings
    (numbers verbatim from sources) · Analysis · Recommendations ·
    `## Sources` (path · contribution — mirrors data_sources).
-4. Close: `fusion log shipped "output/reports/<slug>.md" --as <you>` ·
-   `fusion index` · `fusion check`.
+4. Close: `fusion log shipped "output/reports/<slug>.md" --bucket <root>
+   --as <you>` · `fusion index <root>` · `fusion check <root>`.

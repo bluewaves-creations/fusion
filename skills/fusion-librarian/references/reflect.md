@@ -6,8 +6,8 @@ Run on the bucket's `reflection_cadence`, or when asked.
 ## 1. Introspect
 
 ```bash
-fusion log --since last-reflection      # what happened this window
-fusion status --since last-reflection   # counts, auroras, activities
+fusion log --since last-reflection --bucket <root>   # what happened
+fusion status <root> --since last-reflection         # counts, auroras…
 fusion check <root>                     # drift: stale INDEX, W1 inbox age…
 ```
 
@@ -36,10 +36,12 @@ it). Never bundle: the human can take proposal 3 and refuse proposal 4.
 ## 4. Learn & sign
 
 - Approved rule/delegation changes: edit `BUCKET.md ## Conventions`, one
-  `fusion log noted "BUCKET.md — <the change>" --as <you>` per change.
+  `fusion log noted "BUCKET.md — <the change>" --bucket <root> --as <you>`
+  per change.
 - Execute approved acts via their own gears (archive, restructure…) so
   each carries its own verb.
 - Sign the cycle LAST:
-  `fusion log reflected "<bucket> — <N> proposals, <M> adopted" --as <you>`
+  `fusion log reflected "<bucket> — <N> proposals, <M> adopted"
+  --bucket <root> --as <you>`
 - Episodic reports are ephemeral: the proposal list lives in workbench/
   and can die there; only conventions and ledger entries persist.

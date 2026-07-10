@@ -22,8 +22,9 @@ bucket's `BUCKET.md ## Conventions` before acting.
 | what's live / stalled / on my plate / review activities (default) | horizon | references/horizon.md |
 | close / finish / wrap up an activity | close | references/close.md |
 
-The default is **horizon** — the read-only gear. close moves files;
-reached by inference, it stops and confirms.
+The default is **horizon** — read-mostly: it reports freely and writes
+only on a yes. close moves files; reached by inference, it stops and
+confirms.
 
 ## The activity shape
 
@@ -49,7 +50,8 @@ dated items.
 | status change (active ⇄ dormant, honest corrections) | `noted` with the change in the note |
 | close | `archived` |
 
-Always `--as <you>`, then `fusion index` and `fusion check` green.
+Always `--bucket <root> --as <you>`, then `fusion index <root>` and
+`fusion check <root>` green.
 
 ## Never
 

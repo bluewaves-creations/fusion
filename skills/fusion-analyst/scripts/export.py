@@ -23,6 +23,13 @@ def main(argv=None) -> int:
     payload = json.load(sys.stdin)
     headers = payload.get("headers") or []
     rows = payload.get("rows") or []
+
+    if headers:
+        bad = [i for i, r in enumerate(rows) if len(r) != len(headers)]
+        if bad:
+            print(f"export: row(s) {bad} have wrong length vs headers", file=sys.stderr)
+            return 1
+
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
 

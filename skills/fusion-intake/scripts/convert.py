@@ -183,6 +183,10 @@ def admit(root: Path, inbox_rel: str, category: str, actor: str) -> dict:
     category = category.strip().strip("/")
     if not category:
         raise IntakeError("category required")
+    if any(c in src.name for c in "|\n\r") or any(c in category for c in "|\n\r"):
+        raise IntakeError(
+            f"'|' and newlines break the manifest grammar: {src.name!r} — "
+            "rename the incoming file before admitting it")
     dest = root / "sources" / category / src.name
     if dest.exists():
         raise IntakeError(
@@ -316,9 +320,42 @@ def _work_dir(root: Path) -> Path:
     return d
 
 
+def _read_frontmatter(path: Path) -> dict:
+    """Tolerant frontmatter reader: {} if the leading --- block is absent
+    or unparsable — reconcile must never choke on a hand-edited document."""
+    text = path.read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        return {}
+    parts = text.split("---\n", 2)
+    if len(parts) < 3:
+        return {}
+    try:
+        fm = yaml.safe_load(parts[1])
+    except yaml.YAMLError:
+        return {}
+    return fm if isinstance(fm, dict) else {}
+
+
+def _merge_reconcile_fm(existing_fm: dict, seed: dict) -> dict:
+    """The librarian curated the existing document — its values win.
+    Existing keys come first (unknown keys preserved verbatim, including
+    the original `created:`); title/type/aurora are filled from the seed
+    only where the existing doc lacks them; `source:` always repoints to
+    the new original; `updated:` is always bumped to today."""
+    merged = dict(existing_fm)
+    for key in ("title", "type", "aurora"):
+        if not merged.get(key):
+            merged[key] = seed[key]
+    if "created" not in merged:
+        merged["created"] = seed["created"]
+    merged["source"] = seed["source"]
+    merged["updated"] = TODAY
+    return merged
+
+
 def prepare(root: Path, source_rel: str, dest: str | None = None,
             slug: str | None = None, doc_type: str | None = None,
-            aurora: str = "library") -> dict:
+            aurora: str = "library", reconcile: bool = False) -> dict:
     root = Path(root)
     src = root / "sources" / source_rel
     if not src.is_file():
@@ -342,16 +379,32 @@ def prepare(root: Path, source_rel: str, dest: str | None = None,
         summary = (f"Tabular data converted from {src.name}: "
                    f"{sheets} sheet(s), {nrows} data row(s).")
         out = root / out_rel
+        if out.exists() and not reconcile:
+            raise IntakeError(
+                f"document exists: {out_rel} — pass --reconcile for a "
+                "confirmed update, or choose --slug")
+        if reconcile and out.exists():
+            seed = _merge_reconcile_fm(_read_frontmatter(out), seed)
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(render_document(seed, summary, body), encoding="utf-8")
         return {"path": "extractive", "done": True, "source": source_rel,
-                "output_file": out_rel, "front_matter_seed": seed}
+                "output_file": out_rel, "front_matter_seed": seed,
+                "reconcile": reconcile}
 
     # vision / structured paths get a work dir + manifest for Stage 2
+    out = root / out_rel
+    if out.exists() and not reconcile:
+        raise IntakeError(
+            f"document exists: {out_rel} — pass --reconcile for a "
+            "confirmed update, or choose --slug")
+    if reconcile and out.exists():
+        seed = _merge_reconcile_fm(_read_frontmatter(out), seed)
+
     work = _work_dir(root)
     record = {"path": path, "done": False, "source": source_rel,
               "run_dir": str(work.relative_to(root)),
               "output_file": out_rel, "front_matter_seed": seed,
+              "reconcile": reconcile,
               "pages": [], "images": [], "attachments": [],
               "intermediate_pdf": None}
 
@@ -401,7 +454,10 @@ def link(root: Path, source_rel: str, doc_rel: str) -> dict:
 
 
 def cleanup(run_dir: Path) -> None:
-    run_dir = Path(run_dir)
+    run_dir = Path(run_dir).resolve()
+    parts = run_dir.parts
+    if ".intake" not in parts or "workbench" not in parts:
+        raise IntakeError(f"refusing to delete outside workbench/.intake: {run_dir}")
     if run_dir.exists():
         shutil.rmtree(run_dir)
 
@@ -426,6 +482,9 @@ def main(argv=None) -> int:
     p.add_argument("--slug")
     p.add_argument("--type", dest="doc_type")
     p.add_argument("--aurora", default="library")
+    p.add_argument("--reconcile", action="store_true",
+                   help="confirmed update: reconcile the existing document "
+                   "in place instead of refusing the slug collision")
 
     p = sub.add_parser("link", help="set the MANIFEST library column")
     p.add_argument("--bucket", required=True)
@@ -442,7 +501,7 @@ def main(argv=None) -> int:
         elif args.cmd == "prepare":
             out = prepare(Path(args.bucket), args.source, dest=args.dest,
                           slug=args.slug, doc_type=args.doc_type,
-                          aurora=args.aurora)
+                          aurora=args.aurora, reconcile=args.reconcile)
         elif args.cmd == "link":
             out = link(Path(args.bucket), args.source, args.doc)
         else:

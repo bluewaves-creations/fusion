@@ -14,5 +14,5 @@
    what the export contains + `resource:` naming the binary +
    `data_sources` listing every source path. The binary is data; the
    document is its passport.
-4. `fusion log shipped "output/exports/<slug>.xlsx" --as <you>` ·
-   `fusion index` · `fusion check`.
+4. `fusion log shipped "output/exports/<slug>.xlsx" --bucket <root>
+   --as <you>` · `fusion index <root>` · `fusion check <root>`.
