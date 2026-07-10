@@ -175,8 +175,9 @@ relative paths: [the LP plan](../activities/lp-first-light/plan.md).
 | `tags` | YAML list of short strings | anywhere |
 | `created` / `updated` | ISO 8601 dates | anywhere |
 | `source` | Path into `sources/` — the original this was converted from | library |
-| `resource` | URI of an external thing this document describes | anywhere |
+| `resource` | URI or path of a thing this document describes but does not contain | anywhere |
 | `status` | `active` \| `done` \| `dormant` | activities only |
+| `due` | ISO 8601 date the thing falls due — `fusion agenda` surfaces it | anywhere |
 | `data_sources` | YAML list of bucket paths this was built from | output only |
 
 `updated` SHOULD reflect content changes only; moves, renames, and
@@ -354,8 +355,9 @@ be slug-shaped; they are not documents, so E3–E5 never apply to them.
 4. Broken relative links between documents (§4).
 5. Activities with `status: active` and no ledger mention between the two
    most recent `reflected` entries (§10) — an activity untouched across a
-   full reflection window. Buckets with fewer than two reflections never
-   trigger this warning.
+   full reflection window. Buckets that have never reflected do not trigger
+   this warning; after the first reflection the window runs from the
+   bucket's birth.
 
 A consumer MUST NOT refuse to read a bucket with errors; a producer MUST
 NOT add to one without flagging them. Recovery is always possible: the

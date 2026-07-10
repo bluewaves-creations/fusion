@@ -136,7 +136,7 @@ def test_w5_active_activity_unmentioned_between_reflections(make_bucket):
     assert [f.path for f in found] == ["activities/quiet/plan.md"]
 
 
-def test_w5_never_triggers_below_two_reflections(make_bucket):
+def test_w5_silent_with_no_reflection(make_bucket):
     root = make_bucket()
     plan = root / "activities" / "quiet" / "plan.md"
     plan.parent.mkdir()
@@ -144,6 +144,34 @@ def test_w5_never_triggers_below_two_reflections(make_bucket):
     from fusion import indexer
     indexer.write_indexes(root)
     assert "W5" not in wcodes(root)
+
+
+LEDGER_ONE_REFLECTION = """# Ledger
+
+## 2026-06-25
+- 09:00 · test · created · BUCKET.md — "bucket born"
+- 09:20 · test · created · activities/busy/plan.md
+
+## 2026-07-08
+- 09:30 · test · noted · activities/busy/plan.md — "touched"
+- 10:00 · test · reflected · bucket
+"""
+# One reflection only: the window runs from the bucket's birth to that
+# reflection. `busy` is mentioned inside it; `quiet` sits on disk but is
+# never mentioned in the ledger at all.
+
+
+def test_w5_fires_after_first_reflection(make_bucket):
+    root = make_bucket()
+    for name in ("quiet", "busy"):
+        plan = root / "activities" / name / "plan.md"
+        plan.parent.mkdir()
+        plan.write_text(ACTIVE_PLAN, encoding="utf-8")
+    (root / "LEDGER.md").write_text(LEDGER_ONE_REFLECTION, encoding="utf-8")
+    from fusion import indexer
+    indexer.write_indexes(root)
+    found = [f for f in warnings(root) if f.code == "W5"]
+    assert [f.path for f in found] == ["activities/quiet/plan.md"]
 
 
 def test_w5_applies_on_archive_paths_too(make_bucket):

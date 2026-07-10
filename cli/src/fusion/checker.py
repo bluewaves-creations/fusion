@@ -225,9 +225,10 @@ def _w3_w4_documents(root: Path) -> list[Finding]:
 def _w5_untouched_activities(root: Path) -> list[Finding]:
     entries = ledger.read(root)
     reflections = [i for i, e in enumerate(entries) if e.verb == "reflected"]
-    if len(reflections) < 2:
+    if not reflections:
         return []
-    window = entries[reflections[-2] + 1 : reflections[-1]]
+    start = reflections[-2] + 1 if len(reflections) >= 2 else 0
+    window = entries[start:reflections[-1]]
     findings = []
     for zone, rel, doc in iter_documents(root, zones=("activities",)):
         if doc.status != "active":
