@@ -14,6 +14,8 @@ command -v curl >/dev/null 2>&1 || command -v wget >/dev/null 2>&1 \
   || err "need curl or wget. install one, or install by hand:
   1) https://docs.astral.sh/uv/  2) uv tool install fusion-cli  3) fusion setup"
 
+[ -n "${HOME:-}" ] || err "HOME is not set"
+
 fetch() {  # fetch URL > stdout
   if command -v curl >/dev/null 2>&1; then curl -fsSL "$1"
   else wget -qO- "$1"; fi
@@ -24,13 +26,17 @@ if command -v uv >/dev/null 2>&1; then
   UV=uv
 else
   say "installing uv (Astral's official installer)…"
+  TMP_UV_SH="$(mktemp)"
+  fetch https://astral.sh/uv/install.sh > "$TMP_UV_SH" \
+    || err "could not download uv's installer — check your network, or install uv yourself: https://docs.astral.sh/uv/"
   if [ "${FUSION_NO_MODIFY_PATH:-}" = "1" ]; then
-    fetch https://astral.sh/uv/install.sh | UV_NO_MODIFY_PATH=1 sh \
+    UV_NO_MODIFY_PATH=1 sh "$TMP_UV_SH" \
       || err "uv install failed — see https://docs.astral.sh/uv/"
   else
-    fetch https://astral.sh/uv/install.sh | sh \
+    sh "$TMP_UV_SH" \
       || err "uv install failed — see https://docs.astral.sh/uv/"
   fi
+  rm -f "$TMP_UV_SH"
   UV="$HOME/.local/bin/uv"
   [ -x "$UV" ] || UV="${XDG_BIN_HOME:-$HOME/.local/bin}/uv"
   [ -x "$UV" ] || err "uv installed but not found at $HOME/.local/bin/uv —
@@ -44,6 +50,8 @@ say "installing ${SPEC}…"
   || err "uv tool install failed. manual step: $UV tool install --force '$SPEC'"
 
 # 3 — hand off to the brain
-BIN="$("$UV" tool dir --bin)" || err "could not resolve uv's tool bin dir"
-[ -x "$BIN/fusion" ] || err "fusion not found in $BIN after install"
+BIN="$("$UV" tool dir --bin)" \
+  || err "could not resolve uv's tool bin dir — run by hand: $UV tool dir --bin, then <that dir>/fusion setup"
+[ -x "$BIN/fusion" ] \
+  || err "fusion not found in $BIN after install — run by hand: $BIN/fusion setup (or check: $UV tool list)"
 exec "$BIN/fusion" setup
