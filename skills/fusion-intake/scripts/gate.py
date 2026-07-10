@@ -90,6 +90,8 @@ def index_sources(sources_dir: Path) -> SourceIndex:
 
 
 def _shingles(text: str, k: int = SHINGLE_K) -> set:
+    """Produce word k-shingles from text. Texts below k word tokens yield NO
+    shingles—there is no linguistic evidence at sub-k thresholds by design."""
     tokens = _WORD.findall(text.lower())
     if len(tokens) < k:
         return set()
@@ -97,9 +99,9 @@ def _shingles(text: str, k: int = SHINGLE_K) -> set:
 
 
 def similarity(a: str, b: str) -> float:
-    """Jaccard over word k-shingles: 0.0 disjoint .. 1.0 identical.
-    Zero shingles on either side is absence of evidence, never identity —
-    exact duplicates are sha256's catch upstream, not this function's."""
+    """Jaccard over word k-shingles: 0.0 disjoint .. 1.0 identical. Texts
+    under SHINGLE_K words always score 0.0—no evidence, not identity. Exact
+    duplicates are sha256's catch upstream, not this function's."""
     sa, sb = _shingles(a), _shingles(b)
     if not sa or not sb:
         return 0.0

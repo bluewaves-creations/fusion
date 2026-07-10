@@ -118,6 +118,12 @@ def test_similarity_no_evidence_is_zero():
     assert gate.similarity("... !!! ---", "%%% ***") == 0.0
 
 
+def test_sub_shingle_texts_score_zero_by_design():
+    # below SHINGLE_K words there is no evidence — identity is sha256's job
+    assert gate.similarity("hello world", "hello world") == 0.0
+    assert gate.similarity("invoice 4521", "invoice 4522") == 0.0
+
+
 def test_binary_pair_is_clean_new_not_near_dup(bucket):
     noise_a = b"\x89PNG\r\n\x1a\n" + b"\x00\x01\x02\xff\xfe" * 24
     noise_b = b"\x89PNG\r\n\x1a\n" + b"\x03\x04\x05\xfd\xfc" * 24
