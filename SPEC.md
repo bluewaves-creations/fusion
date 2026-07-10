@@ -339,7 +339,7 @@ A checker (reference implementation: `fusion check`) validates a bucket.
 Exemptions: registers are not documents — `MANIFEST.md` is exempt from
 E7's coverage requirement and `INDEX.md` from E8's filename rule (both are
 upper-case precisely so they stand apart) — and dotfiles such as
-`.gitkeep` are invisible to E7 and E8.
+`.gitkeep` are invisible to E7, E8, and W1.
 
 **Warnings** (drift, not damage):
 

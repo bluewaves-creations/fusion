@@ -1,10 +1,11 @@
 """fusion check — conformance per SPEC §11. Liberal reader: reports, never raises."""
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import ledger, manifest
+from . import indexer, ledger, manifest
 from .bucket import DOC_ZONES, REQUIRED_BUCKET_FIELDS, ZONES, load, iter_documents
 from .document import AURORAS, FILENAME_RE, MAX_STEM
 
@@ -138,4 +139,86 @@ def _e8_filenames(root: Path) -> list[Finding]:
 
 
 def _warnings(root: Path) -> list[Finding]:
-    return []  # W1–W5 land in the next task
+    findings: list[Finding] = []
+    findings += _w1_stale_inbox(root)
+    findings += _w2_indexes(root)
+    findings += _w3_w4_documents(root)
+    findings += _w5_untouched_activities(root)
+    return findings
+
+
+def _w1_stale_inbox(root: Path) -> list[Finding]:
+    inbox = root / "inbox"
+    if not inbox.is_dir():
+        return []
+    max_age = load(root).inbox_max_age_days
+    cutoff = time.time() - max_age * 86400
+    return [
+        Finding("warning", "W1", f"inbox/{p.relative_to(inbox).as_posix()}",
+                f"inbox file older than {max_age} days")
+        for p in sorted(inbox.rglob("*"))
+        if p.is_file() and not p.name.startswith(".")
+        and p.stat().st_mtime < cutoff
+    ]
+
+
+def _w2_indexes(root: Path) -> list[Finding]:
+    findings = []
+    for zone in indexer.INDEXED_ZONES:
+        zone_dir = root / zone
+        if not zone_dir.is_dir():
+            continue
+        index_path = zone_dir / "INDEX.md"
+        rel = f"{zone}/INDEX.md"
+        if not index_path.exists():
+            findings.append(Finding("warning", "W2", rel, "INDEX.md missing"))
+        elif index_path.read_bytes() != indexer.generate(zone_dir, zone).encode("utf-8"):
+            findings.append(Finding("warning", "W2", rel,
+                                    "INDEX.md stale — regeneration differs"))
+    return findings
+
+
+def _w3_w4_documents(root: Path) -> list[Finding]:
+    findings = []
+    for zone, rel, doc in iter_documents(root):
+        path = f"{zone}/{rel.as_posix()}"
+        on_archive_path = "archive" in rel.parts
+        is_archive_aurora = doc.aurora == "archive"
+        if on_archive_path and not is_archive_aurora:
+            findings.append(Finding("warning", "W3", path,
+                                    "archived path without aurora: archive"))
+        elif is_archive_aurora and not on_archive_path:
+            findings.append(Finding("warning", "W3", path,
+                                    "aurora: archive outside an archive/ path"))
+        doc_dir = (root / zone / rel).parent
+        for link in doc.links:
+            target = link.split("#", 1)[0]
+            if not target:
+                continue
+            if not (doc_dir / target).resolve().exists():
+                findings.append(Finding("warning", "W4", path,
+                                        f"broken relative link: {link}"))
+    return findings
+
+
+def _w5_untouched_activities(root: Path) -> list[Finding]:
+    entries = ledger.read(root)
+    reflections = [i for i, e in enumerate(entries) if e.verb == "reflected"]
+    if len(reflections) < 2:
+        return []
+    window = entries[reflections[-2] + 1 : reflections[-1]]
+    findings = []
+    for zone, rel, doc in iter_documents(root, zones=("activities",)):
+        if doc.status != "active" or "archive" in rel.parts:
+            continue
+        doc_path = f"activities/{rel.as_posix()}"
+        activity_dir = f"activities/{rel.parent.as_posix()}/"
+        mentioned = any(
+            doc_path in e.obj or activity_dir in e.obj for e in window
+        )
+        if not mentioned:
+            findings.append(Finding(
+                "warning", "W5", doc_path,
+                "active activity with no ledger mention across the last "
+                "reflection window"))
+    return findings
