@@ -27,6 +27,7 @@ uv tool install fusion-cli
 Every command takes `--json` (agents parse, never scrape). `log`, `new`,
 and `index` take `--as <actor>`; the pen defaults to `FUSION_ACTOR`, then
 the OS username. `status` and `log` take `--since <date|last-reflection>`.
+`log` also takes `--bucket` (resolves the ledger; default: walk up from the current directory).
 The hub lives at `~/.fusion/hub.md` (`FUSION_HUB` overrides).
 
 ## Development

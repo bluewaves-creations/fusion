@@ -256,8 +256,8 @@ def build_parser() -> argparse.ArgumentParser:
                        help="who holds the pen (default: FUSION_ACTOR, then "
                             "the OS username)")
 
-    p = sub.add_parser("new", help="scaffold a bucket and register it")
-    p.add_argument("path")
+    p = sub.add_parser("new", description="Scaffold a conformant bucket at PATH — six zones, BUCKET.md, an opened ledger — and register it in the hub.")
+    p.add_argument("path", help="directory to create (missing or empty)")
     p.add_argument("--name", help="bucket name (default: directory name)")
     p.add_argument("--kind", default="personal",
                    help="personal · company · studio · club · …")
@@ -265,23 +265,23 @@ def build_parser() -> argparse.ArgumentParser:
     flag_as(p); flag_json(p)
     p.set_defaults(func=cmd_new)
 
-    p = sub.add_parser("hub", help="list, register, or retire buckets")
+    p = sub.add_parser("hub", description="The registry at ~/.fusion/hub.md (override: FUSION_HUB) — the agent's map of your buckets. No subcommand: list.")
     hub_sub = p.add_subparsers(dest="hub_cmd")
     flag_json(p)
-    pa = hub_sub.add_parser("add", help="register an existing bucket")
-    pa.add_argument("path")
+    pa = hub_sub.add_parser("add", description="Register an existing bucket (reads its BUCKET.md).")
+    pa.add_argument("path", help="bucket root to register")
     flag_json(pa)
-    pr = hub_sub.add_parser("remove", help="retire a bucket from the hub")
-    pr.add_argument("name")
+    pr = hub_sub.add_parser("remove", description="Retire a bucket from the hub. Files stay where they are.")
+    pr.add_argument("name", help="registered bucket name")
     flag_json(pr)
     p.set_defaults(func=cmd_hub, hub_cmd=None)
     pa.set_defaults(func=cmd_hub, hub_cmd="add")
     pr.set_defaults(func=cmd_hub, hub_cmd="remove")
 
-    p = sub.add_parser("log", help="append to the ledger, or read it")
+    p = sub.add_parser("log", description="Append one signed entry to the append-only ledger — or, with no arguments, read it.", epilog="Read mode: 'fusion log' alone prints the ledger; --since DATE or --since last-reflection narrows it. The bucket resolves from --bucket, else by walking up from the current directory.")
     p.add_argument("verb", nargs="?",
                    help=f"one of: {', '.join(ledger.VERBS)}")
-    p.add_argument("object", nargs="?")
+    p.add_argument("object", nargs="?", help="what was acted on — a path, or 'a → b' for a move")
     p.add_argument("--note")
     p.add_argument("--at", metavar="'YYYY-MM-DD HH:MM'",
                    help="entry timestamp (default: now)")
@@ -291,27 +291,27 @@ def build_parser() -> argparse.ArgumentParser:
     flag_as(p); flag_json(p)
     p.set_defaults(func=cmd_log)
 
-    p = sub.add_parser("index", help="regenerate INDEX.md in library/ and activities/")
-    p.add_argument("path", nargs="?")
+    p = sub.add_parser("index", description="Regenerate library/INDEX.md and activities/INDEX.md from the documents on disk. Deterministic: same tree, same bytes.")
+    p.add_argument("path", nargs="?", help="bucket root (default: walk up from the current directory)")
     flag_as(p); flag_json(p)
     p.set_defaults(func=cmd_index)
 
-    p = sub.add_parser("check", help="audit a bucket against the convention")
-    p.add_argument("path", nargs="?")
+    p = sub.add_parser("check", description="Audit a bucket against the convention (SPEC §11). Exit 1 on errors; warnings never fail the check.")
+    p.add_argument("path", nargs="?", help="bucket root (default: walk up from the current directory)")
     flag_json(p)
     p.set_defaults(func=cmd_check)
 
-    p = sub.add_parser("status", help="one bucket at a glance")
-    p.add_argument("path", nargs="?")
+    p = sub.add_parser("status", description="One bucket at a glance: documents per zone, active work, the ledger's recent tail.")
+    p.add_argument("path", nargs="?", help="bucket root (default: walk up from the current directory)")
     p.add_argument("--since", metavar="DATE|last-reflection")
     flag_json(p)
     p.set_defaults(func=cmd_status)
 
-    p = sub.add_parser("today", help="the composed day, across the hub")
+    p = sub.add_parser("today", description="The composed morning across every hub bucket: commitments and active work, grouped by aurora.")
     flag_json(p)
     p.set_defaults(func=cmd_today)
 
-    p = sub.add_parser("agenda", help="the wider horizon, across the hub")
+    p = sub.add_parser("agenda", description="The wider horizon across the hub: dated items first (due:/date:), then active work.")
     flag_json(p)
     p.set_defaults(func=cmd_agenda)
 

@@ -150,3 +150,15 @@ def test_failure_stays_human_without_json(tmp_path, capsys, monkeypatch):
 def test_check_names_the_missing_path(capsys):
     assert main(["check", "/nonexistent/nowhere"]) == 1
     assert "/nonexistent/nowhere" in capsys.readouterr().err
+
+
+def test_help_describes_every_command(capsys):
+    needles = {
+        "new": "Scaffold", "hub": "registry", "log": "append-only",
+        "index": "Deterministic", "check": "SPEC", "status": "glance",
+        "today": "morning", "agenda": "horizon",
+    }
+    for cmd, needle in needles.items():
+        with pytest.raises(SystemExit):
+            main([cmd, "--help"])
+        assert needle in capsys.readouterr().out, cmd
