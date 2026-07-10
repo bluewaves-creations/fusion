@@ -1,0 +1,114 @@
+import shutil
+
+from fusion.checker import check
+
+
+def errors(root):
+    return [f for f in check(root) if f.level == "error"]
+
+
+def codes(root):
+    return {f.code for f in errors(root)}
+
+
+def test_fixture_has_zero_errors(fixture_bucket):
+    assert errors(fixture_bucket) == []
+
+
+def test_scratch_bucket_is_clean(make_bucket):
+    assert errors(make_bucket()) == []
+
+
+def test_e1_missing_zone(make_bucket):
+    root = make_bucket()
+    shutil.rmtree(root / "workbench")
+    found = errors(root)
+    assert any(f.code == "E1" and "workbench" in f.message for f in found)
+
+
+def test_e2_bucket_card_missing_and_missing_field(make_bucket):
+    root = make_bucket()
+    card = root / "BUCKET.md"
+    text = card.read_text(encoding="utf-8").replace("kind: personal\n", "")
+    card.write_text(text, encoding="utf-8")
+    assert any(f.code == "E2" and "kind" in f.message for f in errors(root))
+    card.unlink()
+    assert "E2" in codes(root)
+
+
+def test_e3_unparseable_and_missing_required_field(make_bucket):
+    root = make_bucket()
+    (root / "library" / "broken.md").write_text(
+        "---\ntitle: [unclosed\n---\n\n## Summary\n\nx\n\n---\n\nBody.\n",
+        encoding="utf-8",
+    )
+    (root / "output" / "untitled.md").write_text(
+        "---\ntype: note\naurora: library\n---\n\n## Summary\n\nx\n\n---\n\nBody.\n",
+        encoding="utf-8",
+    )
+    found = errors(root)
+    assert any(f.code == "E3" and f.path == "library/broken.md" for f in found)
+    assert any(f.code == "E3" and "title" in f.message for f in found)
+
+
+def test_e4_unknown_aurora(make_bucket):
+    root = make_bucket()
+    (root / "library" / "weird.md").write_text(
+        "---\ntitle: W\ntype: note\naurora: vibes\n---\n\n"
+        "## Summary\n\nx\n\n---\n\nBody.\n",
+        encoding="utf-8",
+    )
+    assert any(f.code == "E4" and "vibes" in f.message for f in errors(root))
+
+
+def test_e5_not_summary_first(make_bucket):
+    root = make_bucket()
+    (root / "library" / "rushed.md").write_text(
+        "---\ntitle: R\ntype: note\naurora: library\n---\n\nStraight to body.\n",
+        encoding="utf-8",
+    )
+    assert any(f.code == "E5" and f.path == "library/rushed.md"
+               for f in errors(root))
+
+
+def test_e6_unknown_ledger_verb(make_bucket):
+    root = make_bucket()
+    with (root / "LEDGER.md").open("a", encoding="utf-8") as fh:
+        fh.write("- 09:30 · test · yeeted · library/notes.md\n")
+    assert any(f.code == "E6" and "yeeted" in f.message for f in errors(root))
+
+
+def test_e7_both_directions(make_bucket):
+    root = make_bucket()
+    # a sources file with no manifest row
+    (root / "sources" / "stray.csv").write_text("a,b\n", encoding="utf-8")
+    assert any(f.code == "E7" and "stray.csv" in f.message for f in errors(root))
+    # a manifest row whose file is gone
+    with (root / "sources" / "MANIFEST.md").open("a", encoding="utf-8") as fh:
+        fh.write("| ghost.pdf | 2026-07-10 | test | deadbeef00000000 | — |\n")
+    assert any(f.code == "E7" and "ghost.pdf" in f.message for f in errors(root))
+
+
+def test_e7_exemptions(make_bucket):
+    root = make_bucket()
+    (root / "sources" / ".gitkeep").write_text("", encoding="utf-8")
+    assert "E7" not in codes(root)  # MANIFEST.md and dotfiles are invisible
+
+
+def test_e8_filenames(make_bucket):
+    root = make_bucket()
+    valid_doc = (root / "library" / "notes.md").read_text(encoding="utf-8")
+    (root / "library" / "Bad_Name.md").write_text(valid_doc, encoding="utf-8")
+    (root / "library" / ("a" * 61 + ".md")).write_text(valid_doc, encoding="utf-8")
+    (root / "output" / "photo.png").write_text("", encoding="utf-8")
+    found = [f for f in errors(root) if f.code == "E8"]
+    paths = {f.path for f in found}
+    assert "library/Bad_Name.md" in paths
+    assert "library/" + "a" * 61 + ".md" in paths
+    assert "output/photo.png" in paths
+
+
+def test_e8_exemptions(make_bucket):
+    root = make_bucket()
+    (root / "library" / ".gitkeep").write_text("", encoding="utf-8")
+    assert "E8" not in codes(root)  # INDEX.md and dotfiles are invisible
