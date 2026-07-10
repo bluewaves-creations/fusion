@@ -52,10 +52,15 @@ def test_fan_out_links_link_agents_and_reports_standard(home, canonical):
 
 
 def test_fan_out_leaves_foreign_dir_unless_forced(home, canonical):
-    (home / ".claude" / "skills" / "fusion-intake").mkdir(parents=True)
+    foreign = home / ".claude" / "skills" / "fusion-intake"
+    foreign.mkdir(parents=True)
+    (foreign / "SKILL.md").write_text("---\nname: my-own-tool\n---\n")
+    (foreign / "data.txt").write_text("do not touch\n")
     results = setup.fan_out(canonical, setup.detect_agents(home), force=False)
     intake = [r for r in results if r["skill"] == "fusion-intake"][0]
     assert intake["action"] == "left"
+    assert (foreign / "data.txt").read_text() == "do not touch\n"
+    assert (foreign / "SKILL.md").read_text() == "---\nname: my-own-tool\n---\n"
     results = setup.fan_out(canonical, setup.detect_agents(home), force=True)
     intake = [r for r in results if r["skill"] == "fusion-intake"][0]
     assert intake["action"] == "replaced"
@@ -73,11 +78,19 @@ def test_fan_out_copies_when_symlink_unavailable(home, canonical, monkeypatch):
     assert {r["action"] for r in pi} == {"copied"}
     copied = home / ".pi" / "agent" / "skills" / "fusion-intake"
     assert copied.is_dir() and not copied.is_symlink()
-    # a stale copy refreshes on re-run
+    # the copy carries a provenance sentinel — that's how we know it's ours
+    sentinel = copied / ".fusion-setup"
+    assert sentinel.is_file()
+    assert sentinel.read_text().splitlines()[1] == setup.tree_digest(
+        canonical / "fusion-intake")
+    # a stale copy refreshes on re-run, recognized via the sentinel branch
+    # (a copy can never digest-equal the canonical skill — the sentinel
+    # itself is an extra file — so the sentinel is what proves provenance)
     (copied / "SKILL.md").write_text("stale")
     again = setup.fan_out(canonical, setup.detect_agents(home), force=False)
     pi_intake = [r for r in again if r["skill"] == "fusion-intake"][0]
     assert pi_intake["action"] == "copied"
+    assert (copied / ".fusion-setup").is_file()
 
 
 def test_remove_all_is_attribution_checked(home, canonical):
@@ -90,3 +103,38 @@ def test_remove_all_is_attribution_checked(home, canonical):
     assert not (home / ".claude" / "skills" / "fusion-intake").exists()
     assert not (canonical / "fusion-intake").exists()
     assert any(r["action"] == "removed" for r in results)
+
+
+def test_remove_all_removes_sentinel_copies_and_leaves_foreign(
+        home, canonical, monkeypatch):
+    (home / ".pi").mkdir()
+
+    def no_symlink(*a, **k):
+        raise OSError("symlinks disabled")
+    monkeypatch.setattr(setup.os, "symlink", no_symlink)
+    setup.fan_out(canonical, setup.detect_agents(home), force=False)
+    ours = home / ".pi" / "agent" / "skills" / "fusion-intake"
+    assert (ours / ".fusion-setup").is_file()     # our sentinel-marked copy
+
+    # a foreign dir sharing a canonical skill's name — same shape, no
+    # sentinel, different content — must survive removal untouched, even
+    # discovered fresh (this agent never went through fan_out)
+    (home / ".claude").mkdir()
+    foreign = home / ".claude" / "skills" / "fusion-intake"
+    foreign.mkdir(parents=True)
+    (foreign / "SKILL.md").write_text("---\nname: my-own-tool\n---\n")
+    (foreign / "data.txt").write_text("do not touch\n")
+
+    results = setup.remove_all(canonical, home)
+
+    assert not ours.exists()                      # our copy: removed
+    pi_result = [r for r in results
+                 if r["agent"] == "Pi" and r["skill"] == "fusion-intake"][0]
+    assert pi_result["action"] == "removed"
+
+    assert foreign.is_dir()                        # foreign: left in place
+    assert (foreign / "data.txt").read_text() == "do not touch\n"
+    claude_result = [r for r in results
+                      if r["agent"] == "Claude Code"
+                      and r["skill"] == "fusion-intake"][0]
+    assert claude_result["action"] == "left"

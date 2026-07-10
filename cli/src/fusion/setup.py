@@ -156,9 +156,9 @@ def fan_out(canonical: Path, agents: list[dict], force: bool) -> list[dict]:
                 replaced = True
             elif target.is_dir():
                 if tree_digest(target) == tree_digest(skill):
-                    pass          # our copy, refresh below keeps it current
-                elif _is_our_stale_copy(target, skill):
-                    pass          # ours, just stale — refresh below
+                    pass          # our current copy, refresh below keeps it current
+                elif (target / ".fusion-setup").is_file():
+                    pass          # our stale copy (sentinel proves provenance) — refresh
                 elif not force:
                     results.append({**row, "action": "left",
                                     "detail": f"{target} exists and is not "
@@ -174,19 +174,13 @@ def fan_out(canonical: Path, agents: list[dict], force: bool) -> list[dict]:
                                 "detail": str(target)})
             except OSError:
                 shutil.copytree(skill, target)
+                (target / ".fusion-setup").write_text(
+                    f"{payload_version()}\n{tree_digest(skill)}\n")
                 results.append({**row,
                                 "action": "replaced" if replaced else "copied",
                                 "detail": f"{target} (symlinks unavailable — "
                                           f"re-run setup after upgrades)"})
     return results
-
-
-def _is_our_stale_copy(target: Path, skill: Path) -> bool:
-    # a copy is "ours" if it looks like a skill directory at all — a
-    # SKILL.md is present, even if its content is a stale (or corrupted)
-    # prior version. A bare/foreign directory has no SKILL.md.
-    del skill  # kept for interface symmetry / future refinement
-    return (target / "SKILL.md").is_file()
 
 
 def remove_all(canonical: Path, home: Path) -> list[dict]:
@@ -204,7 +198,8 @@ def remove_all(canonical: Path, home: Path) -> list[dict]:
                                 "detail": str(entry)})
             elif entry.is_dir() and not entry.is_symlink() \
                     and (canonical / entry.name).is_dir() \
-                    and tree_digest(entry) == tree_digest(canonical / entry.name):
+                    and ((entry / ".fusion-setup").is_file()
+                         or tree_digest(entry) == tree_digest(canonical / entry.name)):
                 shutil.rmtree(entry)
                 results.append({**row, "action": "removed",
                                 "detail": str(entry)})
