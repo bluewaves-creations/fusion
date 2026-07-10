@@ -1,6 +1,7 @@
 """fusion check — conformance per SPEC §11. Liberal reader: reports, never raises."""
 from __future__ import annotations
 
+import re
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,6 +9,11 @@ from pathlib import Path
 from . import indexer, ledger, manifest
 from .bucket import DOC_ZONES, REQUIRED_BUCKET_FIELDS, ZONES, load, iter_documents
 from .document import AURORAS, FILENAME_RE, MAX_STEM
+
+# SPEC §2, §11: output/ MAY hold non-markdown deliverables (exports); their
+# filenames must still be lowercase-hyphen slugs, just with any lowercase
+# extension rather than a hard-coded .md.
+EXPORT_FILENAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z0-9]+$")
 
 
 @dataclass
@@ -127,6 +133,17 @@ def _e8_filenames(root: Path) -> list[Finding]:
             if not p.is_file() or p.name == "INDEX.md" or p.name.startswith("."):
                 continue
             rel = f"{zone}/{p.relative_to(zone_dir).as_posix()}"
+            if zone == "output" and p.suffix.lower() != ".md":
+                if not EXPORT_FILENAME_RE.match(p.name):
+                    findings.append(Finding(
+                        "error", "E8", rel,
+                        "export filename must be a lowercase-hyphen slug "
+                        "with a lowercase extension"))
+                elif len(p.stem) > MAX_STEM:
+                    findings.append(Finding(
+                        "error", "E8", rel,
+                        f"filename stem exceeds {MAX_STEM} characters"))
+                continue
             if not FILENAME_RE.match(p.name):
                 findings.append(Finding(
                     "error", "E8", rel,

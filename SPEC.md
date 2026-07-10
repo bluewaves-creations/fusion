@@ -82,6 +82,9 @@ Zone rules:
   by category.
 - `library/`, `activities/`, `output/` — every `.md` file MUST conform to
   the document format (§4). `INDEX.md` files (§8) are generated and exempt.
+  `output/` MAY additionally hold non-markdown deliverable files (exports);
+  their filenames MUST still be lowercase-hyphen slugs (≤60 characters
+  before the extension) with a lowercase extension.
 - `workbench/` — no rules. Half-baked work belongs here. Leaving workbench
   (promotion) is a deliberate, ledger-logged act.
 - Fusion holds knowledge and work, never media or code. Big binaries and
@@ -339,7 +342,9 @@ A checker (reference implementation: `fusion check`) validates a bucket.
 Exemptions: registers are not documents — `MANIFEST.md` is exempt from
 E7's coverage requirement and `INDEX.md` from E8's filename rule (both are
 upper-case precisely so they stand apart) — and dotfiles such as
-`.gitkeep` are invisible to E7, E8, and W1.
+`.gitkeep` are invisible to E7, E8, and W1. Non-markdown deliverables in
+`output/` are exempt from E8's `.md` requirement — their stems MUST still
+be slug-shaped; they are not documents, so E3–E5 never apply to them.
 
 **Warnings** (drift, not damage):
 

@@ -237,6 +237,11 @@ Clean.
 
 ## Step 5 — export (gear: **export**, fusion-analyst) — the deliberate finding
 
+**Superseded — resolved by SPEC amendment, commit `spec+check: output/ may
+hold non-markdown deliverables — E8 slug rule without the .md requirement
+(acceptance finding, human-approved amendment)`.** The red result below is
+kept verbatim as the original evidence; a green re-run follows it.
+
 Scope: `title` + `type` for both library documents, as csv
 (references/export.md). Built the JSON payload and piped through the
 skill's own script, unmodified:
@@ -291,6 +296,79 @@ as a concern for the human to resolve (three options exist —
 scope E8 to `*.md` like E3-E5 already are, special-case `resource:`
 sidecar binaries, or accept non-md `output/` deliverables as always
 warned-not-erred — none of which is this agent's call).
+
+---
+
+### Green re-run — SPEC amendment verification
+
+The human amended SPEC 1.0 in place (pre-release, no version bump): `output/`
+MAY hold non-markdown deliverable files, whose filenames MUST still be
+lowercase-hyphen slugs (≤60 chars before the extension) with a lowercase
+extension; `library/` and `activities/` are unaffected — non-`.md` files
+there still fail E8 exactly as before. `_e8_filenames` in
+`cli/src/fusion/checker.py` now branches: for a non-`.md` file whose zone is
+`output`, it validates against a new `EXPORT_FILENAME_RE` (same shape,
+extension-agnostic) instead of the `.md`-only `FILENAME_RE`.
+
+Re-ran the export scenario for real, on a fresh scratch bucket, to prove the
+amendment rather than just asserting it:
+
+```bash
+export FUSION_HUB=/tmp/fusion-accept-amend/hub.md FUSION_ACTOR=claude
+uv run --project cli fusion new /tmp/fusion-accept-amend/horizon-demo \
+    --kind personal --description "SPEC amendment re-verification bucket."
+```
+
+Seeded one conformant library document, `library/gear/pedalboard.md`
+(`title`, `type: gear`, `aurora: library`, summary-first), signed, indexed,
+checked clean:
+
+```
+fusion log created "library/gear/pedalboard.md" --bucket .../horizon-demo --as claude
+fusion index .../horizon-demo --as claude
+→ library/ — 1 documents — regenerated
+fusion check .../horizon-demo
+→ horizon-demo: 0 errors · 0 warnings — clean, carry on.
+```
+
+Played export.md's own steps, unmodified — scope `title` + `type`, pipe
+through the skill's script, write the companion document:
+
+```bash
+echo '{"headers": ["title", "type"], "rows": [["Touring Pedalboard", "gear"]]}' \
+  | uv run skills/fusion-analyst/scripts/export.py --format csv \
+    --output output/exports/gear-export.csv
+→ {"written": ".../output/exports/gear-export.csv", "rows": 1, "format": "csv"}
+```
+
+Wrote `output/exports/gear-export.md`: `resource:
+output/exports/gear-export.csv`, `data_sources: [library/gear/pedalboard.md]`,
+summary of the export's scope.
+
+```
+fusion log shipped "output/exports/gear-export.csv" --bucket .../horizon-demo --as claude
+fusion index .../horizon-demo --as claude
+→ library/ — 1 documents — unchanged / activities/ — 0 documents — unchanged
+fusion check .../horizon-demo --json
+→ {
+    "bucket": "horizon-demo",
+    "ok": true,
+    "errors": [],
+    "warnings": []
+  }
+```
+
+**Green.** The same shape that produced E8 before the amendment —
+`title`/`type` slug filename, lowercase `.csv` extension, ≤60-char stem, in
+`output/exports/` — now passes cleanly. Confirmed the amendment did not
+loosen `library/`/`activities/`: the CLI suite's new
+`test_e8_non_md_outside_output_still_errors` plants
+`library/gear/data.csv` and asserts E8 still fires there, and
+`test_e8_output_export_bad_name_still_errors` plants
+`output/exports/Bad Name.csv` and confirms a malformed slug in `output/`
+still errors. Full CLI suite green (111 passed) and
+`examples/crazy-ones` (the normative fixture, untouched) still checks
+0 errors · 0 warnings. `/tmp/fusion-accept-amend` removed after the run.
 
 ---
 
@@ -419,20 +497,31 @@ is the honest outcome given "the resolution belongs to the human."
 
 ## Frictions (feed the Phase-4 backlog)
 
-1. **`fusion check`'s E8 rule fires on non-`.md` files in `output/`,
-   which the export gear's own instructions tell the analyst to put
-   there.** `_e3_e4_e5_documents` (E3-E5) correctly uses
-   `bucket.iter_documents`, which is scoped to `*.md` — a csv/xlsx export
-   is invisible to those rules, as intended. But `_e8_filenames`
-   independently walks `DOC_ZONES` with `Path.rglob("*")` (all files, not
-   `*.md`), and its filename regex hard-requires the `.md` extension. The
-   result: every export gear run that ships a non-md binary alongside its
-   `.md` passport document — the exact pattern `references/export.md`
-   describes — makes `fusion check` report `ok: false` on a perfectly
-   correct bucket. Three plausible fixes exist (scope E8 to `*.md` matching
-   E3-E5's pattern; special-case files named by another document's
-   `resource:` field; or downgrade this specific shape to a warning) — left
-   for the human, per the brief. Not patched here.
+1. **RESOLVED**, same day (2026-07-10), commit `spec+check: output/ may
+   hold non-markdown deliverables — E8 slug rule without the .md
+   requirement (acceptance finding, human-approved amendment)`.
+   `fusion check`'s E8 rule fired on non-`.md` files in `output/`, which
+   the export gear's own instructions tell the analyst to put there.
+   `_e3_e4_e5_documents` (E3-E5) correctly uses `bucket.iter_documents`,
+   which is scoped to `*.md` — a csv/xlsx export is invisible to those
+   rules, as intended. But `_e8_filenames` independently walks `DOC_ZONES`
+   with `Path.rglob("*")` (all files, not `*.md`), and its filename regex
+   hard-required the `.md` extension. The result: every export gear run
+   that ships a non-md binary alongside its `.md` passport document — the
+   exact pattern `references/export.md` describes — made `fusion check`
+   report `ok: false` on a perfectly correct bucket. The human chose the
+   third of the three options originally on the table: SPEC 1.0 amended
+   in place (pre-release, no version bump) so `output/` MAY hold
+   non-markdown deliverables whose filenames MUST still be
+   lowercase-hyphen slugs (≤60 chars) with a lowercase extension;
+   `library/` and `activities/` are untouched — non-`.md` files there
+   still fail E8. `_e8_filenames` now branches on zone for non-`.md`
+   files, validating `output/` against a new `EXPORT_FILENAME_RE` instead
+   of skipping the check. Verified by a real re-run of the export
+   scenario (see "Green re-run" under Step 5 above) plus three new CLI
+   tests (`test_e8_output_export_conformant_slug_is_clean`,
+   `test_e8_output_export_bad_name_still_errors`,
+   `test_e8_non_md_outside_output_still_errors`).
 2. **`fusion index` never touches `output/`.** `indexer.INDEXED_ZONES`
    covers `library/` and `activities/` only (confirmed: three `shipped`
    entries in Steps 3-5 each triggered a `fusion index` call that reported

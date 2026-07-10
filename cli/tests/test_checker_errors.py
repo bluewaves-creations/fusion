@@ -100,18 +100,45 @@ def test_e8_filenames(make_bucket):
     valid_doc = (root / "library" / "notes.md").read_text(encoding="utf-8")
     (root / "library" / "Bad_Name.md").write_text(valid_doc, encoding="utf-8")
     (root / "library" / ("a" * 61 + ".md")).write_text(valid_doc, encoding="utf-8")
-    (root / "output" / "photo.png").write_text("", encoding="utf-8")
+    (root / "activities" / "photo.png").write_text("", encoding="utf-8")
     found = [f for f in errors(root) if f.code == "E8"]
     paths = {f.path for f in found}
     assert "library/Bad_Name.md" in paths
     assert "library/" + "a" * 61 + ".md" in paths
-    assert "output/photo.png" in paths
+    assert "activities/photo.png" in paths
 
 
 def test_e8_exemptions(make_bucket):
     root = make_bucket()
     (root / "library" / ".gitkeep").write_text("", encoding="utf-8")
     assert "E8" not in codes(root)  # INDEX.md and dotfiles are invisible
+
+
+def test_e8_output_export_conformant_slug_is_clean(make_bucket):
+    root = make_bucket()
+    exports = root / "output" / "exports"
+    exports.mkdir(parents=True)
+    (exports / "gear-export.csv").write_text("a,b\n1,2\n", encoding="utf-8")
+    assert "E8" not in codes(root)  # non-md deliverables MAY live in output/
+
+
+def test_e8_output_export_bad_name_still_errors(make_bucket):
+    root = make_bucket()
+    exports = root / "output" / "exports"
+    exports.mkdir(parents=True)
+    (exports / "Bad Name.csv").write_text("a,b\n1,2\n", encoding="utf-8")
+    found = [f for f in errors(root) if f.code == "E8"]
+    paths = {f.path for f in found}
+    assert "output/exports/Bad Name.csv" in paths
+
+
+def test_e8_non_md_outside_output_still_errors(make_bucket):
+    root = make_bucket()
+    (root / "library" / "gear").mkdir()
+    (root / "library" / "gear" / "data.csv").write_text("a,b\n1,2\n", encoding="utf-8")
+    found = [f for f in errors(root) if f.code == "E8"]
+    paths = {f.path for f in found}
+    assert "library/gear/data.csv" in paths
 
 
 def test_e3_null_or_blank_required_field(make_bucket):
