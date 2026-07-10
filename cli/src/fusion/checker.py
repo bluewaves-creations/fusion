@@ -228,19 +228,20 @@ def _w5_untouched_activities(root: Path) -> list[Finding]:
     if not reflections:
         return []
     start = reflections[-2] + 1 if len(reflections) >= 2 else 0
-    window = entries[start:reflections[-1]]
     findings = []
     for zone, rel, doc in iter_documents(root, zones=("activities",)):
         if doc.status != "active":
             continue
         doc_path = f"activities/{rel.as_posix()}"
         activity_dir = f"activities/{rel.parent.as_posix()}/"
-        mentioned = any(
-            doc_path in e.obj or activity_dir in e.obj for e in window
-        )
-        if not mentioned:
-            findings.append(Finding(
-                "warning", "W5", doc_path,
-                "active activity with no ledger mention across the last "
-                "reflection window"))
+        mentions = [i for i, e in enumerate(entries)
+                    if doc_path in e.obj or activity_dir in e.obj]
+        if any(start <= i < reflections[-1] for i in mentions):
+            continue
+        if mentions and mentions[0] > reflections[-1]:
+            continue  # born after the reflection — not yet through a window
+        findings.append(Finding(
+            "warning", "W5", doc_path,
+            "active activity with no ledger mention across the last "
+            "reflection window"))
     return findings

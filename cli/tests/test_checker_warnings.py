@@ -187,6 +187,31 @@ def test_w5_applies_on_archive_paths_too(make_bucket):
     assert [f.path for f in found] == ["activities/archive/quiet/plan.md"]
 
 
+LEDGER_REFLECTION_THEN_BIRTH = """# Ledger
+
+## 2026-06-25
+- 09:00 · test · created · BUCKET.md — "bucket born"
+- 10:00 · test · reflected · bucket
+
+## 2026-07-08
+- 09:30 · test · created · activities/newborn/plan.md
+"""
+# One reflection, then the activity is created AFTER it: its first (and
+# only) ledger mention postdates the window, so it is exempt — it hasn't
+# lived through a reflection window yet.
+
+
+def test_w5_exempts_activities_born_after_the_reflection(make_bucket):
+    root = make_bucket()
+    plan = root / "activities" / "newborn" / "plan.md"
+    plan.parent.mkdir()
+    plan.write_text(ACTIVE_PLAN, encoding="utf-8")
+    (root / "LEDGER.md").write_text(LEDGER_REFLECTION_THEN_BIRTH, encoding="utf-8")
+    from fusion import indexer
+    indexer.write_indexes(root)
+    assert "W5" not in wcodes(root)
+
+
 def test_w5_directory_mention_suppresses(make_bucket):
     root = make_bucket()
     plan = root / "activities" / "quiet" / "plan.md"

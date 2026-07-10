@@ -357,7 +357,9 @@ be slug-shaped; they are not documents, so E3–E5 never apply to them.
    most recent `reflected` entries (§10) — an activity untouched across a
    full reflection window. Buckets that have never reflected do not trigger
    this warning; after the first reflection the window runs from the
-   bucket's birth.
+   bucket's birth. Activities whose first ledger mention postdates the
+   window are exempt — a thing born after the reflection has not yet lived
+   through one.
 
 A consumer MUST NOT refuse to read a bucket with errors; a producer MUST
 NOT add to one without flagging them. Recovery is always possible: the
