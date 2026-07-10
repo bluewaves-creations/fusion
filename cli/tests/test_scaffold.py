@@ -54,15 +54,24 @@ def test_new_bucket_refuses_taken_name(tmp_path):
                    description="d", actor="claude")
 
 
+HOSTILE_DESCRIPTIONS = [
+    "Music: gear, #1 priority — 100% real",
+    # sentence-length prose crosses PyYAML's default 80-column wrap width
+    "A long description of my studio bucket: microphones, preamps, "
+    "compressors, cables, and everything else that lives in the racks "
+    "upstairs, plus the tape machines.",
+    "first line\nsecond line",
+]
+
+
 def test_new_bucket_conformant_with_hostile_description(tmp_path):
-    root, _ = new_bucket(
-        tmp_path / "tricky",
-        description="Music: gear, #1 priority — 100% real",
-        actor="claude",
-    )
-    assert check(root) == []
     from fusion import bucket
-    assert bucket.load(root).description == "Music: gear, #1 priority — 100% real"
+    for i, description in enumerate(HOSTILE_DESCRIPTIONS):
+        root, _ = new_bucket(
+            tmp_path / f"tricky-{i}", description=description, actor="claude",
+        )
+        assert check(root) == []
+        assert bucket.load(root).description == description
 
 
 def test_hub_path_contraction_respects_boundaries(tmp_path, monkeypatch):

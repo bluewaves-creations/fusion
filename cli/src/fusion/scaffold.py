@@ -32,7 +32,10 @@ reflection_cadence: weekly
 
 def _yaml_scalar(value: str) -> str:
     """Render a string as a safe single-line YAML scalar (quoted only when needed)."""
-    return yaml.safe_dump(value, default_flow_style=True, allow_unicode=True).split("\n")[0]
+    style = '"' if "\n" in value else None
+    return yaml.safe_dump(
+        value, allow_unicode=True, width=2**31 - 1, default_style=style
+    ).split("\n")[0]
 
 MANIFEST_HEADER = (
     "# Manifest\n\n| file | added | by | sha256 | library |\n"
