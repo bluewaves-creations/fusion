@@ -14,7 +14,8 @@ if ($uv) { $uvExe = $uv.Source }
 else {
     Say "installing uv (Astral's official installer)..."
     if ($env:FUSION_NO_MODIFY_PATH -eq "1") { $env:UV_NO_MODIFY_PATH = "1" }
-    Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression
+    try { Invoke-RestMethod https://astral.sh/uv/install.ps1 | Invoke-Expression }
+    catch { Fail "could not download or run uv's installer - install uv yourself (https://docs.astral.sh/uv/), then: uv tool install fusion-cli; fusion setup" }
     $uvExe = Join-Path $HOME ".local\bin\uv.exe"
     if (-not (Test-Path $uvExe)) { Fail "uv installed but not found at $uvExe - restart the terminal and re-run, or run by hand: uv tool install fusion-cli; fusion setup" }
 }
@@ -28,7 +29,9 @@ Say "installing $spec..."
 if ($LASTEXITCODE -ne 0) { Fail "uv tool install failed. manual step: uv tool install --force $spec" }
 
 # 3 — hand off to the brain
-$bin = (& $uvExe tool dir --bin).Trim()
+$binRaw = & $uvExe tool dir --bin
+if ($LASTEXITCODE -ne 0 -or -not $binRaw) { Fail "could not resolve uv's tool bin dir - run by hand: uv tool dir --bin, then <that dir>\fusion.exe setup" }
+$bin = "$binRaw".Trim()
 $fusion = Join-Path $bin "fusion.exe"
 if (-not (Test-Path $fusion)) { Fail "fusion not found in $bin after install - run by hand: uv tool dir --bin, then <that dir>\fusion.exe setup" }
 & $fusion setup
