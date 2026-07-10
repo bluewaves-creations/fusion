@@ -111,7 +111,7 @@ def new_bucket(
         except ValueError:
             display = str(root)
         try:
-            hub.add(hub.HubEntry(name, kind, display, description))
+            hub.add(hub.HubEntry(name, kind, display, " ".join(description.split())))
         except (ValueError, OSError) as exc:
             warnings.append(f"hub registration failed: {exc}")
 
