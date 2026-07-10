@@ -214,21 +214,32 @@ def _bump_updated(text: str, doc_rel: str) -> str:
 
 def apply_proposals(root: Path, proposals: list) -> int:
     """Rewrite ONLY the given (doc, link) -> target pairs. Validates every
-    pair — doc under library/ or activities/, doc exists, the literal
-    `](link)` text is present, target resolves inside the bucket and
-    exists on disk — BEFORE writing any file (validate-all-before-damage,
-    the intake gate's rule applied here)."""
+    pair — doc under library/ or activities/, doc not a single-writer
+    register (SKIP_NAMES), doc exists, the literal `](link)` text is
+    present, target resolves inside the bucket and exists on disk, AND the
+    doc's frontmatter parses — BEFORE writing any file
+    (validate-all-before-damage, the intake gate's rule applied here). The
+    frontmatter check runs in phase 1 specifically so a later doc's
+    malformed frontmatter can never be discovered mid-write, after an
+    earlier doc in the same batch was already rewritten: phase 2's own
+    _bump_updated call stays as a safety net, but by construction it can
+    no longer raise."""
     root = Path(root).resolve()
     zone_roots = {zone: (root / zone).resolve() for zone in DOC_ZONES}
 
     # ── phase 1: validate every pair, read but never write ───────────────
     plan: dict[Path, list[tuple[str, str]]] = {}
     doc_texts: dict[Path, str] = {}
+    frontmatter_checked: set[Path] = set()
     for i, p in enumerate(proposals):
         doc_rel = p["doc"]
         link = p["link"]
         target = p["target"]
         doc_path = (root / doc_rel).resolve()
+        if doc_path.name in SKIP_NAMES:
+            raise RepairError(
+                f"proposals[{i}]: refuses a single-writer register, "
+                f"never a repair target (skip: {doc_rel!r})")
         if not any(doc_path.is_relative_to(z) for z in zone_roots.values()):
             raise RepairError(
                 f"proposals[{i}]: doc outside library/ or activities/: "
@@ -251,6 +262,14 @@ def apply_proposals(root: Path, proposals: list) -> int:
             raise RepairError(
                 f"proposals[{i}]: link text not found verbatim in "
                 f"{doc_rel!r}: {link!r}")
+
+        if doc_path not in frontmatter_checked:
+            # Raises RepairError (unparseable/missing frontmatter) before
+            # any document in this batch has been written — the same
+            # parse _bump_updated would otherwise only attempt in phase 2,
+            # by which point earlier docs could already be on disk.
+            _split_frontmatter(text, doc_rel)
+            frontmatter_checked.add(doc_path)
 
         plan.setdefault(doc_path, []).append((link, target))
 

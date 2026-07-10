@@ -201,6 +201,49 @@ def test_apply_refuses_traversal_target_outside_bucket(bucket):
     assert doc.read_text(encoding="utf-8") == before
 
 
+def test_apply_all_or_nothing_across_documents(bucket):
+    # Doc A has good frontmatter and a valid proposal; doc B has NO
+    # frontmatter block at all and is listed AFTER doc A in the batch.
+    # Phase 1 must catch B's malformed frontmatter before phase 2 ever
+    # writes A — a later doc's defect must not let an earlier doc's write
+    # through (contract: one bad proposal -> zero writes).
+    seed_source(bucket, "cat/x.pdf", "pdf bytes")
+    seed_source(bucket, "cat/y.pdf", "pdf bytes")
+    doc_a = write_doc(bucket, "library/notes/a.md", "Broken: [a](assets/x.pdf).")
+    doc_b = bucket / "library" / "notes" / "b.md"
+    doc_b.write_text("No frontmatter here.\n\nBroken: [b](assets/y.pdf).\n",
+                      encoding="utf-8")
+    before_a = doc_a.read_text(encoding="utf-8")
+    before_b = doc_b.read_text(encoding="utf-8")
+    proposals = [
+        {"doc": "library/notes/a.md", "link": "assets/x.pdf",
+         "target": "../../sources/cat/x.pdf", "confidence": "exact"},
+        {"doc": "library/notes/b.md", "link": "assets/y.pdf",
+         "target": "../../sources/cat/y.pdf", "confidence": "exact"},
+    ]
+
+    with pytest.raises(lr.RepairError, match="no frontmatter block"):
+        lr.apply_proposals(bucket, proposals)
+
+    assert doc_a.read_text(encoding="utf-8") == before_a
+    assert doc_b.read_text(encoding="utf-8") == before_b
+
+
+def test_apply_refuses_index_md(bucket):
+    seed_source(bucket, "cat/x.pdf", "pdf bytes")
+    index = write_doc(bucket, "library/INDEX.md", "Broken: [a](assets/x.pdf).")
+    before = index.read_text(encoding="utf-8")
+    proposals = [{
+        "doc": "library/INDEX.md", "link": "assets/x.pdf",
+        "target": "../sources/cat/x.pdf", "confidence": "exact",
+    }]
+
+    with pytest.raises(lr.RepairError, match="INDEX|skip"):
+        lr.apply_proposals(bucket, proposals)
+
+    assert index.read_text(encoding="utf-8") == before
+
+
 def test_apply_no_ledger_write(bucket):
     seed_source(bucket, "cat/x.pdf", "pdf bytes")
     write_doc(bucket, "library/notes/doc.md", "Broken: [a](assets/x.pdf).")
