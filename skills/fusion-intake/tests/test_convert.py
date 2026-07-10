@@ -308,6 +308,30 @@ def test_mail_attachments_never_collide(bucket):
     assert (run_dir / "rider-2.txt").read_bytes() == b"rider two\n"
 
 
+def test_mail_attachments_never_collide_case_insensitively(bucket):
+    put_inbox(bucket, "riders-case.eml", fx.make_eml_casefold_colliding_attachments)
+    rec = admit(bucket, "riders-case.eml")
+    record = convert.prepare(bucket, rec["source"])
+    assert len(set(record["attachments"])) == 2
+    run_dir = bucket / record["run_dir"]
+    # both files exist on disk with their own bytes — no macOS clobber
+    names = record["attachments"]
+    contents = {n: (run_dir / n).read_bytes() for n in names}
+    assert set(contents.values()) == {b"rider upper\n", b"rider lower\n"}
+    # both attachment files present on disk (plus manifest.json) — the
+    # second name was disambiguated, not silently clobbered by the first
+    assert {p.name for p in run_dir.iterdir()} == set(names) | {"manifest.json"}
+
+
+def test_mail_hostile_dotdot_filename_defused(bucket):
+    put_inbox(bucket, "hostile.eml", fx.make_eml_dotdot_attachment)
+    rec = admit(bucket, "hostile.eml")
+    record = convert.prepare(bucket, rec["source"])
+    assert record["attachments"] == ["attachment.bin"]
+    run_dir = bucket / record["run_dir"]
+    assert (run_dir / "attachment.bin").read_bytes() == b"payload\n"
+
+
 def test_merged_cells_keep_their_anchor_value(bucket):
     put_inbox(bucket, "forecast.xlsx", fx.make_merged_xlsx)
     rec = admit(bucket, "forecast.xlsx")

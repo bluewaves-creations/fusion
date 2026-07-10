@@ -74,8 +74,12 @@ class SourceIndex:
 
 def _iter_files(root: Path):
     for p in sorted(root.rglob("*")):
-        if p.is_file() and not p.name.startswith(".") and p.name not in SKIP_NAMES:
-            yield p
+        if not p.is_file() or p.name in SKIP_NAMES:
+            continue
+        rel = p.relative_to(root)
+        if any(part.startswith(".") for part in rel.parts):
+            continue
+        yield p
 
 
 def index_sources(sources_dir: Path) -> SourceIndex:

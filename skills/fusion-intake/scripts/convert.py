@@ -308,15 +308,19 @@ def eml_to_text(path: Path, work_dir: Path):
     if body and body.get_content_subtype() == "html":
         content = html_to_text(content)
     attachments = []
+    seen_lower = set()
     for part in msg.iter_attachments():
         name = Path(part.get_filename() or "attachment.bin").name
+        if name in {"", ".", ".."}:
+            name = "attachment.bin"
         stem, dot, ext = name.partition(".")
         n = 2
-        while name in attachments:
+        while name.lower() in seen_lower:
             name = f"{stem}-{n}{dot}{ext}"
             n += 1
         (work_dir / name).write_bytes(part.get_payload(decode=True) or b"")
         attachments.append(name)
+        seen_lower.add(name.lower())
     return "\n".join(lines) + "\n\n" + content, attachments
 
 

@@ -88,6 +88,20 @@ def test_manifest_and_dotfiles_ignored(bucket):
     assert "MANIFEST.md" not in {p for paths in idx.by_hash.values() for p in paths}
 
 
+def test_dot_directories_invisible_to_the_gate(bucket):
+    snap = bucket / "sources" / ".snapshots" / "old.txt"
+    snap.parent.mkdir(parents=True)
+    snap.write_text(LONG_A, encoding="utf-8")
+    drop(bucket, "old.txt", LONG_A)
+    result = run_gate(bucket)
+    # the .snapshots copy is invisible to the source index, so the inbox
+    # file matches nothing and lands as clean_new, not near/exact-dup
+    assert [e["incoming"] for e in result["clean_new"]] == ["old.txt"]
+    assert result["exact_dups"] == []
+    assert result["near_dups"] == []
+    assert result["update_candidates"] == []
+
+
 def test_normalize_filename():
     assert gate.normalize_filename("2026-07-01_Q1 Report.xlsx") == "q1-report"
     assert gate.normalize_filename("Price__List--FINAL.csv") == "price-list-final"

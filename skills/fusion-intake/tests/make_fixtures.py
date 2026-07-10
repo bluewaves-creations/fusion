@@ -153,6 +153,36 @@ def make_eml_colliding_attachments(path: Path):
     path.write_bytes(bytes(msg))
 
 
+def make_eml_casefold_colliding_attachments(path: Path):
+    """Two distinct attachments whose names differ only by case — macOS's
+    case-insensitive filesystem must not let one clobber the other."""
+    msg = EmailMessage()
+    msg["From"] = "gilberte@example.com"
+    msg["To"] = "studio@example.com"
+    msg["Subject"] = "Rider, twice"
+    msg["Date"] = "Fri, 10 Jul 2026 11:00:00 +0200"
+    msg.set_content("Two riders attached, same name modulo case.\n")
+    msg.add_attachment(b"rider upper\n", maintype="text", subtype="plain",
+                       filename="Rider.txt")
+    msg.add_attachment(b"rider lower\n", maintype="text", subtype="plain",
+                       filename="rider.txt")
+    path.write_bytes(bytes(msg))
+
+
+def make_eml_dotdot_attachment(path: Path):
+    """One attachment whose declared filename is the hostile '..' — must
+    not raise IsADirectoryError, must land as attachment.bin."""
+    msg = EmailMessage()
+    msg["From"] = "gilberte@example.com"
+    msg["To"] = "studio@example.com"
+    msg["Subject"] = "Hostile filename"
+    msg["Date"] = "Fri, 10 Jul 2026 12:00:00 +0200"
+    msg.set_content("One attachment with a hostile filename.\n")
+    msg.add_attachment(b"payload\n", maintype="application",
+                       subtype="octet-stream", filename="..")
+    path.write_bytes(bytes(msg))
+
+
 def make_merged_xlsx(path: Path):
     """A merged title spanning two columns — the anchor value must survive."""
     import openpyxl
