@@ -281,7 +281,7 @@ root, with a trailing `/`; sections are ordered alphabetically, except
 sections under `archive/` which sort last (alphabetical among themselves);
 entries within a section are ordered alphabetically by relative path;
 documents at the zone root come first, under a `./` heading. The summary
-text is the first physical line of the document's `## Summary` section,
+text is the first non-blank physical line of the document's `## Summary` section,
 verbatim. An INDEX is *stale* when regeneration would produce different
 bytes.
 
