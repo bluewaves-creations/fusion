@@ -66,14 +66,18 @@ _SCHEME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
 # same fix as cli/src/fusion/document.py's `_blank_code` (twin
 # implementation, kept independent so this skill stays self-contained).
 _FENCE_OPEN_RE = re.compile(r"^(\s*)(`{3,}|~{3,})")
-_INLINE_CODE_RE = re.compile(r"`[^`\n]*?`")
+_INLINE_CODE_RE = re.compile(r"(`+)((?:(?!\1)[^\n])*?)\1")
 
 
 def _blank_code(body: str) -> str:
     """Blank fenced blocks (opener to closer inclusive, unterminated
     fences swallow to EOF) and single-line inline code spans, replacing
     each with equal-length whitespace so link extraction never reads
-    code as prose."""
+    code as prose. Inline spans use a run of N backticks as delimiter
+    (CommonMark's literal-backtick idiom, e.g.
+    `` `` `code with ` backtick` `` ``), closing only on the next run of
+    the SAME length, so a shorter backtick run inside the span is just
+    content, not a terminator."""
     lines = body.split("\n")
     out = []
     i = 0

@@ -121,6 +121,45 @@ def test_scan_ignores_inline_code_span(bucket):
     assert result["unrepairable"] == []
 
 
+def test_scan_ignores_double_backtick_span_real_link_still_proposed(bucket):
+    # CommonMark's literal-backtick idiom: `` `code with ` backtick` ``
+    # closes only on the matching TWO-backtick run, so the inner single
+    # backtick (and the [x](gone.md) riding on it) is content, never a
+    # terminator — gone.md must stay invisible while real.md still gets
+    # scanned and proposed normally.
+    write_doc(bucket, "library/notes/real.md", "Real target.")
+    write_doc(bucket, "library/notes/sub/doc.md",
+              "See `` [x](gone.md)` `` and then [real](real.md).")
+
+    result = lr.scan(bucket)
+
+    assert result["proposals"] == [{
+        "doc": "library/notes/sub/doc.md",
+        "link": "real.md",
+        "target": "../real.md",
+        "confidence": "exact",
+    }]
+    assert result["unrepairable"] == []
+
+
+def test_scan_finds_real_link_after_inline_code_span_same_line(bucket):
+    # The reviewer's named same-line case: a single-backtick span
+    # followed immediately by a real link must not swallow the link.
+    write_doc(bucket, "library/notes/real.md", "Real target.")
+    write_doc(bucket, "library/notes/sub/doc.md",
+              "`code` [real](real.md) right after the span.")
+
+    result = lr.scan(bucket)
+
+    assert result["proposals"] == [{
+        "doc": "library/notes/sub/doc.md",
+        "link": "real.md",
+        "target": "../real.md",
+        "confidence": "exact",
+    }]
+    assert result["unrepairable"] == []
+
+
 def test_scan_real_broken_link_outside_fence_still_proposed(bucket):
     seed_source(bucket, "cat/x.pdf", "pdf bytes")
     write_doc(bucket, "library/notes/doc.md",

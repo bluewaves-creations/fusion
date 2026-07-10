@@ -18,7 +18,7 @@ MAX_STEM = 60
 _LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 _EXTERNAL = ("http://", "https://", "mailto:", "#")
 _FENCE_OPEN_RE = re.compile(r"^(\s*)(`{3,}|~{3,})")
-_INLINE_CODE_RE = re.compile(r"`[^`\n]*?`")
+_INLINE_CODE_RE = re.compile(r"(`+)((?:(?!\1)[^\n])*?)\1")
 
 
 def _blank_code(body: str) -> str:
@@ -28,7 +28,11 @@ def _blank_code(body: str) -> str:
     replaced with equal-length whitespace, line by line; an unterminated
     fence is liberal by design and swallows to end of file rather than
     risk a false-positive broken link. Inline `` `...` `` spans on a
-    single line are blanked the same way, non-greedy."""
+    single line are blanked the same way, non-greedy — the delimiter is
+    a run of N backticks (CommonMark's literal-backtick idiom, e.g.
+    `` `` `code with ` backtick` `` ``), closing only on the next run of
+    the SAME length, so a shorter backtick run inside the span is just
+    content, not a terminator."""
     lines = body.split("\n")
     out = []
     i = 0

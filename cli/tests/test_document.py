@@ -151,6 +151,24 @@ def test_links_ignores_inline_code_span(tmp_path):
     assert read_document(p).links == []
 
 
+def test_links_ignores_double_backtick_span_with_inner_backtick(tmp_path):
+    # CommonMark's literal-backtick idiom: `` `code with ` backtick` ``
+    # opens and closes on a run of TWO backticks, so the single backtick
+    # (and the link riding on it) in the middle is just content, not a
+    # terminator — only real.md is a real link.
+    body = "See `` [x](gone.md)` `` … then [real](real.md).\n"
+    p = tmp_path / "x.md"
+    p.write_text(_doc(body), encoding="utf-8")
+    assert read_document(p).links == ["real.md"]
+
+
+def test_links_finds_real_link_after_inline_code_span_same_line(tmp_path):
+    body = "See `code` [x](real.md) right after the span.\n"
+    p = tmp_path / "x.md"
+    p.write_text(_doc(body), encoding="utf-8")
+    assert read_document(p).links == ["real.md"]
+
+
 def test_links_finds_real_link_between_two_fences(tmp_path):
     body = (
         "```\n[a](fenced-one.md)\n```\n\n"
