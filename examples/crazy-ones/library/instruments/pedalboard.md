@@ -4,7 +4,7 @@ type: instrument
 aurora: library
 tags: [gear, signal-chain]
 created: 2026-07-08
-updated: 2026-07-10
+updated: 2026-07-08
 source: sources/gear/pedalboard-inventory.csv
 ---
 
