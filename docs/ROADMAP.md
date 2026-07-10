@@ -49,8 +49,12 @@ open-source readiness.
 
 **Gate:**
 - [ ] `fusion today` composes a real morning correctly across buckets.
-- [ ] One full reflection cycle per bucket: proposals → judgment →
+- [x] One full reflection cycle per bucket: proposals → judgment →
       conventions updated → `reflected` signed.
+      Evidence: 2026-07-10 — bluewaves (4/4 adopted: 3 rules, actor
+      correction, link-repair delegation), ocean-way (universal rules),
+      personal (rules + profile marked); all three `reflected` entries
+      signed, post-reflection windows empty, checks green.
 - [ ] A week of real use; frictions recorded and triaged.
 - [x] Open-source pass: no personal paths, install-from-clean-machine
       test, README truthful.
