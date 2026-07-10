@@ -36,11 +36,11 @@ today, agenda; `--json` everywhere; `--since` on status/log.
 — agentskills.io-compliant, self-contained, byte-identical conventions copy.
 
 **Gate:**
-- [ ] Duplication check green (conventions copies byte-identical).
-- [ ] Each skill exercised on a scratch bucket; every scenario leaves
+- [x] Duplication check green (conventions copies byte-identical).
+- [x] Each skill exercised on a scratch bucket; every scenario leaves
       `fusion check` green and the ledger correctly signed.
-- [ ] Intake gate proven on real legacy formats (xlsx, docx, pdf, csv).
-- [ ] Skills reviewed against the writing-skills quality bar.
+- [x] Intake gate proven on real legacy formats (xlsx, docx, pdf, csv).
+- [x] Skills reviewed against the writing-skills quality bar.
 
 ## Phase 4 — Dogfood + release (the life)
 

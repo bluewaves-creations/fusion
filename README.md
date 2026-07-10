@@ -45,7 +45,7 @@ fictional studio bucket, fully conformant, ledger and all.
 |---|---|---|
 | 1 | The Convention + example bucket | ✅ this repo |
 | 2 | The `fusion` CLI | ✅ cli + gate |
-| 3 | The skill family | in design |
+| 3 | The skill family | ✅ skills + gate |
 | 4 | Dogfood + release | in design |
 
 Design spec: [docs/specs/2026-07-10-fusion-design.md](docs/specs/2026-07-10-fusion-design.md)
