@@ -176,6 +176,9 @@ relative paths: [the LP plan](../activities/lp-first-light/plan.md).
 | `status` | `active` \| `done` \| `dormant` | activities only |
 | `data_sources` | YAML list of bucket paths this was built from | output only |
 
+`updated` SHOULD reflect content changes only; moves, renames, and
+restructures do not bump it.
+
 Producers MAY add other keys; consumers MUST tolerate and SHOULD preserve
 unknown keys.
 
@@ -213,7 +216,7 @@ conformance error.
 
 `LEDGER.md` at bucket root is the collaboration record: what was done, by
 whom, and why. Git remembers bytes; the ledger remembers meaning. It is
-append-only, chronological, and has exactly one writer: `fusion log`.
+append-only, chronological, and has exactly one writer: the ledger tool (reference implementation: `fusion log`).
 Neither humans nor agents edit it by hand.
 
 ```markdown
@@ -257,7 +260,7 @@ of reach. Files are registered in `sources/MANIFEST.md`:
 ## 8. INDEX.md
 
 `library/INDEX.md` and `activities/INDEX.md` are GENERATED files
-(`fusion index`) giving one-page triage before opening anything. They MUST
+(reference implementation: `fusion index`) giving one-page triage before opening anything. They MUST
 carry the marker and MUST NOT be hand-edited:
 
 ```markdown
@@ -266,11 +269,22 @@ carry the marker and MUST NOT be hand-edited:
 
 ## instruments/
 
-- [Jazzmaster 1962](instruments/jazzmaster-1962.md) — 1962 Fender Jazzmaster: provenance, setup, service history (library)
-- [Pedalboard](instruments/pedalboard.md) — current pedalboard chain and settings (library)
+- [Jazzmaster 1962](instruments/jazzmaster-1962.md) — A 1962 Fender Jazzmaster in sunburst — provenance, setup, and service (library)
+- [Pedalboard](instruments/pedalboard.md) — The current pedalboard: five pedals, one job — the sound of the record. (library)
 ```
 
 Entry grammar: `- [<title>](<relative-path>) — <summary first line> (<aurora>)`.
+
+Generation rules, so two implementations produce identical bytes: each
+section heading is a document's parent directory path relative to the zone
+root, with a trailing `/`; sections are ordered alphabetically, except
+sections under `archive/` which sort last (alphabetical among themselves);
+entries within a section are ordered alphabetically by relative path;
+documents at the zone root come first, under a `./` heading. The summary
+text is the first physical line of the document's `## Summary` section,
+verbatim. An INDEX is *stale* when regeneration would produce different
+bytes.
+
 Consumers MUST tolerate a missing or stale INDEX (liberal reader).
 
 ## 9. Archive
@@ -322,14 +336,21 @@ A checker (reference implementation: `fusion check`) validates a bucket.
    is gone (§7).
 8. A filename violating §4 rules, in the three document zones.
 
+Exemptions: registers are not documents — `MANIFEST.md` is exempt from
+E7's coverage requirement and `INDEX.md` from E8's filename rule (both are
+upper-case precisely so they stand apart) — and dotfiles such as
+`.gitkeep` are invisible to E7 and E8.
+
 **Warnings** (drift, not damage):
 
 1. Inbox files older than `inbox_max_age_days` (§2).
 2. INDEX.md stale or missing (§8).
 3. Archived path without `aurora: archive`, or vice versa (§9).
 4. Broken relative links between documents (§4).
-5. Activities with `status: active` and no ledger mention since the last
-   `reflected` entry (§10).
+5. Activities with `status: active` and no ledger mention between the two
+   most recent `reflected` entries (§10) — an activity untouched across a
+   full reflection window. Buckets with fewer than two reflections never
+   trigger this warning.
 
 A consumer MUST NOT refuse to read a bucket with errors; a producer MUST
 NOT add to one without flagging them. Recovery is always possible: the
