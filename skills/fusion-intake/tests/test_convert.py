@@ -50,6 +50,16 @@ def test_admit_missing_file(bucket):
         admit(bucket, "ghost.xlsx")
 
 
+def test_admit_refuses_unsupported_format(bucket):
+    (bucket / "inbox" / "mystery.xyz").write_text("???", encoding="utf-8")
+    with pytest.raises(convert.IntakeError, match="unsupported"):
+        admit(bucket, "mystery.xyz")
+    # nothing moved, nothing registered — the file stays in inbox
+    assert (bucket / "inbox" / "mystery.xyz").is_file()
+    manifest = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    assert "mystery.xyz" not in manifest
+
+
 # ── extractive paths ─────────────────────────────────────────────────────
 
 def test_xlsx_extractive_is_born_conformant(bucket):

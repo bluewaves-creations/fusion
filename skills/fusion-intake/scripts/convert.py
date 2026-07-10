@@ -42,6 +42,8 @@ LIBREOFFICE_EXTS = {".docx", ".pptx", ".doc", ".odt", ".rtf", ".key",
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 MAIL_EXTS = {".eml"}
 TEXT_EXTS = {".md", ".txt"}
+SUPPORTED_EXTS = (EXTRACTIVE_EXTS | LIBREOFFICE_EXTS | IMAGE_EXTS
+                  | MAIL_EXTS | TEXT_EXTS | {".pdf"})
 
 TEXT_COVERAGE_MIN_CHARS = 100   # below this a page is scanned/figure
 RENDER_DPI = 150
@@ -172,6 +174,10 @@ def admit(root: Path, inbox_rel: str, category: str, actor: str) -> dict:
     src = root / "inbox" / inbox_rel
     if not src.is_file():
         raise IntakeError(f"not in inbox/: {inbox_rel}")
+    if src.suffix.lower() not in SUPPORTED_EXTS:
+        raise IntakeError(
+            f"unsupported format: {src.suffix.lower()} — the gate refuses "
+            "what it cannot preserve; the file stays in inbox/")
     if not actor or any(c.isspace() for c in actor):
         raise IntakeError(f"actor must be a single token: {actor!r}")
     category = category.strip().strip("/")

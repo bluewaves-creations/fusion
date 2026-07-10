@@ -284,37 +284,61 @@ uv run skills/fusion-intake/scripts/gate.py --bucket /tmp/fusion-accept/intake-d
 Stage 1 has no format awareness — `mystery.xyz` classifies `clean_new`
 same as any other new file.
 
+**Original run (2026-07-10, superseded — preserved for the record).**
 Followed the documented pipeline literally (no scripts read beyond what
-SKILL.md/references direct): Stage 2 offers no explicit guard for
-unrecognized extensions (see Frictions #6), so per the pipeline order —
-Classify → **Admit** → Prepare — admitted it:
+SKILL.md/references direct): Stage 2 offered no explicit guard for
+unrecognized extensions, so per the pipeline order — Classify → **Admit**
+→ Prepare — admitted it:
 ```
 convert.py admit --file mystery.xyz --category misc --actor claude
 → {"source": "misc/mystery.xyz", "sha256": "255cb233...", "manifest_row": true}
 ```
 This **moved** `mystery.xyz` out of `inbox/` into `sources/misc/` —
-`admit` performs no extension check. Only then did `prepare` refuse:
+`admit` performed no extension check at the time. Only then did
+`prepare` refuse:
 ```
 convert.py prepare --source misc/mystery.xyz --aurora explore
 → intake: unsupported format: .xyz — the gate refuses what it cannot preserve
 (exit 1)
 ```
-
-**The refusal itself fired loudly and correctly** — but the file does
-**not** stay in `inbox/` as the brief's scenario expects. `sources/` is
+The refusal itself fired loudly and correctly — but the file did **not**
+stay in `inbox/` as the brief's scenario expects. `sources/` is
 immutable (`Never modify, rename, or delete anything in sources/`), so
-this cannot be undone: `mystery.xyz` is now permanently in
+this could not be undone: `mystery.xyz` ended up permanently in
 `sources/misc/` with a MANIFEST row whose `library` column is `—`
 forever, no document, no way to retry through the normal close path.
-`fusion check` does not flag this dangling row either — confirmed green
-with no warnings. Logged a `noted` ledger entry to leave an audit trail
-since none of the eleven verbs fit "refused":
+`fusion check` did not flag this dangling row either — confirmed green
+with no warnings. A `noted` ledger entry was logged to leave an audit
+trail since none of the eleven verbs fit "refused":
 ```
 fusion log noted "mystery.xyz: admitted to sources/misc/ then prepare \
 refused (unsupported format .xyz) — no library doc created, MANIFEST \
 row dangling; friction — see acceptance transcript" --as claude
 ```
-This is the acceptance run's most significant finding — see Frictions #6.
+This was the acceptance run's most significant finding.
+
+**Re-run, post-fix (2026-07-10, same day).** `convert.py`'s `admit()`
+now checks the extension against `SUPPORTED_EXTS` and refuses **before**
+moving anything — closing the gap above. Verified in a minimal scratch
+bucket built like `test_convert.py`'s `bucket` fixture
+(`/tmp/fusion-accept6/bucket`, empty `sources/MANIFEST.md` seeded with
+just the header row):
+```
+$ uv run skills/fusion-intake/scripts/convert.py admit \
+    --bucket /tmp/fusion-accept6/bucket --file mystery.xyz \
+    --category records --actor claude
+intake: unsupported format: .xyz — the gate refuses what it cannot
+preserve; the file stays in inbox/
+(exit code 1)
+```
+Confirmed after the run: `inbox/mystery.xyz` still present;
+`sources/records/` was never created; `sources/MANIFEST.md` unchanged
+(header only — no `mystery.xyz` row, nothing to dangle). The refusal now
+fires before anything leaves `inbox/`, matching SKILL.md's fidelity
+contract ("the gate refuses what it cannot preserve; file stays in
+inbox") exactly. `_route`'s own refusal inside `prepare()` is kept as
+defense-in-depth for direct `prepare` calls that bypass `admit`. See
+Frictions #6, now RESOLVED.
 
 ---
 
@@ -395,17 +419,27 @@ Phase 4 list before this gate is exercised on a live bucket.
    made the judgment call to delete confirmed-redundant copies; that call
    isn't backed by the docs.
 6. **Highest-severity: unsupported-format files are not guaranteed to
-   "stay in inbox."** `admit()` performs no extension/format validation —
-   it will happily move *any* file from `inbox/` into the immutable
+   "stay in inbox."** `admit()` performed no extension/format validation —
+   it would happily move *any* file from `inbox/` into the immutable
    `sources/` tree, registering a MANIFEST row, before `prepare()` ever
-   gets a chance to raise `IntakeError: unsupported format`. Following
+   got a chance to raise `IntakeError: unsupported format`. Following
    the documented pipeline order (Classify → Admit → Prepare) exactly as
    written, `mystery.xyz` ended up permanently exiled to
    `sources/misc/mystery.xyz` with a dangling, never-linkable MANIFEST
    row — not "refused loudly with the file staying in inbox" as
    SKILL.md's fidelity contract implies. None of SKILL.md, `gate.md`, or
-   `convert.md` tell the operator to check the extension against the
-   supported list *before* calling `admit`. Recommend either (a) an
-   explicit pre-admit format check in `references/gate.md`'s Stage-2
-   protocol, or (b) moving the extension validation into `admit()` itself
-   so the refusal fires before the file leaves `inbox/`.
+   `convert.md` told the operator to check the extension against the
+   supported list *before* calling `admit`.
+
+   **RESOLVED**, same day (2026-07-10), commit `fusion-intake: the gate
+   refuses at admit, not after — unsupported formats never reach
+   sources/ (acceptance finding)`. Option (b) from the original
+   recommendation was implemented: extension validation moved into
+   `admit()` itself, checked against a new `SUPPORTED_EXTS` set right
+   after the `src.is_file()` guard, so the refusal now fires before the
+   file ever leaves `inbox/`. `_route`'s refusal inside `prepare()` is
+   kept as defense-in-depth for direct `prepare` calls. Covered by a new
+   test, `test_admit_refuses_unsupported_format` in
+   `skills/fusion-intake/tests/test_convert.py`, and re-verified live —
+   see the Scenario 6 re-run above. Frictions #1–#5 remain open as
+   recorded; only this one was in scope for the fix.
