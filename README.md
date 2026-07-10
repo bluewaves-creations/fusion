@@ -39,6 +39,11 @@ whatever comes next.
 See it in motion: [`examples/crazy-ones/`](examples/crazy-ones/) — a
 fictional studio bucket, fully conformant, ledger and all.
 
+## Get started
+
+Two moves — install the CLI, copy the skills — then make your first
+bucket. The walkthrough: [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
+
 ## Status
 
 | Phase | What | State |
@@ -46,7 +51,7 @@ fictional studio bucket, fully conformant, ledger and all.
 | 1 | The Convention + example bucket | ✅ this repo |
 | 2 | The `fusion` CLI | ✅ cli + gate |
 | 3 | The skill family | ✅ skills + gate |
-| 4 | Dogfood + release | in design |
+| 4 | Dogfood + release | in progress |
 
 Design spec: [docs/specs/2026-07-10-fusion-design.md](docs/specs/2026-07-10-fusion-design.md)
 · Roadmap & QA gates: [docs/ROADMAP.md](docs/ROADMAP.md)
@@ -54,7 +59,7 @@ Design spec: [docs/specs/2026-07-10-fusion-design.md](docs/specs/2026-07-10-fusi
 ## Lineage
 
 Fusion is the deliberate synthesis of four systems — Google's
-[OKF](https://github.com/GoogleCloudPlatform/knowledge-catalog), and
+[Knowledge Catalog](https://github.com/GoogleCloudPlatform/knowledge-catalog) open format ("OKF" in our design spec), and
 Bluewaves' Athena, Gizmo, and Shaping Room — keeping from each the one
 thing it got right. The full argument lives in the design spec.
 
