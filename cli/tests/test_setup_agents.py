@@ -189,7 +189,10 @@ def test_remove_all_survives_skills_dir_symlinked_to_canonical(
     (home / ".claude").mkdir()
     (home / ".claude" / "skills").symlink_to(
         canonical, target_is_directory=True)
-    setup.remove_all(canonical, home)
+    results = setup.remove_all(canonical, home)
+    # the guard means the agent sweep never touches the alias — every
+    # removal row must come from the canonical phase
+    assert not any(r["agent"] == "Claude Code" for r in results)
     # the canonical phase removed the skills exactly once; the user's
     # own dir-level symlink is not ours and stays
     assert not (canonical / "fusion-intake").exists()
