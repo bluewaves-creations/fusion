@@ -46,8 +46,10 @@ fi
 # 2 — the CLI
 SPEC="${FUSION_PACKAGE_SPEC:-fusion-cli${FUSION_VERSION:+==$FUSION_VERSION}}"
 say "installing ${SPEC}…"
-"$UV" tool install --force "$SPEC" \
-  || err "uv tool install failed. manual step: $UV tool install --force '$SPEC'"
+# --refresh: skip uv's cached PyPI index, so an install minutes after a
+# release still lands the release, not the cache's idea of "latest"
+"$UV" tool install --force --refresh "$SPEC" \
+  || err "uv tool install failed. manual step: $UV tool install --force --refresh '$SPEC'"
 
 # 3 — hand off to the brain
 BIN="$("$UV" tool dir --bin)" \

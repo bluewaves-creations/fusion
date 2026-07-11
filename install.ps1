@@ -25,8 +25,10 @@ $spec = if ($env:FUSION_PACKAGE_SPEC) { $env:FUSION_PACKAGE_SPEC }
         elseif ($env:FUSION_VERSION)  { "fusion-cli==$($env:FUSION_VERSION)" }
         else                          { "fusion-cli" }
 Say "installing $spec..."
-& $uvExe tool install --force $spec
-if ($LASTEXITCODE -ne 0) { Fail "uv tool install failed. manual step: uv tool install --force $spec" }
+# --refresh: skip uv's cached PyPI index, so an install minutes after a
+# release still lands the release, not the cache's idea of "latest"
+& $uvExe tool install --force --refresh $spec
+if ($LASTEXITCODE -ne 0) { Fail "uv tool install failed. manual step: uv tool install --force --refresh $spec" }
 
 # 3 — hand off to the brain
 $binRaw = & $uvExe tool dir --bin
