@@ -66,6 +66,20 @@ jobs:
           "$BIN/fusion" setup --remove
           test ! -e "$SANDBOX/.agents/skills/fusion-intake"
           test ! -e "$SANDBOX/.claude/skills/fusion-intake"
+          # regression: agent skills dir symlinked AT the canonical dir
+          # (v1.1.0-v1.2.0 destroyed every canonical skill here)
+          SANDBOX2="$(mktemp -d)"
+          mkdir -p "$SANDBOX2/.agents/skills" "$SANDBOX2/.claude" "$SANDBOX2/.pi"
+          ln -s "$SANDBOX2/.agents/skills" "$SANDBOX2/.claude/skills"
+          HOME="$SANDBOX2" "$BIN/fusion" setup | tee setup2.out
+          grep -q "served" setup2.out
+          test -f "$SANDBOX2/.agents/skills/fusion-intake/SKILL.md"
+          test ! -L "$SANDBOX2/.agents/skills/fusion-intake"
+          # Pi reads the standard dir natively — no links of our own
+          test ! -e "$SANDBOX2/.pi/agent/skills/fusion-intake"
+          HOME="$SANDBOX2" "$BIN/fusion" setup --remove
+          test ! -e "$SANDBOX2/.agents/skills/fusion-intake"
+          test -L "$SANDBOX2/.claude/skills"
       - name: Run install.ps1 against the local wheel (sandbox profile)
         if: runner.os == 'Windows'
         shell: pwsh
