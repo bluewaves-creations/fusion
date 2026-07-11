@@ -99,15 +99,20 @@ def install_canonical(payload: Path, skills_dir: Path,
 # ~/.agents/skills dir, so each fusion-* skill gets a symlink (or copy)
 # in its own skills dir. mode "standard": the agent reads the standard
 # dir — creating links there too would load every skill twice.
+# legacy_subdir: a dir an earlier fusion-cli release linked into before
+# the agent's native standard-dir support was verified; setup sweeps
+# OUR leftovers out of it (attribution-checked, like everything else).
 AGENTS = [
     {"name": "Claude Code", "marker": ".claude",
      "skills_subdir": ".claude/skills", "mode": "link",
      "docs_url": "https://code.claude.com/docs/en/skills"},
     {"name": "Codex", "marker": ".codex",
-     "skills_subdir": ".codex/skills", "mode": "link",
+     "skills_subdir": ".agents/skills", "mode": "standard",
+     "legacy_subdir": ".codex/skills",
      "docs_url": "https://developers.openai.com/codex/skills"},
     {"name": "Pi", "marker": ".pi",
-     "skills_subdir": ".pi/agent/skills", "mode": "link",
+     "skills_subdir": ".agents/skills", "mode": "standard",
+     "legacy_subdir": ".pi/agent/skills",
      "docs_url": "https://pi.dev/docs/latest/skills"},
     {"name": "Cursor", "marker": ".cursor",
      "skills_subdir": ".agents/skills", "mode": "standard",
@@ -128,7 +133,10 @@ def detect_agents(home: Path) -> list[dict]:
     found = []
     for row in AGENTS:
         if (home / row["marker"]).is_dir():
-            found.append({**row, "skills_dir": home / row["skills_subdir"]})
+            entry = {**row, "skills_dir": home / row["skills_subdir"]}
+            if "legacy_subdir" in row:
+                entry["legacy_dir"] = home / row["legacy_subdir"]
+            found.append(entry)
     return found
 
 
@@ -139,11 +147,47 @@ def _points_into(link: Path, canonical: Path) -> bool:
         return False
 
 
+def _sweep_legacy(agent: dict, canonical: Path) -> list[dict]:
+    """Remove OUR leftovers from a dir an earlier release linked into.
+
+    fusion-cli <= 1.2.0 symlinked (or copy-fell-back) into Pi's and
+    Codex's own dirs; both agents read the canonical dir natively, so
+    those entries double-loaded every skill. Attribution-checked:
+    symlinks into the canonical and sentinel-marked copies are ours;
+    anything else is left with a report row.
+    """
+    legacy = agent.get("legacy_dir")
+    if legacy is None or not legacy.is_dir():
+        return []
+    results = []
+    for entry in sorted(legacy.glob("fusion-*")):
+        row = {"agent": agent["name"], "skill": entry.name}
+        if entry.is_symlink() and _points_into(entry, canonical):
+            entry.unlink()
+            results.append({**row, "action": "unlinked",
+                            "detail": f"{entry} — this agent reads the "
+                                      f"standard dir; the extra link "
+                                      f"double-loaded every skill"})
+        elif (entry.is_dir() and not entry.is_symlink()
+              and (entry / ".fusion-setup").is_file()):
+            shutil.rmtree(entry)
+            results.append({**row, "action": "unlinked",
+                            "detail": f"{entry} — copy from an earlier "
+                                      f"fusion-cli; this agent reads the "
+                                      f"standard dir"})
+        else:
+            results.append({**row, "action": "left",
+                            "detail": f"{entry} is not attributable to "
+                                      f"setup — left in place"})
+    return results
+
+
 def fan_out(canonical: Path, agents: list[dict], force: bool) -> list[dict]:
     results = []
     skills = sorted(canonical.glob("fusion-*"))
     for agent in agents:
         if agent["mode"] == "standard":
+            results.extend(_sweep_legacy(agent, canonical))
             if canonical.resolve() != agent["skills_dir"].resolve():
                 detail = (f"reads ~/.agents/skills — but your skills are "
                           f"at {canonical}, which this agent does not read")
@@ -223,6 +267,7 @@ def remove_all(canonical: Path, home: Path) -> list[dict]:
     results = []
     for agent in detect_agents(home):
         if agent["mode"] == "standard":
+            results.extend(_sweep_legacy(agent, canonical))
             continue
         if _points_into(agent["skills_dir"], canonical):
             continue  # entries here ARE the canonical skills; the

@@ -404,8 +404,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("setup", help="install skills into agents; --remove undoes it",
                        description="Install the bundled skills to the canonical "
-                       "skills directory and link them into every detected agent. "
-                       "Idempotent; never destroys what it did not create.")
+                       "skills directory (~/.agents/skills) and make them available "
+                       "to every detected agent — most read that directory "
+                       "natively; agents that do not (Claude Code) get symlinks. "
+                       "--remove undoes exactly what setup can prove it created.")
     p.add_argument("--force", action="store_true",
                    help="replace foreign entries setup would otherwise leave")
     p.add_argument("--remove", action="store_true",

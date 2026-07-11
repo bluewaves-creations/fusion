@@ -26,7 +26,12 @@ def test_registry_shape():
             "opencode", "Goose"} == names
     modes = {a["name"]: a["mode"] for a in setup.AGENTS}
     assert modes["Claude Code"] == "link"
+    assert modes["Pi"] == "standard"
+    assert modes["Codex"] == "standard"
     assert modes["Cursor"] == "standard"
+    legacy = {a["name"]: a.get("legacy_subdir") for a in setup.AGENTS}
+    assert legacy["Pi"] == ".pi/agent/skills"
+    assert legacy["Codex"] == ".codex/skills"
 
 
 def test_detect_agents_only_present(home):
@@ -97,15 +102,15 @@ def test_fan_out_leaves_plain_file_unless_forced(home, canonical):
 
 
 def test_fan_out_copies_when_symlink_unavailable(home, canonical, monkeypatch):
-    (home / ".pi").mkdir()
+    (home / ".claude").mkdir()
 
     def no_symlink(*a, **k):
         raise OSError("symlinks disabled")
     monkeypatch.setattr(setup.os, "symlink", no_symlink)
     results = setup.fan_out(canonical, setup.detect_agents(home), force=False)
-    pi = [r for r in results if r["agent"] == "Pi"]
-    assert {r["action"] for r in pi} == {"copied"}
-    copied = home / ".pi" / "agent" / "skills" / "fusion-intake"
+    claude = [r for r in results if r["agent"] == "Claude Code"]
+    assert {r["action"] for r in claude} == {"copied"}
+    copied = home / ".claude" / "skills" / "fusion-intake"
     assert copied.is_dir() and not copied.is_symlink()
     # the copy carries a provenance sentinel — that's how we know it's ours
     sentinel = copied / ".fusion-setup"
@@ -117,8 +122,8 @@ def test_fan_out_copies_when_symlink_unavailable(home, canonical, monkeypatch):
     # itself is an extra file — so the sentinel is what proves provenance)
     (copied / "SKILL.md").write_text("stale")
     again = setup.fan_out(canonical, setup.detect_agents(home), force=False)
-    pi_intake = [r for r in again if r["skill"] == "fusion-intake"][0]
-    assert pi_intake["action"] == "copied"
+    claude_intake = [r for r in again if r["skill"] == "fusion-intake"][0]
+    assert claude_intake["action"] == "copied"
     assert (copied / ".fusion-setup").is_file()
 
 
@@ -136,37 +141,32 @@ def test_remove_all_is_attribution_checked(home, canonical):
 
 def test_remove_all_removes_sentinel_copies_and_leaves_foreign(
         home, canonical, monkeypatch):
-    (home / ".pi").mkdir()
+    (home / ".claude").mkdir()
+    # a foreign dir sharing a canonical skill's name — same shape, no
+    # sentinel, different content — must survive removal untouched
+    foreign = home / ".claude" / "skills" / "fusion-planner"
+    foreign.mkdir(parents=True)
+    (foreign / "SKILL.md").write_text("---\nname: my-own-tool\n---\n")
+    (foreign / "data.txt").write_text("do not touch\n")
 
     def no_symlink(*a, **k):
         raise OSError("symlinks disabled")
     monkeypatch.setattr(setup.os, "symlink", no_symlink)
     setup.fan_out(canonical, setup.detect_agents(home), force=False)
-    ours = home / ".pi" / "agent" / "skills" / "fusion-intake"
-    assert (ours / ".fusion-setup").is_file()     # our sentinel-marked copy
-
-    # a foreign dir sharing a canonical skill's name — same shape, no
-    # sentinel, different content — must survive removal untouched, even
-    # discovered fresh (this agent never went through fan_out)
-    (home / ".claude").mkdir()
-    foreign = home / ".claude" / "skills" / "fusion-intake"
-    foreign.mkdir(parents=True)
-    (foreign / "SKILL.md").write_text("---\nname: my-own-tool\n---\n")
-    (foreign / "data.txt").write_text("do not touch\n")
+    ours = home / ".claude" / "skills" / "fusion-intake"
+    assert (ours / ".fusion-setup").is_file()   # our sentinel-marked copy
 
     results = setup.remove_all(canonical, home)
 
-    assert not ours.exists()                      # our copy: removed
-    pi_result = [r for r in results
-                 if r["agent"] == "Pi" and r["skill"] == "fusion-intake"][0]
-    assert pi_result["action"] == "removed"
-
-    assert foreign.is_dir()                        # foreign: left in place
+    assert not ours.exists()                     # our copy: removed
+    intake = [r for r in results if r["agent"] == "Claude Code"
+              and r["skill"] == "fusion-intake"][0]
+    assert intake["action"] == "removed"
+    assert foreign.is_dir()                      # foreign: left in place
     assert (foreign / "data.txt").read_text() == "do not touch\n"
-    claude_result = [r for r in results
-                      if r["agent"] == "Claude Code"
-                      and r["skill"] == "fusion-intake"][0]
-    assert claude_result["action"] == "left"
+    planner = [r for r in results if r["agent"] == "Claude Code"
+               and r["skill"] == "fusion-planner"][0]
+    assert planner["action"] == "left"
 
 
 def test_fan_out_survives_skills_dir_symlinked_to_canonical(home, canonical):
@@ -197,3 +197,42 @@ def test_remove_all_survives_skills_dir_symlinked_to_canonical(
     # own dir-level symlink is not ours and stays
     assert not (canonical / "fusion-intake").exists()
     assert (home / ".claude" / "skills").is_symlink()
+
+
+def test_fan_out_standard_sweeps_our_legacy_links(home, canonical):
+    (home / ".pi").mkdir()
+    legacy = home / ".pi" / "agent" / "skills"
+    legacy.mkdir(parents=True)
+    (legacy / "fusion-intake").symlink_to(
+        canonical / "fusion-intake", target_is_directory=True)
+    stale_copy = legacy / "fusion-planner"     # 1.2.0 copy-fallback relic
+    stale_copy.mkdir()
+    (stale_copy / "SKILL.md").write_text("old payload")
+    (stale_copy / ".fusion-setup").write_text("1.0\nabc\n")
+    mine = legacy / "fusion-mine"              # the user's own, not ours
+    mine.mkdir()
+    results = setup.fan_out(canonical, setup.detect_agents(home),
+                            force=False)
+    pi = {r["skill"]: r for r in results if r["agent"] == "Pi"}
+    assert pi["fusion-intake"]["action"] == "unlinked"
+    assert not (legacy / "fusion-intake").exists()
+    assert pi["fusion-planner"]["action"] == "unlinked"
+    assert not stale_copy.exists()
+    assert pi["fusion-mine"]["action"] == "left"
+    assert mine.is_dir()
+    assert pi["*"]["action"] == "standard"     # and Pi reads the std dir
+    # no new links were created in the legacy dir
+    assert not (legacy / "fusion-analyst").exists()
+
+
+def test_remove_all_sweeps_legacy_dirs(home, canonical):
+    (home / ".codex").mkdir()
+    legacy = home / ".codex" / "skills"
+    legacy.mkdir(parents=True)
+    (legacy / "fusion-intake").symlink_to(
+        canonical / "fusion-intake", target_is_directory=True)
+    results = setup.remove_all(canonical, home)
+    assert not (legacy / "fusion-intake").exists()
+    assert any(r["agent"] == "Codex" and r["action"] == "unlinked"
+               for r in results)
+    assert not (canonical / "fusion-intake").exists()
