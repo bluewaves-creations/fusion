@@ -125,6 +125,19 @@ metabolism — the bucket learns.
   was running; finish by hand from there. The three steps are: install
   uv, `uv tool install fusion-cli`, `fusion setup`.
 
+## Staying current
+
+```bash
+fusion update
+```
+
+One verb: upgrades fusion-cli through uv, then re-runs `fusion setup`
+from the new binary so the bundled skills refresh everywhere setup put
+them. If you pinned a version at install time (`FUSION_VERSION=…`), uv
+respects the pin — upgrade past it with uv directly. If fusion wasn't
+installed through uv, `fusion update` says so and tells you what to
+run instead.
+
 ## Leaving cleanly
 
 `fusion setup --remove` takes the skills back out of every agent it

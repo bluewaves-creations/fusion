@@ -28,7 +28,7 @@ uv tool install ./fusion/cli
 fusion --version
 ```
 
-## The nine commands (there is no tenth)
+## The ten commands (there is no eleventh)
 
 | Command | Does |
 |---|---|
@@ -41,8 +41,11 @@ fusion --version
 | `fusion today` | The composed day, across every bucket in the hub |
 | `fusion agenda` | The wider horizon — dated and active, across the hub |
 | `fusion setup` | Install the skills to `~/.agents/skills` and serve every detected agent (links only where needed) — the installer's brain. `--remove` undoes it |
+| `fusion update` | Bring the whole system current: upgrade fusion-cli through uv, then re-run setup from the new binary so the skills refresh everywhere. Equivalent to `uv tool upgrade fusion-cli && fusion setup` |
 
-Every command takes `--json` (agents parse, never scrape). `log`, `new`,
+Every command takes `--json` (agents parse, never scrape) — except
+`update`, which composes two processes (uv, then setup) that own
+stdout in turn. `log`, `new`,
 and `index` take `--as <actor>`; the pen defaults to `FUSION_ACTOR`, then
 the OS username. `status` and `log` take `--since <date|last-reflection>`.
 `log` also takes `--bucket` (resolves the ledger; default: walk up from the current directory).

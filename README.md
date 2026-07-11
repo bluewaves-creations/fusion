@@ -70,7 +70,9 @@ powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/blu
 ```
 
 One line installs uv (which brings Python), the `fusion` CLI, and the
-four skills into every agent on your machine that reads them. Then:
+four skills into every agent on your machine that reads them. Later,
+`fusion update` brings the whole system — CLI and skills — current in
+one verb. Then:
 
 ```bash
 fusion new ~/buckets/personal --kind personal \

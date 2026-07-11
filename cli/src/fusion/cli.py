@@ -319,6 +319,21 @@ def _render_setup(report: dict) -> list[str]:
     return lines
 
 
+def cmd_update(args) -> int:
+    from fusion import update as update_mod
+    setup_args = []
+    if args.force:
+        setup_args.append("--force")
+    if args.skills_dir:
+        setup_args += ["--skills-dir", args.skills_dir]
+    if args.no_agents:
+        setup_args.append("--no-agents")
+    try:
+        return update_mod.run_update(Path.home(), setup_args)
+    except update_mod.UpdateError as exc:
+        return _fail(str(exc))
+
+
 # ── parser ───────────────────────────────────────────────────────────────
 
 def build_parser() -> argparse.ArgumentParser:
@@ -417,6 +432,20 @@ def build_parser() -> argparse.ArgumentParser:
                    help="skip agent fan-out (env FUSION_NO_AGENTS=1)")
     flag_json(p)
     p.set_defaults(func=cmd_setup)
+
+    p = sub.add_parser("update", help="upgrade fusion-cli and refresh the skills",
+                       description="Bring the whole system current: upgrade "
+                       "fusion-cli through uv, then re-run `fusion setup` "
+                       "from the new binary so the bundled skills refresh "
+                       "everywhere setup put them. Equivalent to: "
+                       "uv tool upgrade fusion-cli && fusion setup.")
+    p.add_argument("--force", action="store_true",
+                   help="forwarded to setup: replace foreign entries")
+    p.add_argument("--skills-dir",
+                   help="forwarded to setup: canonical destination")
+    p.add_argument("--no-agents", action="store_true",
+                   help="forwarded to setup: skip agent fan-out")
+    p.set_defaults(func=cmd_update)
 
     return parser
 
