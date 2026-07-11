@@ -12,6 +12,10 @@ import pytest
 from fusion import update
 from fusion.cli import build_parser, main
 
+# find_uv wraps which()'s answer in Path, so the argv the runner sees is
+# the platform's rendering of this stub ("\\stub\\uv" on Windows).
+STUB_UV = str(Path("/stub/uv"))
+
 
 class FakeRunner:
     """Answers uv/fusion invocations from a script of canned results."""
@@ -66,9 +70,9 @@ def test_update_happy_path_runs_upgrade_then_setup(sandbox, monkeypatch, capsys)
     _install_runner(monkeypatch, runner)
     assert main(["update"]) == 0
     assert runner.calls == [
-        ["/stub/uv", "tool", "list"],
-        ["/stub/uv", "tool", "upgrade", "fusion-cli"],
-        ["/stub/uv", "tool", "dir", "--bin"],
+        [STUB_UV, "tool", "list"],
+        [STUB_UV, "tool", "upgrade", "fusion-cli"],
+        [STUB_UV, "tool", "dir", "--bin"],
         [str(sandbox.bin_dir / "fusion"), "setup"],
     ]
 
@@ -117,7 +121,8 @@ def test_update_refuses_non_uv_install(sandbox, monkeypatch, capsys):
     err = capsys.readouterr().err
     assert "not managed by uv" in err and "fusion setup" in err
     # never got as far as upgrading
-    assert ["/stub/uv", "tool", "upgrade", "fusion-cli"] not in runner.calls
+    assert [STUB_UV, "tool", "upgrade", "fusion-cli"] not in runner.calls
+    assert runner.calls == [[STUB_UV, "tool", "list"]]
 
 
 def test_update_reports_failed_upgrade_with_retry_ritual(sandbox, monkeypatch,
