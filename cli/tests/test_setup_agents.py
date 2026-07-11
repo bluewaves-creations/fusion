@@ -167,3 +167,30 @@ def test_remove_all_removes_sentinel_copies_and_leaves_foreign(
                       if r["agent"] == "Claude Code"
                       and r["skill"] == "fusion-intake"][0]
     assert claude_result["action"] == "left"
+
+
+def test_fan_out_survives_skills_dir_symlinked_to_canonical(home, canonical):
+    # the topology that destroyed skills in v1.1.0-v1.2.0: the agent's
+    # whole skills dir is a symlink AT the canonical directory
+    (home / ".claude").mkdir()
+    (home / ".claude" / "skills").symlink_to(
+        canonical, target_is_directory=True)
+    results = setup.fan_out(canonical, setup.detect_agents(home),
+                            force=False)
+    claude = [r for r in results if r["agent"] == "Claude Code"]
+    assert len(claude) == 1 and claude[0]["action"] == "served"
+    # the canonical skills are alive, real, and readable
+    assert (canonical / "fusion-intake" / "SKILL.md").is_file()
+    assert not (canonical / "fusion-intake").is_symlink()
+
+
+def test_remove_all_survives_skills_dir_symlinked_to_canonical(
+        home, canonical):
+    (home / ".claude").mkdir()
+    (home / ".claude" / "skills").symlink_to(
+        canonical, target_is_directory=True)
+    setup.remove_all(canonical, home)
+    # the canonical phase removed the skills exactly once; the user's
+    # own dir-level symlink is not ours and stays
+    assert not (canonical / "fusion-intake").exists()
+    assert (home / ".claude" / "skills").is_symlink()

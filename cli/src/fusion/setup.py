@@ -152,6 +152,13 @@ def fan_out(canonical: Path, agents: list[dict], force: bool) -> list[dict]:
             results.append({"agent": agent["name"], "skill": "*",
                             "action": "standard", "detail": detail})
             continue
+        if _points_into(agent["skills_dir"], canonical):
+            results.append({
+                "agent": agent["name"], "skill": "*", "action": "served",
+                "detail": f"{agent['skills_dir']} resolves into "
+                          f"{canonical} — the canonical install already "
+                          f"serves this agent; nothing to link"})
+            continue
         agent["skills_dir"].mkdir(parents=True, exist_ok=True)
         for skill in skills:
             target = agent["skills_dir"] / skill.name
@@ -170,6 +177,11 @@ def fan_out(canonical: Path, agents: list[dict], force: bool) -> list[dict]:
                 target.unlink()
                 replaced = True
             elif target.is_dir():
+                if target.resolve() == skill.resolve():
+                    results.append({**row, "action": "served",
+                                    "detail": f"{target} already resolves "
+                                              f"to the canonical skill"})
+                    continue
                 if tree_digest(target) == tree_digest(skill):
                     pass          # our current copy, refresh below keeps it current
                 elif (target / ".fusion-setup").is_file():
@@ -212,6 +224,9 @@ def remove_all(canonical: Path, home: Path) -> list[dict]:
     for agent in detect_agents(home):
         if agent["mode"] == "standard":
             continue
+        if _points_into(agent["skills_dir"], canonical):
+            continue  # entries here ARE the canonical skills; the
+                      # canonical phase below removes them exactly once
         entries = (sorted(agent["skills_dir"].glob("fusion-*"))
                    if agent["skills_dir"].is_dir() else [])
         for entry in entries:
