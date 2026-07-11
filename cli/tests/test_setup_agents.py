@@ -236,3 +236,27 @@ def test_remove_all_sweeps_legacy_dirs(home, canonical):
     assert any(r["agent"] == "Codex" and r["action"] == "unlinked"
                for r in results)
     assert not (canonical / "fusion-intake").exists()
+
+
+def test_sweep_legacy_skips_dir_aliased_at_canonical(home, canonical):
+    # topology B from the v1.2.1 final review: legacy dir symlinked AT
+    # the canonical, plus a canonical entry that is itself a symlink
+    # resolving into the canonical — the sweep must not reach through
+    # the alias and unlink it
+    (home / ".pi").mkdir()
+    (home / ".pi" / "agent").mkdir()
+    (home / ".pi" / "agent" / "skills").symlink_to(
+        canonical, target_is_directory=True)
+    store = canonical / "_store" / "fusion-extra"
+    store.mkdir(parents=True)
+    (store / "SKILL.md").write_text("---\nname: fusion-extra\n---\n")
+    user_link = canonical / "fusion-extra"
+    user_link.symlink_to(store, target_is_directory=True)
+    results = setup.fan_out(canonical, setup.detect_agents(home),
+                            force=False)
+    assert user_link.is_symlink()          # the user's link survives
+    pi = [r for r in results if r["agent"] == "Pi"]
+    assert [r["action"] for r in pi] == ["standard"]  # sweep stayed out
+    # remove is equally alias-safe
+    setup.remove_all(canonical, home)
+    assert user_link.is_symlink()

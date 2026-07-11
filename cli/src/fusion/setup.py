@@ -154,11 +154,15 @@ def _sweep_legacy(agent: dict, canonical: Path) -> list[dict]:
     Codex's own dirs; both agents read the canonical dir natively, so
     those entries double-loaded every skill. Attribution-checked:
     symlinks into the canonical and sentinel-marked copies are ours;
-    anything else is left with a report row.
+    anything else is left with a report row. If the legacy dir is
+    itself aliased at the canonical, there is nothing to sweep.
     """
     legacy = agent.get("legacy_dir")
     if legacy is None or not legacy.is_dir():
         return []
+    if _points_into(legacy, canonical):
+        return []  # the legacy dir IS the canonical through an alias —
+                    # sweeping it would reach canonical entries
     results = []
     for entry in sorted(legacy.glob("fusion-*")):
         row = {"agent": agent["name"], "skill": entry.name}
