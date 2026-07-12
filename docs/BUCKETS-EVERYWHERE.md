@@ -55,11 +55,34 @@ LEDGER.md merge=union
 sources/MANIFEST.md merge=union
 ```
 
-Give the bucket a private remote and it travels like any repo:
+Give the bucket a private remote and it travels like any repo. Create
+the remote **empty** — no README, no .gitignore, no license: the bucket
+was born with its own history, and any scaffold commit on the remote
+means your first push is rejected.
 
 ```bash
 cd ~/buckets/studio
 git remote add origin git@github.com:you/studio-bucket.git
+git push -u origin main
+```
+
+Already created the remote with a scaffold README? It holds one commit
+your bucket has never seen. Join the two histories once — and never
+force-push a bucket, the remote may know things this machine does not:
+
+```bash
+git fetch origin
+git merge origin/main --allow-unrelated-histories --no-edit
+git push -u origin main
+```
+
+The merge usually completes on its own (the scaffold's files don't
+overlap the bucket's). If it stops on a conflict — you added your own
+README, say — keep the bucket's version and finish the merge:
+
+```bash
+git checkout --ours README.md && git add README.md
+git commit --no-edit
 git push -u origin main
 ```
 

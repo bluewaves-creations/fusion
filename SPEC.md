@@ -192,6 +192,11 @@ restructures do not bump it.
 Producers MAY add other keys; consumers MUST tolerate and SHOULD preserve
 unknown keys.
 
+`source:` names the `sources/` original a document was converted from —
+a single path. A document reconciled from **multiple** originals (a
+confirmed merge of two copies of the same record) may carry a list, one
+`sources/` path per original. Anything else stays a string.
+
 **Summary-first, always:** the body MUST begin with `## Summary`, then a
 `---` separator line, then the full content. An agent triages a bucket by
 reading INDEX files and summaries alone.
