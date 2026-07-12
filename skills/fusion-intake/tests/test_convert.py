@@ -789,3 +789,84 @@ def test_batch_rejects_traversal_doc_path(bucket):
     assert not (bucket / "sources" / "records").exists()
     manifest_after = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
     assert manifest_after == manifest_before
+
+
+# ── relink ───────────────────────────────────────────────────────────────
+
+def _doc(root, rel):
+    p = root / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text("---\ntitle: T\ntype: note\naurora: library\n---\n\n"
+                 "## Summary\n\nS.\n\n---\n\nBody.\n", encoding="utf-8")
+    return rel
+
+
+def test_relink_repoints_single_value(bucket):
+    put_inbox(bucket, "deed.xlsx", fx.make_xlsx)
+    admit(bucket, "deed.xlsx")
+    old = _doc(bucket, "library/records/deed.md")
+    convert.link(bucket, "records/deed.xlsx", old)
+    new = _doc(bucket, "library/areas/legal/deed.md")
+    out = convert.relink(bucket, "records/deed.xlsx", old, new)
+    assert out == {"source": "records/deed.xlsx", "from": old, "to": new}
+    manifest = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    row = manifest.strip().splitlines()[-1]
+    cells = [c.strip() for c in row.strip("|").split("|")]
+    assert cells[4] == new
+    assert old not in manifest
+
+
+def test_relink_multi_value_cell_touches_only_the_target(bucket):
+    put_inbox(bucket, "deed.xlsx", fx.make_xlsx)
+    admit(bucket, "deed.xlsx")
+    keep = _doc(bucket, "library/records/summary.md")
+    old = _doc(bucket, "library/records/deed.md")
+    convert.link(bucket, "records/deed.xlsx", keep)
+    convert.link(bucket, "records/deed.xlsx", old)
+    new = _doc(bucket, "library/areas/legal/deed.md")
+    convert.relink(bucket, "records/deed.xlsx", old, new)
+    manifest = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    row = manifest.strip().splitlines()[-1]
+    cells = [c.strip() for c in row.strip("|").split("|")]
+    assert cells[4] == f"{keep}, {new}"
+
+
+def test_relink_refusals(bucket):
+    put_inbox(bucket, "deed.xlsx", fx.make_xlsx)
+    admit(bucket, "deed.xlsx")
+    old = _doc(bucket, "library/records/deed.md")
+    new = _doc(bucket, "library/areas/legal/deed.md")
+    # row exists but cell is empty — old value not present
+    with pytest.raises(convert.IntakeError, match="does not carry"):
+        convert.relink(bucket, "records/deed.xlsx", old, new)
+    convert.link(bucket, "records/deed.xlsx", old)
+    # no such source row
+    with pytest.raises(convert.IntakeError, match="not in manifest"):
+        convert.relink(bucket, "records/ghost.xlsx", old, new)
+    # from == to is not a change
+    with pytest.raises(convert.IntakeError, match="is a change"):
+        convert.relink(bucket, "records/deed.xlsx", old, old)
+    # target must exist on disk
+    with pytest.raises(convert.IntakeError, match="does not exist on disk"):
+        convert.relink(bucket, "records/deed.xlsx", old, "library/nowhere.md")
+    # target already linked
+    convert.link(bucket, "records/deed.xlsx", new)
+    with pytest.raises(convert.IntakeError, match="already carries"):
+        convert.relink(bucket, "records/deed.xlsx", old, new)
+    # nothing was mutated by any refusal: both values still present, in order
+    manifest = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    row = manifest.strip().splitlines()[-1]
+    cells = [c.strip() for c in row.strip("|").split("|")]
+    assert cells[4] == f"{old}, {new}"
+
+
+def test_relink_cli(bucket):
+    put_inbox(bucket, "deed.xlsx", fx.make_xlsx)
+    admit(bucket, "deed.xlsx")
+    old = _doc(bucket, "library/records/deed.md")
+    convert.link(bucket, "records/deed.xlsx", old)
+    new = _doc(bucket, "library/areas/legal/deed.md")
+    rc = convert.main(["relink", "--bucket", str(bucket),
+                       "--source", "records/deed.xlsx",
+                       "--from", old, "--to", new])
+    assert rc == 0

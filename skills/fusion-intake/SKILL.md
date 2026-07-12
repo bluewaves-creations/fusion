@@ -92,6 +92,10 @@ and deletes the container — the members become the originals, signed
    `fusion log converted "sources/<cat>/<name> → <doc>" --bucket <root> --as <you>`
    `fusion index <root>` · `fusion check <root>` — green, then
    `cleanup --run-dir <dir>`. Nothing remains in inbox for this file.
+5. **Relink** (only when a linked document later moves):
+   `uv run <skill>/scripts/convert.py relink --bucket <root> --source <cat>/<name> --from <old-doc> --to <new-doc>`
+   — repoints the cell value in place. MANIFEST.md is single-writer; a
+   stale cell is never hand-edited.
 
 ## The four classes (locked)
 

@@ -225,6 +225,41 @@ def manifest_link(root: Path, rel: str, doc: str) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
 
 
+def manifest_relink(root: Path, rel: str, old_doc: str, new_doc: str) -> None:
+    path = _manifest_path(root)
+    if not path.is_file():
+        raise IntakeError(f"no manifest at {path}")
+    if old_doc == new_doc:
+        raise IntakeError(
+            f"relink is a change: --from and --to are both {old_doc!r}")
+    if not (Path(root) / new_doc).is_file():
+        raise IntakeError(f"relink target does not exist on disk: {new_doc}")
+    lines = path.read_text(encoding="utf-8").splitlines()
+    hit = False
+    for i, line in enumerate(lines):
+        if not line.strip().startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) == 5 and cells[0] == rel:
+            values = ([] if cells[4] in ("—", "")
+                      else [v.strip() for v in cells[4].split(",")])
+            if old_doc not in values:
+                raise IntakeError(
+                    f"cell does not carry {old_doc!r} for source {rel} "
+                    f"(cell: {cells[4]!r})")
+            if new_doc in values:
+                raise IntakeError(
+                    f"cell already carries {new_doc!r} for source {rel}")
+            cells[4] = ", ".join(
+                new_doc if v == old_doc else v for v in values)
+            lines[i] = "| " + " | ".join(cells) + " |"
+            hit = True
+            break
+    if not hit:
+        raise IntakeError(f"source not in manifest: {rel}")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+
+
 def _manifest_rels(root: Path) -> set:
     """The `file` column of every real row — used by `batch` to validate
     (category, basename) uniqueness against what's already registered."""
@@ -709,6 +744,11 @@ def link(root: Path, source_rel: str, doc_rel: str) -> dict:
     return {"source": source_rel, "library": doc_rel}
 
 
+def relink(root: Path, source_rel: str, old_doc: str, new_doc: str) -> dict:
+    manifest_relink(Path(root), source_rel, old_doc, new_doc)
+    return {"source": source_rel, "from": old_doc, "to": new_doc}
+
+
 # ── batch: one op-list, validated whole, then moved ──────────────────────
 #
 # Schema (references/delivery.md):
@@ -867,6 +907,16 @@ def main(argv=None) -> int:
     p.add_argument("--source", required=True)
     p.add_argument("--doc", required=True)
 
+    p = sub.add_parser("relink", help="repoint one value in a MANIFEST "
+                       "library cell after a document moved")
+    p.add_argument("--bucket", required=True)
+    p.add_argument("--source", required=True,
+                   help="path relative to sources/")
+    p.add_argument("--from", dest="from_doc", required=True,
+                   help="current zone-relative doc path in the cell")
+    p.add_argument("--to", dest="to_doc", required=True,
+                   help="new zone-relative doc path (must exist)")
+
     p = sub.add_parser("cleanup", help="delete one work dir")
     p.add_argument("--run-dir", required=True)
 
@@ -889,6 +939,9 @@ def main(argv=None) -> int:
                           aurora=args.aurora, reconcile=args.reconcile)
         elif args.cmd == "link":
             out = link(Path(args.bucket), args.source, args.doc)
+        elif args.cmd == "relink":
+            out = relink(Path(args.bucket), args.source,
+                         args.from_doc, args.to_doc)
         elif args.cmd == "batch":
             ops = json.loads(Path(args.ops).read_text(encoding="utf-8"))
             out = batch(Path(args.bucket), ops, args.actor)
