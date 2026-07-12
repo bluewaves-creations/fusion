@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["openpyxl>=3.1.0", "pymupdf>=1.24.0"]
+# dependencies = ["openpyxl>=3.1.0", "pymupdf>=1.24.0", "pillow>=10.0.0"]
 # ///
 """Generate real legacy-format fixtures for the intake tests. Imported by
 the test modules; also runnable standalone to eyeball the artifacts."""
@@ -213,11 +213,22 @@ def make_html_page(path: Path):
         "</body></html>", encoding="utf-8")
 
 
+def make_tiff(path: Path, frames: int = 1):
+    """A real tiff, single- or multi-frame, deterministic pixels — no
+    external tool required, just Pillow."""
+    from PIL import Image
+    colors = [(200, 30, 30), (30, 200, 30), (30, 30, 200)]
+    imgs = [Image.new("RGB", (4, 4), colors[i % len(colors)])
+            for i in range(max(frames, 1))]
+    imgs[0].save(path, format="TIFF", save_all=frames > 1,
+                append_images=imgs[1:])
+
+
 if __name__ == "__main__":
     out = Path("fixtures-preview")
     out.mkdir(exist_ok=True)
     make_xlsx(out / "scores.xlsx"); make_csv(out / "inventory.csv")
     make_text_pdf(out / "audit.pdf"); make_scanned_pdf(out / "scan.pdf")
     make_docx(out / "procedure.docx"); make_eml(out / "mail.eml")
-    make_png(out / "photo.png")
+    make_png(out / "photo.png"); make_tiff(out / "scan.tiff")
     print(f"fixtures in {out}/")

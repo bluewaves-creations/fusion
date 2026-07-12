@@ -168,6 +168,26 @@ def test_binary_pair_is_clean_new_not_near_dup(bucket):
     assert [f["incoming"] for f in result["clean_new"]] == ["img-b.png"]
 
 
+def test_tiff_classifies_like_any_other_image_not_refused(bucket):
+    # Stage 1 (gate.py) has no extension allowlist — it hashes, names, and
+    # shingles whatever is in inbox/, containers aside. A .tiff walks the
+    # exact same clean_new / exact_dup path a .png would; the refusal (now
+    # gone) lived only in convert.py admit()'s SUPPORTED_EXTS, one layer up.
+    tiff_bytes = b"II*\x00" + b"\x00\x01\x02\xff\xfe" * 24   # fake but binary
+    (bucket / "inbox" / "family-photo.tiff").write_bytes(tiff_bytes)
+    result = run_gate(bucket)
+    assert [f["incoming"] for f in result["clean_new"]] == ["family-photo.tiff"]
+    assert result["exact_dups"] == [] and result["near_dups"] == []
+
+    # a byte-identical re-drop is still caught as an exact duplicate —
+    # tiff gets the same hash-based dedupe as everything else
+    (bucket / "sources" / "photos").mkdir(parents=True, exist_ok=True)
+    (bucket / "sources" / "photos" / "family-photo.tiff").write_bytes(tiff_bytes)
+    result = run_gate(bucket)
+    assert len(result["exact_dups"]) == 1
+    assert result["exact_dups"][0]["matched_source"] == "photos/family-photo.tiff"
+
+
 def test_inbox_internal_duplicates_detected(bucket):
     drop(bucket, "a-report.txt", LONG_A)
     drop(bucket, "copy-of-a-report.txt", LONG_A)

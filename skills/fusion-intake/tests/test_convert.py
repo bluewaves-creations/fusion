@@ -206,11 +206,77 @@ def test_scanned_pdf_all_pages_rendered(bucket):
 def test_image_path(bucket):
     put_inbox(bucket, "photo.png", fx.make_png)
     rec = admit(bucket, "photo.png")
+    assert "converted" not in rec and "note" not in rec   # tiff-only fields
     out = convert.prepare(bucket, rec["source"])
     assert out["path"] == "image"
     assert out["pages"] == [{"page": 1, "text": "", "text_chars": 0,
                              "needs_vision": True}]
     assert len(out["images"]) == 1
+
+
+# ── tiff -> png at admit (2026-07-12 ruling: no large tiffs) ─────────────
+
+def test_tiff_admits_as_png_with_note(bucket):
+    put_inbox(bucket, "scan.tiff", fx.make_tiff)
+    rec = admit(bucket, "scan.tiff")
+
+    # the PNG is the admitted original — not the tiff
+    assert rec["source"] == "records/scan.png"
+    assert not (bucket / "inbox" / "scan.tiff").exists()
+    assert not (bucket / "sources" / "records" / "scan.tiff").exists()
+    png_path = bucket / "sources" / "records" / "scan.png"
+    assert png_path.is_file()
+    assert png_path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"   # real PNG bytes
+    assert rec["sha256"] == convert.sha256_of(png_path)
+
+    # MANIFEST row names the PNG, keyed to the PNG's own sha256
+    manifest = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    row = manifest.strip().splitlines()[-1]
+    cells = [c.strip() for c in row.strip("|").split("|")]
+    assert cells[0] == "records/scan.png"
+    assert cells[3] == rec["sha256"]
+
+    # the source tiff's identity is carried honestly, for the ledger
+    assert rec["converted"]["from_format"] == "tiff"
+    assert rec["converted"]["to_format"] == "png"
+    assert rec["converted"]["original_name"] == "scan.tiff"
+    assert len(rec["converted"]["original_sha256"]) == 64
+    assert rec["converted"]["original_sha256"] != rec["sha256"]
+    assert "scan.tiff" in rec["note"] and rec["converted"]["original_sha256"] in rec["note"]
+    assert "scan.png" in rec["note"] and rec["sha256"] in rec["note"]
+
+
+def test_tiff_png_flows_through_the_image_route(bucket):
+    put_inbox(bucket, "scan.tiff", fx.make_tiff)
+    rec = admit(bucket, "scan.tiff")
+    out = convert.prepare(bucket, rec["source"])
+    # admitted as a PNG, so Stage 2 sees it exactly like any other image —
+    # no tiff-specific branch downstream of admit
+    assert out["path"] == "image"
+    assert out["pages"] == [{"page": 1, "text": "", "text_chars": 0,
+                             "needs_vision": True}]
+    assert len(out["images"]) == 1
+    assert out["images"][0].endswith(".png")
+
+
+def test_multiframe_tiff_refused(bucket):
+    put_inbox(bucket, "stack.tiff", lambda p: fx.make_tiff(p, frames=3))
+    with pytest.raises(convert.IntakeError, match="multi-frame"):
+        admit(bucket, "stack.tiff")
+    # conservative refusal: nothing moved, nothing registered, nothing
+    # half-written into sources/
+    assert (bucket / "inbox" / "stack.tiff").is_file()
+    assert not (bucket / "sources" / "records").exists()
+    manifest = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
+    assert "stack" not in manifest
+
+
+def test_tiff_uppercase_extension_also_converts(bucket):
+    # case-insensitive suffix match, same as every other extension check
+    src = put_inbox(bucket, "SCAN.TIFF", fx.make_tiff)
+    rec = admit(bucket, "SCAN.TIFF")
+    assert rec["source"] == "records/SCAN.png"
+    assert not src.exists()
 
 
 def test_eml_path_extracts_text_and_attachments(bucket):

@@ -29,7 +29,10 @@ Format-specific notes:
   into the document body; if it carried frontmatter, preserve unknown
   keys (liberal reader) and merge the required three.
 - **image**: transcribe or describe honestly — a photo gets a faithful
-  description, a screenshot of text gets the text.
+  description, a screenshot of text gets the text. A tiff admitted at
+  Stage 1 already landed here as a PNG (admit converts tif/tiff → png,
+  2026-07-12 ruling) — no special casing, it reads exactly like any other
+  image.
 - **html** (`path: libreoffice`): an LLM-artifact-style page — headings,
   prose, real tables — routed through LibreOffice like docx/pptx/legacy
   office formats. Read it exactly as any other rendered page below.

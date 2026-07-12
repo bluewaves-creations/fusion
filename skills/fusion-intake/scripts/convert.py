@@ -5,6 +5,7 @@
 #   "openpyxl>=3.1.0",
 #   "PyYAML>=6.0",
 #   "pymupdf>=1.24.0",
+#   "pillow>=10.0.0",
 # ]
 # ///
 """fusion-intake Stage-1 engine: admit / prepare / link / batch / cleanup.
@@ -46,9 +47,16 @@ EXTRACTIVE_EXTS = {".xlsx", ".csv"}
 LIBREOFFICE_EXTS = {".docx", ".pptx", ".doc", ".odt", ".rtf", ".key",
                     ".pages", ".ppt", ".xls", ".html", ".htm"}
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
+# Tiffs are never stored as tiffs: sources/ would carry needlessly large
+# files for no fidelity gain over a lossless PNG (human ruling, 2026-07-12
+# — "no need for large tiff files"). admit() converts single-frame tiffs to
+# PNG in place and the PNG becomes the original; TIFF_EXTS therefore stays
+# out of IMAGE_EXTS — it is admit-time-special, not a plain pass-through
+# image format, and (unlike IMAGE_EXTS) never appears in sources/.
+TIFF_EXTS = {".tif", ".tiff"}
 MAIL_EXTS = {".eml"}
 TEXT_EXTS = {".md", ".txt", ".json", ".yaml", ".yml"}
-SUPPORTED_EXTS = (EXTRACTIVE_EXTS | LIBREOFFICE_EXTS | IMAGE_EXTS
+SUPPORTED_EXTS = (EXTRACTIVE_EXTS | LIBREOFFICE_EXTS | IMAGE_EXTS | TIFF_EXTS
                   | MAIL_EXTS | TEXT_EXTS | {".pdf"})
 
 # Containers are DELIVERY VEHICLES, not originals: `unpack` extracts them
@@ -80,6 +88,41 @@ def sha256_of(path: Path) -> str:
         for chunk in iter(lambda: fh.read(65536), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+_PNG_NATIVE_MODES = {"1", "L", "LA", "P", "RGB", "RGBA", "I"}
+
+
+def tiff_to_png(src: Path, dest: Path) -> None:
+    """Deterministic, lossless-pixel tiff -> PNG. Single frame only: a
+    multi-frame tiff (fax/scan stacks, layered exports) is refused outright
+    rather than silently keeping just the first frame — the fidelity
+    contract (SKILL.md: "a lossy conversion is a failed conversion") rules
+    out a silent partial admit; the conservative choice is refusal, not a
+    loud-warning first-frame-wins."""
+    from PIL import Image
+
+    with Image.open(src) as img:
+        n_frames = getattr(img, "n_frames", 1)
+        if n_frames > 1:
+            raise IntakeError(
+                f"multi-frame tiff refused: {src.name} carries {n_frames} "
+                "frames — fusion-intake admits single-frame tiffs only "
+                "(silently keeping just the first frame would violate the "
+                "fidelity contract); split it into single-frame files and "
+                "admit them individually, or convert it to a single-frame "
+                "tiff/png before dropping it in inbox/")
+        img.load()
+        # PNG cannot encode every tiff pixel mode (CMYK, palette variants
+        # with exotic depth, …) — fall back to a standard mode rather than
+        # let Pillow's save() raise. RGB/RGBA/L/LA/P/1/I pass through with
+        # their pixels untouched (lossless); anything else is converted
+        # once, to the closest PNG-native mode (RGBA if it carries alpha,
+        # else RGB).
+        if img.mode not in _PNG_NATIVE_MODES:
+            img = img.convert("RGBA" if "A" in img.mode else "RGB")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        img.save(dest, format="PNG")
 
 
 def slugify(name: str) -> str:
@@ -229,17 +272,44 @@ def admit(root: Path, inbox_rel: str, category: str, actor: str) -> dict:
         raise IntakeError(
             f"'|' and newlines break the manifest grammar: {src.name!r} — "
             "rename the incoming file before admitting it")
-    dest = root / "sources" / category / src.name
+    is_tiff = src.suffix.lower() in TIFF_EXTS
+    # A tiff is never admitted as a tiff (2026-07-12 ruling): the PNG IS the
+    # original from here on, so the collision check, the MANIFEST row, and
+    # the returned `source` all name the .png — never the discarded .tif.
+    dest_name = f"{src.stem}.png" if is_tiff else src.name
+    dest = root / "sources" / category / dest_name
     if dest.exists():
         raise IntakeError(
-            f"sources/ is immutable and {category}/{src.name} already "
+            f"sources/ is immutable and {category}/{dest_name} already "
             "exists — rename the incoming file before admitting it")
-    dest.parent.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(src), str(dest))
-    sha = sha256_of(dest)
-    rel = f"{category}/{src.name}"
+    if is_tiff:
+        original_name = src.name
+        original_sha = sha256_of(src)
+        tiff_to_png(src, dest)          # raises before touching dest on
+        src.unlink()                    # multi-frame; conservative refusal
+        sha = sha256_of(dest)
+    else:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(src), str(dest))
+        sha = sha256_of(dest)
+    rel = f"{category}/{dest_name}"
     manifest_append(root, rel, actor, sha)
-    return {"source": rel, "sha256": sha, "manifest_row": True}
+    result = {"source": rel, "sha256": sha, "manifest_row": True}
+    if is_tiff:
+        # Ledger-visible honesty: the MANIFEST row only ever names the PNG
+        # (the admitted original), so the tiff's identity is carried here
+        # for the caller to sign — SKILL.md step 2 logs this `note` via
+        # `fusion log noted` right after admit, same run.
+        result["converted"] = {
+            "from_format": "tiff", "to_format": "png",
+            "original_name": original_name, "original_sha256": original_sha,
+        }
+        result["note"] = (
+            f"tiff→png at admit: {original_name} (sha256 {original_sha}) "
+            f"→ {dest_name} (sha256 {sha}) — original tiff bytes not "
+            "retained (waived per 2026-07-12 ruling: no need for large "
+            "tiff files)")
+    return result
 
 
 # ── unpack: containers are delivery vehicles, not originals ─────────────

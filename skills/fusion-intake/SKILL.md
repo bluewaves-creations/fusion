@@ -1,8 +1,8 @@
 ---
 name: fusion-intake
-description: "The Fusion intake gate — everything that enters a bucket enters through it, losslessly. Classify what landed in inbox/ (new, updated, duplicate, conflicting), preserve the original in sources/ with its sha256 in the MANIFEST, convert to a faithful summary-first document (xlsx, csv, docx, pptx, pdf, html, images, .eml mail, markdown/text exports), propose type and aurora, sign the ledger, clear the inbox. Use when the user says 'process the inbox', 'intake', 'ingest', 'convert this file', or drops files into a Fusion bucket's inbox/. For placement, curation, or restructuring of what is already inside, use fusion-librarian; for deliverables out of the bucket, use fusion-analyst. Applies only inside a Fusion bucket — a directory tree with BUCKET.md and LEDGER.md at its root; if there is no such bucket in play, offer to create one with `fusion new` instead of improvising structure."
+description: "The Fusion intake gate — everything that enters a bucket enters through it, losslessly. Classify what landed in inbox/ (new, updated, duplicate, conflicting), preserve the original in sources/ with its sha256 in the MANIFEST, convert to a faithful summary-first document (xlsx, csv, docx, pptx, pdf, html, images, tiff→png, .eml mail, markdown/text exports), propose type and aurora, sign the ledger, clear the inbox. Use when the user says 'process the inbox', 'intake', 'ingest', 'convert this file', or drops files into a Fusion bucket's inbox/. For placement, curation, or restructuring of what is already inside, use fusion-librarian; for deliverables out of the bucket, use fusion-analyst. Applies only inside a Fusion bucket — a directory tree with BUCKET.md and LEDGER.md at its root; if there is no such bucket in play, offer to create one with `fusion new` instead of improvising structure."
 license: MIT
-compatibility: "Requires the fusion CLI on PATH and uv. LibreOffice (soffice on PATH) required for docx/pptx/legacy office/html formats — fails fast when missing, never silently degrades. Script deps via PEP 723 (openpyxl, PyYAML, pymupdf)."
+compatibility: "Requires the fusion CLI on PATH and uv. LibreOffice (soffice on PATH) required for docx/pptx/legacy office/html formats — fails fast when missing, never silently degrades. Script deps via PEP 723 (openpyxl, PyYAML, pymupdf, pillow)."
 ---
 
 # fusion-intake — the gate
@@ -70,6 +70,14 @@ and deletes the container — the members become the originals, signed
    Category follows the bucket's filing rules (BUCKET.md), else a short
    plural noun (`reports`, `mails`, `gear`). The MANIFEST row is the
    script's job — never edit MANIFEST.md yourself.
+   `.tif`/`.tiff` is converted to PNG right here, deterministically — the
+   PNG is admitted as the original (its own sha256 in the MANIFEST row);
+   the tiff bytes are not retained (2026-07-12 ruling: no need for large
+   tiff files). A single-frame tiff converts cleanly; a multi-frame tiff
+   is refused outright (conservative — never a silent first-frame-wins).
+   The JSON result carries a `note` field when this happened — sign it
+   immediately, same run: `fusion log noted "<note>" --bucket <root> --as
+   <you>`.
 3. **Prepare:**
    `uv run <skill>/scripts/convert.py prepare --bucket <root> --source <cat>/<name> [--dest …] [--slug …] [--type …] [--aurora …] [--reconcile]`
    Extractive files (`done: true`) are already conformant documents.
@@ -112,6 +120,11 @@ never erased.
 ## The fidelity contract (lossless, non-negotiable)
 
 - The original lands in `sources/` byte-identical, full sha256 in MANIFEST.
+  Exception, human-ruled (2026-07-12): `.tif`/`.tiff` is converted to PNG
+  at admit — lossless on pixels, not on bytes, and the human explicitly
+  waived tiff-byte preservation to avoid needlessly large files. The PNG
+  becomes the original; the source tiff's name + sha256 are carried in
+  the admit `note` so the transformation stays honest in the ledger.
 - Every page is accounted for (`page_count == len(pages)`); a page the
   text layer can't cover is flagged `needs_vision` and YOU read its image.
 - Tables: every row, every column. Numbers verbatim — never rounded,
