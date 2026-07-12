@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,11 +16,19 @@ from .document import AURORAS, FILENAME_RE, MAX_STEM
 # extension rather than a hard-coded .md.
 EXPORT_FILENAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z0-9]+$")
 
+# SPEC §11 W6: sealed containers are delivery vehicles (fusion-intake
+# unpacks and discards them at admit) — one never belongs committed.
+CONTAINER_EXTS = (".athena", ".zip")
+
+# SPEC §11 W7: GitHub's hard push limit is 100MB; warn a good margin before
+# it, so a bucket never crosses it unpushable between one check and the next.
+MAX_TRACKED_BYTES = 95 * 1024 * 1024
+
 
 @dataclass
 class Finding:
     level: str  # "error" | "warning"
-    code: str   # E1..E8, W1..W5 — plus H1..H2 from check_hub (CLI vocabulary, not SPEC)
+    code: str   # E1..E8, W1..W7 — plus H1..H2 from check_hub (CLI vocabulary, not SPEC)
     path: str   # bucket-relative, "" when bucket-wide
     message: str
 
@@ -166,6 +175,66 @@ def _warnings(root: Path) -> list[Finding]:
     findings += _w2_indexes(root)
     findings += _w3_w4_documents(root)
     findings += _w5_untouched_activities(root)
+    findings += _w6_committed_containers(root)
+    findings += _w7_large_tracked_files(root)
+    return findings
+
+
+def _tracked_files(root: Path) -> list[str] | None:
+    """git-tracked paths, bucket-relative, POSIX-separated.
+
+    None when `root` isn't a git repo or git is unavailable — the checker
+    is a liberal reader (SPEC §0) and W6/W7 simply stay silent rather than
+    raise; a bucket without git has no push to protect yet.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "ls-files", "-z"], cwd=root,
+            capture_output=True, timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    text = result.stdout.decode("utf-8", errors="surrogateescape")
+    return [p for p in text.split("\0") if p]
+
+
+def _w6_committed_containers(root: Path) -> list[Finding]:
+    findings = []
+    for rel in sorted(_tracked_files(root) or ()):
+        if Path(rel).suffix.lower() not in CONTAINER_EXTS:
+            continue
+        if rel.startswith("inbox/"):
+            findings.append(Finding(
+                "warning", "W6", rel,
+                "container committed in inbox/ — a delivery vehicle, not "
+                "an original; unpack it and discard it (fusion-intake's "
+                "admit route), then remove it from git"))
+        else:
+            findings.append(Finding(
+                "warning", "W6", rel,
+                "sealed container committed — its content belongs "
+                "unpacked in sources/ + library/, not the archive itself; "
+                "remove it from git"))
+    return findings
+
+
+def _w7_large_tracked_files(root: Path) -> list[Finding]:
+    findings = []
+    for rel in sorted(_tracked_files(root) or ()):
+        path = root / rel
+        if not path.is_file():
+            continue
+        size = path.stat().st_size
+        if size > MAX_TRACKED_BYTES:
+            mb = size / (1024 * 1024)
+            findings.append(Finding(
+                "warning", "W7", rel,
+                f"tracked file is {mb:.1f}MB — GitHub's hard limit is "
+                "100MB and the bucket becomes unpushable; keep big "
+                "binaries in their native home and point to them "
+                "(resource:, §4) instead of committing them"))
     return findings
 
 

@@ -117,3 +117,15 @@ def test_new_bucket_writes_gitattributes(tmp_path):
     assert "* text=auto eol=lf" in text
     assert "sources/** -text" in text
     assert "\r" not in text
+
+
+def test_new_bucket_writes_gitignore(tmp_path):
+    root, _ = new_bucket(tmp_path / "b", description="d", actor="test")
+    text = (root / ".gitignore").read_text(encoding="utf-8")
+    assert "inbox/*.athena" in text
+    assert "inbox/*.zip" in text
+    assert "\r" not in text
+    # a one-line comment above the patterns, per the delivery-vehicle rule
+    lines = [l for l in text.splitlines() if l.strip()]
+    assert lines[0].startswith("#")
+    assert sum(1 for l in lines if l.startswith("#")) == 1

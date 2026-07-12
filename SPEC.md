@@ -90,6 +90,12 @@ Zone rules:
 - Fusion holds knowledge and work, never media or code. Big binaries and
   repositories stay in their native homes; documents point to them
   (`resource:`, §4).
+- Containers (`.athena`, `.zip`) are delivery vehicles, not originals:
+  fusion-intake unpacks one and discards it at admit; the members become
+  the originals. A container committed anywhere in the bucket is a
+  conformance warning (§11 W6) — worst in `inbox/`, where it means a
+  delivery that should have been unpacked and discarded is lingering
+  instead.
 
 ## 3. BUCKET.md
 
@@ -371,6 +377,15 @@ be slug-shaped; they are not documents, so E3–E5 never apply to them.
    bucket's birth. Activities whose first ledger mention postdates the
    window are exempt — a thing born after the reflection has not yet lived
    through one.
+6. A container file (`.athena`, `.zip`) tracked anywhere in the bucket
+   (§2) — a delivery vehicle left behind in `inbox/` instead of being
+   unpacked and discarded, or a sealed archive committed elsewhere whose
+   content belongs unpacked in `sources/` and `library/`.
+7. A tracked file exceeding 95MB — GitHub's hard push limit is 100MB, and
+   a bucket that crosses it becomes unpushable.
+
+W6 and W7 stay warnings, not errors: a bucket MUST remain usable offline
+even mid-drift, and both are caught before they cause damage, not after.
 
 A consumer MUST NOT refuse to read a bucket with errors; a producer MUST
 NOT add to one without flagging them. Recovery is always possible: the

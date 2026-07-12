@@ -51,6 +51,12 @@ GITATTRIBUTES = (
     "sources/MANIFEST.md merge=union\n"
 )
 
+GITIGNORE = (
+    "# delivery vehicles are never committed — fusion pattern (SPEC §2, §11 W6)\n"
+    "inbox/*.athena\n"
+    "inbox/*.zip\n"
+)
+
 
 class ScaffoldError(Exception):
     pass
@@ -95,6 +101,9 @@ def new_bucket(
     )
     (root / ".gitattributes").write_text(
         GITATTRIBUTES, encoding="utf-8", newline="\n"
+    )
+    (root / ".gitignore").write_text(
+        GITIGNORE, encoding="utf-8", newline="\n"
     )
     ledger.append(root, actor, "created", "BUCKET.md", note="bucket born", at=at)
     indexer.write_indexes(root, actor=None)

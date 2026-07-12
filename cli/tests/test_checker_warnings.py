@@ -1,4 +1,5 @@
 import os
+import subprocess
 import time
 
 from fusion.checker import check
@@ -6,6 +7,20 @@ from fusion.checker import check
 
 def warnings(root):
     return [f for f in check(root) if f.level == "warning"]
+
+
+def _git_commit_all(root, message="test commit"):
+    """Real git init+add+commit — W6/W7 read the tracked file list, so
+    these tests need an actual repo, not just files on disk. Identity is
+    passed per-invocation so this works on a machine (or CI runner) with
+    no global git user configured."""
+    for cmd in (
+        ["git", "init", "-q"],
+        ["git", "add", "-A"],
+        ["git", "-c", "user.email=test@fusion.invalid",
+         "-c", "user.name=test", "commit", "-q", "-m", message],
+    ):
+        subprocess.run(cmd, cwd=root, check=True, capture_output=True)
 
 
 def wcodes(root):
@@ -246,6 +261,62 @@ def test_check_hub_dangling_and_drift(tmp_path, monkeypatch):
     ]
     assert "ghost" in findings[0].message
     assert "newname" in findings[1].message
+
+
+def test_w6_committed_container_in_inbox(make_bucket):
+    root = make_bucket()
+    (root / "inbox" / "delivery.athena").write_bytes(b"PK\x03\x04stub")
+    _git_commit_all(root)
+    found = [f for f in warnings(root) if f.code == "W6"]
+    assert len(found) == 1
+    assert found[0].path == "inbox/delivery.athena"
+    assert "delivery vehicle" in found[0].message
+    assert "unpack" in found[0].message
+
+
+def test_w6_committed_container_elsewhere(make_bucket):
+    root = make_bucket()
+    (root / "output" / "export-package.zip").write_bytes(b"PK\x03\x04stub")
+    _git_commit_all(root)
+    found = [f for f in warnings(root) if f.code == "W6"]
+    assert len(found) == 1
+    assert found[0].path == "output/export-package.zip"
+    assert "sources/" in found[0].message and "library/" in found[0].message
+
+
+def test_w6_silent_without_git(make_bucket):
+    root = make_bucket()
+    (root / "inbox" / "delivery.athena").write_bytes(b"PK\x03\x04stub")
+    assert "W6" not in wcodes(root)  # no repo yet — liberal reader, no raise
+
+
+def test_w6_silent_for_untracked_container(make_bucket):
+    root = make_bucket()
+    _git_commit_all(root)  # commits everything currently on disk
+    (root / "inbox" / "delivery.athena").write_bytes(b"PK\x03\x04stub")
+    assert "W6" not in wcodes(root)  # sitting on disk, never `git add`ed
+
+
+def test_w7_large_tracked_file(make_bucket, tmp_path):
+    root = make_bucket()
+    big = root / "workbench" / "big-export.bin"
+    with open(big, "wb") as fh:
+        fh.truncate(96 * 1024 * 1024)  # sparse — no 96MB actually written
+    _git_commit_all(root)
+    found = [f for f in warnings(root) if f.code == "W7"]
+    assert len(found) == 1
+    assert found[0].path == "workbench/big-export.bin"
+    assert "96.0MB" in found[0].message
+    assert "100MB" in found[0].message
+
+
+def test_w7_silent_under_threshold(make_bucket):
+    root = make_bucket()
+    small = root / "workbench" / "small-export.bin"
+    with open(small, "wb") as fh:
+        fh.truncate(90 * 1024 * 1024)  # under the 95MB bar
+    _git_commit_all(root)
+    assert "W7" not in wcodes(root)
 
 
 def test_check_hub_all_present_is_empty(tmp_path, monkeypatch):
