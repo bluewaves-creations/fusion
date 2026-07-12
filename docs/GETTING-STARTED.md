@@ -114,7 +114,7 @@ metabolism — the bucket learns.
 - `fusion: command not found` — re-run the one-liner, or
   `uv tool install fusion-cli`, or install from a clone
   (`uv tool install ./fusion/cli`).
-- `fusion check` is red — every code (E1–E8 errors, W1–W5 warnings) is
+- `fusion check` is red — every code (E1–E8 errors, W1–W8 warnings) is
   defined in [SPEC.md §11](../SPEC.md#11-conformance); the message names
   the file. And a bucket is a git repo: `git diff` shows what changed,
   `git checkout` undoes it. Nothing is unrecoverable.

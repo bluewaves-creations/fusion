@@ -43,8 +43,8 @@ inbox/ ─► STAGE 1 gate (scripts/gate.py)      deterministic: hash, similarit
 
 ## Running it
 
-`admit`, `prepare`, `link`, `unpack`, and `gate.py` take the bucket root as
-`--bucket`; `cleanup` takes only `--run-dir` — resolve it against the
+`admit`, `prepare`, `link`, `relink`, `unpack`, `batch`, and `gate.py` take
+the bucket root as `--bucket`; `cleanup` takes only `--run-dir` — resolve it against the
 bucket root before calling (the manifest's `run_dir` is bucket-relative).
 `<skill>` is this skill's directory.
 
