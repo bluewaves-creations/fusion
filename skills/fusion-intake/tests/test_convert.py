@@ -169,6 +169,33 @@ def test_prepare_reconcile_merges_frontmatter(bucket):
     assert "12500.50" in doc                      # new content written
 
 
+def test_prepare_reconcile_yaml_date_survives_json(bucket):
+    # an unquoted `created: 2020-01-01` in the existing doc parses as
+    # datetime.date; a non-extractive source (text passthrough) must still
+    # serialize the work-dir manifest.json — the merge normalizes dates
+    # back to ISO strings
+    existing = bucket / "library" / "notes" / "note.md"
+    existing.parent.mkdir(parents=True, exist_ok=True)
+    existing.write_text(
+        "---\n"
+        "title: Note (curated)\n"
+        "type: note\n"
+        "aurora: library\n"
+        "source: sources/records/note-old.md\n"
+        "created: 2020-01-01\n"
+        "---\n\nOld summary.\n\n---\n\nOld body.\n",
+        encoding="utf-8")
+
+    (bucket / "inbox" / "note-v2.md").write_text(
+        "New body, revised.\n", encoding="utf-8")
+    rec = admit(bucket, "note-v2.md")
+    out = convert.prepare(bucket, rec["source"], dest="library/notes",
+                          slug="note", reconcile=True)
+    assert out["reconcile"] is True
+    assert out["front_matter_seed"]["created"] == "2020-01-01"
+    assert (bucket / out["manifest"]).is_file()
+
+
 def test_dest_and_type_overrides(bucket):
     put_inbox(bucket, "inventory.csv", fx.make_csv)
     rec = admit(bucket, "inventory.csv", category="gear")

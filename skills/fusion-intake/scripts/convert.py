@@ -32,7 +32,7 @@ import subprocess
 import sys
 import uuid
 import zipfile
-from datetime import datetime
+from datetime import date, datetime
 from email import policy
 from email.parser import BytesParser
 from html.parser import HTMLParser
@@ -639,6 +639,13 @@ def _merge_reconcile_fm(existing_fm: dict, seed: dict) -> dict:
         merged["created"] = seed["created"]
     merged["source"] = seed["source"]
     merged["updated"] = TODAY
+    # YAML's implicit resolver parses an unquoted date scalar (e.g.
+    # `created: 2026-07-10`) as datetime.date, which neither the work-dir
+    # manifest.json nor the CLI's JSON envelope can serialize — normalize
+    # once, here, right after the merge.
+    for key, value in merged.items():
+        if isinstance(value, (date, datetime)):
+            merged[key] = value.isoformat()
     return merged
 
 
