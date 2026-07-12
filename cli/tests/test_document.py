@@ -192,3 +192,18 @@ def test_links_tilde_fence_also_blanked(tmp_path):
     p = tmp_path / "x.md"
     p.write_text(_doc(body), encoding="utf-8")
     assert read_document(p).links == ["real.md"]
+
+
+def test_summary_only_field(tmp_path):
+    p = tmp_path / "stub.md"
+    p.write_text("---\ntitle: S\ntype: note\naurora: library\n---\n\n"
+                 "## Summary\n\nOnly this.\n\n---\n", encoding="utf-8")
+    assert read_document(p).summary_only is True
+    p2 = tmp_path / "real.md"
+    p2.write_text("---\ntitle: S\ntype: note\naurora: library\n---\n\n"
+                  "## Summary\n\nLine.\n\n---\n\nBody.\n", encoding="utf-8")
+    assert read_document(p2).summary_only is False
+    p3 = tmp_path / "loose.md"
+    p3.write_text("---\ntitle: S\ntype: note\naurora: library\n---\n\nProse.\n",
+                  encoding="utf-8")
+    assert read_document(p3).summary_only is False

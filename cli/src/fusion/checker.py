@@ -28,7 +28,7 @@ MAX_TRACKED_BYTES = 95 * 1024 * 1024
 @dataclass
 class Finding:
     level: str  # "error" | "warning"
-    code: str   # E1..E8, W1..W7 — plus H1..H2 from check_hub (CLI vocabulary, not SPEC)
+    code: str   # E1..E8, W1..W8 — plus H1..H2 from check_hub (CLI vocabulary, not SPEC)
     path: str   # bucket-relative, "" when bucket-wide
     message: str
 
@@ -177,6 +177,7 @@ def _warnings(root: Path) -> list[Finding]:
     findings += _w5_untouched_activities(root)
     findings += _w6_committed_containers(root)
     findings += _w7_large_tracked_files(root)
+    findings += _w8_summary_only(root)
     return findings
 
 
@@ -236,6 +237,23 @@ def _w7_large_tracked_files(root: Path) -> list[Finding]:
                 "binaries in their native home and point to them "
                 "(resource:, §4) instead of committing them"))
     return findings
+
+
+def _w8_summary_only(root: Path) -> list[Finding]:
+    # A pointer document (source:/resource: in frontmatter) is exempt —
+    # its designed shape IS summary + pointer; the body is the thing it
+    # points at, not missing prose.
+    return [
+        Finding("warning", "W8", f"{zone}/{rel.as_posix()}",
+                "document is only a summary — nothing beneath the closing "
+                "separator and no source:/resource: pointer; write the "
+                "body, point at the thing, or reconsider whether the "
+                "document should exist")
+        for zone, rel, doc in iter_documents(root)
+        if doc.summary_first and doc.summary_only
+        and not (doc.frontmatter or {}).get("source")
+        and not (doc.frontmatter or {}).get("resource")
+    ]
 
 
 def _w1_stale_inbox(root: Path) -> list[Finding]:

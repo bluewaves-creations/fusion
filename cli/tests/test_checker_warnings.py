@@ -326,3 +326,57 @@ def test_check_hub_all_present_is_empty(tmp_path, monkeypatch):
     monkeypatch.setenv("FUSION_HUB", str(tmp_path / "hub.md"))
     new_bucket(tmp_path / "here", description="d", actor="test")
     assert checker.check_hub() == []
+
+
+SUMMARY_ONLY_DOC = """---
+title: Stub
+type: note
+aurora: library
+---
+
+## Summary
+
+A summary and nothing else.
+
+---
+"""
+
+
+def test_w8_summary_only_document(make_bucket):
+    root = make_bucket()
+    (root / "library" / "stub.md").write_text(SUMMARY_ONLY_DOC,
+                                              encoding="utf-8")
+    found = [f for f in warnings(root) if f.code == "W8"]
+    assert [f.path for f in found] == ["library/stub.md"]
+    assert "only a summary" in found[0].message
+
+
+def test_w8_silent_with_a_body(make_bucket):
+    root = make_bucket()
+    (root / "library" / "real.md").write_text(
+        SUMMARY_ONLY_DOC + "\nBody text.\n", encoding="utf-8")
+    assert not [f for f in warnings(root) if f.code == "W8"]
+
+
+def test_w8_silent_when_not_summary_first(make_bucket):
+    # a shapeless body is E5's territory — W8 must not double-flag it
+    root = make_bucket()
+    (root / "library" / "loose.md").write_text(
+        "---\ntitle: L\ntype: note\naurora: library\n---\n\nJust prose.\n",
+        encoding="utf-8")
+    assert not [f for f in warnings(root) if f.code == "W8"]
+
+
+def test_w8_silent_for_pointer_documents(make_bucket):
+    # a converted scan's designed shape IS summary + source: pointer —
+    # its body is the source file, not missing prose
+    root = make_bucket()
+    (root / "library" / "scan.md").write_text(
+        SUMMARY_ONLY_DOC.replace(
+            "aurora: library", "aurora: library\nsource: sources/records/scan.pdf"),
+        encoding="utf-8")
+    (root / "library" / "link.md").write_text(
+        SUMMARY_ONLY_DOC.replace(
+            "aurora: library", "aurora: library\nresource: https://example.com/x"),
+        encoding="utf-8")
+    assert not [f for f in warnings(root) if f.code == "W8"]

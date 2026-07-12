@@ -66,6 +66,7 @@ class Document:
     fm_error: str | None
     summary_first: bool
     summary_line: str | None
+    summary_only: bool = False
     links: list[str] = field(default_factory=list)
 
     def _get(self, key: str):
@@ -123,6 +124,23 @@ def _summary(body: str) -> tuple[bool, str | None]:
     return False, first
 
 
+def _summary_only(body: str) -> bool:
+    """True when the document is ONLY a summary — a summary-first shape
+    with nothing but whitespace after the '---' that closes it (§4 wants
+    a body below the separator; whether a stub deserves to exist is the
+    operator's call, so the checker warns rather than errors: W8)."""
+    lines = body.split("\n")
+    i = 0
+    while i < len(lines) and not lines[i].strip():
+        i += 1
+    if i == len(lines) or lines[i].strip() != "## Summary":
+        return False
+    for j in range(i + 1, len(lines)):
+        if lines[j].strip() == "---":
+            return not "".join(lines[j + 1:]).strip()
+    return False
+
+
 def _links(body: str) -> list[str]:
     out = []
     for target in _LINK_RE.findall(_blank_code(body)):
@@ -151,5 +169,6 @@ def read_document(path: Path) -> Document:
         fm_error=fm_error,
         summary_first=summary_first,
         summary_line=summary_line,
+        summary_only=_summary_only(body),
         links=_links(body),
     )

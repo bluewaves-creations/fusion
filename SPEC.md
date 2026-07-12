@@ -383,6 +383,12 @@ be slug-shaped; they are not documents, so E3–E5 never apply to them.
    content belongs unpacked in `sources/` and `library/`.
 7. A tracked file exceeding 95MB — GitHub's hard push limit is 100MB, and
    a bucket that crosses it becomes unpushable.
+8. A document that is only a summary — nothing beneath the `---` line
+   that closes it (§4) — and whose frontmatter carries neither `source:`
+   nor `resource:`. Pointer documents are exempt: a converted scan's
+   designed shape IS summary + pointer. A warning, not an error: whether
+   a stub deserves to exist is operator judgment, and a stub that
+   carries boilerplate text is a semantic call no checker should fake.
 
 W6 and W7 stay warnings, not errors: a bucket MUST remain usable offline
 even mid-drift, and both are caught before they cause damage, not after.
