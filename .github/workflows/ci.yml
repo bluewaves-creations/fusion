@@ -23,7 +23,7 @@ jobs:
       - name: Skills suites (POSIX only — they shell out to POSIX tools)
         if: runner.os != 'Windows'
         run: |
-          uv run --with pytest --with pyyaml --with openpyxl --with pymupdf pytest skills/fusion-intake/tests -q
+          uv run --with pytest --with pyyaml --with openpyxl --with pymupdf --with pillow pytest skills/fusion-intake/tests -q
           uv run --with pytest --with pyyaml pytest skills/fusion-librarian/tests -q
 
   shellcheck:
