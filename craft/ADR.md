@@ -18,6 +18,13 @@ Decisions:
   `shell: bash` — pwsh only propagates the last command's exit code.
 - Skills suites' unpinned `--with` deps: human accepted as-is at
   finish; revisit only if a resolution ever bites.
+- Batch 2 (extended review, accepted in full): canonical skill installs
+  now carry the `.fusion-setup` sentinel, and setup/remove only destroy
+  what the sentinel (or a payload-identical digest) can vouch for.
+  Transition: canonical dirs installed by ≤ 1.4.1 have no sentinel — the
+  first post-upgrade `fusion setup` reports them "left … --force
+  replaces"; one `fusion setup --force` adopts them. Accepted over
+  silently overwriting possibly-user-modified content.
 
 ## 2026-07-21 — State of the system at Craftsman adoption
 Context: `init craftsman` on the existing v1.4.1 tree (clean main, released

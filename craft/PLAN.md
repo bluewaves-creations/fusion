@@ -70,7 +70,7 @@ root SPEC §0/§11 — no craft-spec delta, per the finish improvement loop.
       indexer.py + checker.py [R6].
       Done: fusion status/today/agenda exit 0 on a bucket holding
       `aurora: [a, b]`; new tests red→green; full gates green.
-- [ ] 2.2 CommonMark link destinations [R2]. Doc: CommonMark spec §6.3
+- [x] 2.2 CommonMark link destinations [R2]. Doc: CommonMark spec §6.3
       (inline links: optional <...> destination, optional "…"/'…'/(…)
       title after spaces). Files: cli/src/fusion/document.py (_links:
       strip title suffix, unwrap angle brackets, strip whitespace) and
@@ -80,7 +80,7 @@ root SPEC §0/§11 — no craft-spec delta, per the finish improvement loop.
       summary line from a non-summary-first doc [R5].
       Done: W4 silent on titled links to existing files; link-repair
       lists none of them unrepairable; both suites green.
-- [ ] 2.3 Setup honors its foreign-entry contract [R3+R4]. Doc: setup.py
+- [x] 2.3 Setup honors its foreign-entry contract [R3+R4]. Doc: setup.py
       module docstring (the contract) + fan_out's provenance gate as the
       in-repo model. Files: cli/src/fusion/setup.py (install_canonical
       dir branch: digest/sentinel/--force gate before rmtree; remove_all
