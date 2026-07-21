@@ -244,3 +244,17 @@ def test_links_peel_commonmark_title_and_angle_brackets(tmp_path):
     p = tmp_path / "x.md"
     p.write_text(_doc(body), encoding="utf-8")
     assert read_document(p).links == ["../SPEC.md", "my file.md", "notes.md"]
+
+
+def test_summary_line_is_none_without_terminator(tmp_path):
+    """A ## Summary block that never closes with --- is not summary-first
+    — and must not leak a summary line to consumers (the index)."""
+    p = tmp_path / "x.md"
+    p.write_text(
+        "---\ntitle: X\ntype: note\naurora: library\n---\n\n"
+        "## Summary\n\nAn unterminated summary.\n\nMore prose.\n",
+        encoding="utf-8",
+    )
+    doc = read_document(p)
+    assert doc.summary_first is False
+    assert doc.summary_line is None

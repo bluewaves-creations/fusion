@@ -545,7 +545,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--force",
         action="store_true",
-        help="replace foreign entries setup would otherwise leave",
+        help="replace (with --remove: remove) foreign entries "
+        "setup would otherwise leave",
     )
     p.add_argument(
         "--remove",

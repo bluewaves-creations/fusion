@@ -298,3 +298,30 @@ def test_remove_all_canonical_skips_files_and_leaves_unattributed_dirs(home, can
     assert by["fusion-notes.md"] == "left"
     assert by["fusion-extra"] == "left"
     assert by["fusion-intake"] == "removed"
+
+
+def test_remove_all_digest_adopts_legacy_payload_identical_dir(
+    home, canonical, monkeypatch
+):
+    """A pre-sentinel install whose content is byte-identical to the
+    payload is provably ours — remove must not strand it."""
+    monkeypatch.setattr(setup, "payload_root", lambda: home / "_payload")
+    for d in canonical.glob("fusion-*"):
+        (d / ".fusion-setup").unlink()
+
+    setup.remove_all(canonical, home)
+
+    assert not (canonical / "fusion-intake").exists()
+    assert not (canonical / "fusion-librarian").exists()
+
+
+def test_remove_all_force_removes_unattributed_dir(home, canonical):
+    foreign = canonical / "fusion-extra"
+    foreign.mkdir()
+    (foreign / "SKILL.md").write_text("---\nname: their-tool\n---\n")
+
+    setup.remove_all(canonical, home)
+    assert foreign.is_dir()  # never destroyed silently
+
+    setup.remove_all(canonical, home, force=True)
+    assert not foreign.exists()  # the typed escape hatch

@@ -493,3 +493,24 @@ def test_scan_and_apply_preserve_commonmark_title(bucket):
     assert lr.apply_proposals(bucket, result["proposals"]) == 1
     text = (bucket / "library" / "notes" / "doc.md").read_text(encoding="utf-8")
     assert '[f](../../sources/cat/x.pdf "The File")' in text
+
+
+def test_repair_rewraps_angle_brackets_when_path_needs_them(bucket):
+    """A repaired destination containing a space must come back in
+    <angle brackets> — a bare space would terminate the destination."""
+    seed_source(bucket, "cat/the file.pdf", "pdf bytes")
+    write_doc(bucket, "library/notes/doc.md", "See [f](<assets/the file.pdf>).")
+
+    result = lr.scan(bucket)
+
+    assert result["proposals"] == [
+        {
+            "doc": "library/notes/doc.md",
+            "link": "<assets/the file.pdf>",
+            "target": "<../../sources/cat/the file.pdf>",
+            "confidence": "exact",
+        }
+    ]
+    assert lr.apply_proposals(bucket, result["proposals"]) == 1
+    text = (bucket / "library" / "notes" / "doc.md").read_text(encoding="utf-8")
+    assert "[f](<../../sources/cat/the file.pdf>)" in text

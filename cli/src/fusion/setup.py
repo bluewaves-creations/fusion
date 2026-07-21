@@ -404,7 +404,9 @@ def fan_out(
     return results
 
 
-def remove_all(canonical: Path, home: Path) -> list[dict[str, Any]]:
+def remove_all(
+    canonical: Path, home: Path, force: bool = False
+) -> list[dict[str, Any]]:
     results = []
     for agent in detect_agents(home):
         if agent["mode"] == "standard":
@@ -455,12 +457,20 @@ def remove_all(canonical: Path, home: Path) -> list[dict[str, Any]]:
                 {**row, "action": "left", "detail": f"{skill} is not a skill directory"}
             )
             continue
-        if not (skill / ".fusion-setup").is_file():
+        # ours when the sentinel vouches, or when the content is
+        # byte-identical to the payload (pre-sentinel installs) — the
+        # same fallback pair the agent sweep above keys on
+        ours = (skill / ".fusion-setup").is_file() or (
+            (payload_root() / skill.name).is_dir()
+            and tree_digest(skill) == tree_digest(payload_root() / skill.name)
+        )
+        if not ours and not force:
             results.append(
                 {
                     **row,
                     "action": "left",
-                    "detail": f"{skill} is not attributable to setup — left in place",
+                    "detail": f"{skill} is not attributable to setup — "
+                    f"left in place (--force removes)",
                 }
             )
             continue
@@ -528,7 +538,7 @@ def run_setup(
     home: Path, skills_dir: Path, force: bool, no_agents: bool, remove: bool
 ) -> dict[str, Any]:
     if remove:
-        results = remove_all(skills_dir, home)
+        results = remove_all(skills_dir, home, force)
         return {
             "ok": True,
             "removed": results,

@@ -230,9 +230,10 @@ def scan(root: Path) -> dict:
                 continue
 
             new_path = os.path.relpath(root / chosen, start=doc.parent)
-            target = (
-                new_path.replace(os.sep, "/") + (f"#{anchor}" if anchor else "") + title
-            )
+            dest = new_path.replace(os.sep, "/") + (f"#{anchor}" if anchor else "")
+            if " " in dest:
+                dest = f"<{dest}>"  # a bare space would end the destination
+            target = dest + title
             proposals.append(
                 {
                     "doc": doc_rel,
