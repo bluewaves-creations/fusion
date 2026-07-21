@@ -12,7 +12,7 @@ at a time, as it is touched.
 Human disposition at adoption (2026-07-21): remediate the missing
 lint/type gate with ruff + mypy, then make it blocking.
 
-- [ ] C1 The CLI codebase is lint-clean and uniformly formatted: inside
+- [x] C1 The CLI codebase is lint-clean and uniformly formatted: inside
       `cli/`, `uv run ruff check` and `uv run ruff format --check` both
       exit 0. Edge: skills test suites (`skills/*/tests`) are covered by
       the same check — one style across the repo.

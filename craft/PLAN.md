@@ -22,7 +22,7 @@ conformance 0/0, shellcheck, wheel). Red trials re-run at plan time:
 ruff 0.15.22, mypy 2.3.0 — counts pinned in Gaps.
 
 ## Batch 1 — static gate remediation
-- [ ] 1.1 Lint-clean and formatted (C1). Doc: Ruff docs — "Configuring
+- [x] 1.1 Lint-clean and formatted (C1). Doc: Ruff docs — "Configuring
       Ruff" (hierarchical discovery; pyproject without [tool.ruff] is
       ignored, so a root ruff.toml governs the repo) + rules E4/E7/F.
       Files: ruff.toml (create, repo root); cli/pyproject.toml (ruff into
