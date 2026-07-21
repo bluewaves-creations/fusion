@@ -7,7 +7,9 @@ Architecture: convention (root SPEC.md) + CLI (`cli/`, Python/uv, hatchling)
 `fusion check examples/crazy-ones` stays 0/0; CI 3-OS matrix stays green.
 
 Files (Batch 1):
-- cli/pyproject.toml — dev group + [tool.ruff]/[tool.mypy] config, sole config home
+- ruff.toml (repo root) — the one lint/format config; ruff's per-file
+  upward discovery is the only way one config governs cli/ AND skills/
+- cli/pyproject.toml — dev group (ruff, mypy, types-PyYAML) + [tool.mypy]
 - cli/src/fusion/{checker.py,cli.py} — the 2 real type fixes
 - cli/src/**, cli/tests/**, skills/*/tests/** — mechanical lint/format sweep
 - .github/workflows/ci.yml — new static-checks step
@@ -21,13 +23,17 @@ ruff 0.15.22, mypy 2.3.0 — counts pinned in Gaps.
 
 ## Batch 1 — static gate remediation
 - [ ] 1.1 Lint-clean and formatted (C1). Doc: Ruff docs — "Configuring
-      Ruff" (pyproject `[tool.ruff]`) + rules E702, E731, E741, F401.
-      Files: cli/pyproject.toml (add ruff to dev group via `uv add --group
-      dev ruff`, config targets cli + skills tests); fix 8 errors
-      (3×E702 semicolons, 3×E741 ambiguous `l`, 1×E731 lambda, 1×F401
-      unused import); format the 32 drifted files.
-      Done: inside `cli/`, `uv run ruff check` and
-      `uv run ruff format --check` exit 0; full gate run stays green.
+      Ruff" (hierarchical discovery; pyproject without [tool.ruff] is
+      ignored, so a root ruff.toml governs the repo) + rules E4/E7/F.
+      Files: ruff.toml (create, repo root); cli/pyproject.toml (ruff into
+      dev group via `uv add --group dev ruff`); fix 73 repo-wide errors —
+      60×F811 fixture-import shadowing in skills/fusion-intake tests
+      (drop `from conftest import` lines, pytest auto-discovers), 7×E702,
+      3×E741, 1×E731, 1×E401, 1×F401; format the 43 drifted files.
+      Done: from repo root, `uv run --project cli ruff check .` and
+      `uv run --project cli ruff format --check .` exit 0 (covers cli/
+      and skills/ — C1's letter, inside cli/, holds as a subset); full
+      gate run stays green.
 - [ ] 1.2 Type-clean (C2). Doc: mypy docs — "The mypy configuration file"
       (pyproject `[tool.mypy]`). Files: cli/pyproject.toml (add mypy +
       types-PyYAML to dev group); cli/src/fusion/checker.py:41 (union-attr
