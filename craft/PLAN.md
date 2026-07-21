@@ -41,7 +41,7 @@ ruff 0.15.22, mypy 2.3.0 — counts pinned in Gaps.
       assigned to `list[str]`).
       Done: inside `cli/`, `uv run mypy src/fusion` exits 0; full gate
       run stays green.
-- [ ] 1.3 Enforcement (C3). Doc: uv docs — "Using uv in GitHub Actions".
+- [x] 1.3 Enforcement (C3). Doc: uv docs — "Using uv in GitHub Actions".
       Files: .github/workflows/ci.yml (static-checks step running the
       three commands from 1.1/1.2 via the dev group); AGENTS.md Lint/Types
       gate line rewritten to the `uv run` forms, advisory clause dropped.

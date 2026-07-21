@@ -18,7 +18,7 @@ lint/type gate with ruff + mypy, then make it blocking.
       the same check — one style across the repo.
 - [x] C2 The CLI source is type-clean: inside `cli/`, `uv run mypy
       src/fusion` exits 0 — no missing-stub errors, no real type errors.
-- [ ] C3 The static checks are enforced, not advisory: CI runs lint,
+- [x] C3 The static checks are enforced, not advisory: CI runs lint,
       format, and type checks on every push and pull request, and the
       AGENTS.md Lint/Types gate reads blocking. Edge: a contributor
       without ruff or mypy installed gets the same result via uv-managed
