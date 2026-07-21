@@ -456,3 +456,40 @@ def test_cli_apply_reads_proposals_file(bucket, tmp_path, capsys):
     out = capsys.readouterr()
     payload = json.loads(out.out)
     assert payload["changed"] == 1
+
+
+def test_scan_working_titled_and_angled_links_not_reported(bucket):
+    """CommonMark §6.3 titles / angle brackets are legal — a link whose
+    file exists is never proposed and never unrepairable."""
+    write_doc(bucket, "library/notes/other.md", "Body.")
+    write_doc(
+        bucket,
+        "library/notes/doc.md",
+        'A [t](other.md "The Other") and an [a](<other.md>) link.',
+    )
+
+    result = lr.scan(bucket)
+
+    assert result["proposals"] == []
+    assert result["unrepairable"] == []
+
+
+def test_scan_and_apply_preserve_commonmark_title(bucket):
+    """A broken titled link repairs to the new path with its title kept —
+    repair fixes the path, never eats the prose."""
+    seed_source(bucket, "cat/x.pdf", "pdf bytes")
+    write_doc(bucket, "library/notes/doc.md", 'See [f](assets/x.pdf "The File").')
+
+    result = lr.scan(bucket)
+
+    assert result["proposals"] == [
+        {
+            "doc": "library/notes/doc.md",
+            "link": 'assets/x.pdf "The File"',
+            "target": '../../sources/cat/x.pdf "The File"',
+            "confidence": "exact",
+        }
+    ]
+    assert lr.apply_proposals(bucket, result["proposals"]) == 1
+    text = (bucket / "library" / "notes" / "doc.md").read_text(encoding="utf-8")
+    assert '[f](../../sources/cat/x.pdf "The File")' in text

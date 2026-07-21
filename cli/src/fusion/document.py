@@ -25,6 +25,12 @@ MAX_STEM = 60
 
 _LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 _EXTERNAL = ("http://", "https://", "mailto:", "#")
+# CommonMark §6.3: a destination may sit in <angle brackets>, and a
+# "…"/'…' title may follow after whitespace — neither is part of the path.
+_DEST_RE = re.compile(
+    r"^(?:<(?P<angled>[^>]*)>|(?P<bare>[^\s<]\S*))"
+    r"(?:\s+(?:\"[^\"]*\"|'[^']*'))?$"
+)
 _FENCE_OPEN_RE = re.compile(r"^(\s*)(`{3,}|~{3,})")
 _INLINE_CODE_RE = re.compile(r"(`+)((?:(?!\1)[^\n])*?)\1")
 
@@ -129,7 +135,7 @@ def _summary(body: str) -> tuple[bool, str | None]:
             return first is not None, first
         if stripped and first is None:
             first = line
-    return False, first
+    return False, None
 
 
 def _summary_only(body: str) -> bool:
@@ -149,10 +155,21 @@ def _summary_only(body: str) -> bool:
     return False
 
 
+def _destination(raw: str) -> str:
+    """Peel CommonMark decoration off a captured link destination —
+    liberal: text that matches no known shape is returned as-is."""
+    m = _DEST_RE.match(raw.strip())
+    if not m:
+        return raw.strip()
+    angled = m.group("angled")
+    return angled if angled is not None else m.group("bare")
+
+
 def _links(body: str) -> list[str]:
     out = []
-    for target in _LINK_RE.findall(_blank_code(body)):
-        if not target.startswith(_EXTERNAL):
+    for raw in _LINK_RE.findall(_blank_code(body)):
+        target = _destination(raw)
+        if target and not target.startswith(_EXTERNAL):
             out.append(target)
     return out
 

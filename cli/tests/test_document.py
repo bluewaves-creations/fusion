@@ -231,3 +231,16 @@ def test_summary_only_field(tmp_path):
         "---\ntitle: S\ntype: note\naurora: library\n---\n\nProse.\n", encoding="utf-8"
     )
     assert read_document(p3).summary_only is False
+
+
+def test_links_peel_commonmark_title_and_angle_brackets(tmp_path):
+    """CommonMark §6.3: a destination may sit in <angle brackets> and
+    carry a "…"/'…' title — the link target is the path alone."""
+    body = (
+        'A [titled](../SPEC.md "The Spec") link, '
+        "an [angled](<my file.md>) one, a [padded](notes.md ) one,\n"
+        'and an [external titled](https://example.com/ "Ext") one.\n'
+    )
+    p = tmp_path / "x.md"
+    p.write_text(_doc(body), encoding="utf-8")
+    assert read_document(p).links == ["../SPEC.md", "my file.md", "notes.md"]

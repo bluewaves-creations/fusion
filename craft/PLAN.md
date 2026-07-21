@@ -60,7 +60,7 @@ root SPEC §0/§11 — no craft-spec delta, per the finish improvement loop.
       AGENTS.md gate line contains no "advisory".
 
 ## Batch 2 — extended-review fixes (accepted in full, 2026-07-21)
-- [ ] 2.1 Liberal reader in the composed views [R1]. Doc: SPEC §0 —
+- [x] 2.1 Liberal reader in the composed views [R1]. Doc: SPEC §0 —
       consumers never reject a half-migrated bucket. Files:
       cli/src/fusion/views.py (coerce frontmatter values to stable
       strings before they become Counter/dict keys or output labels in

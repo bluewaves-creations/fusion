@@ -407,3 +407,17 @@ def test_w8_silent_for_pointer_documents(make_bucket):
         encoding="utf-8",
     )
     assert not [f for f in warnings(root) if f.code == "W8"]
+
+
+def test_w4_silent_on_titled_and_angled_links_to_existing_files(make_bucket):
+    """CommonMark titles and angle brackets are legal syntax — a link to
+    a file that exists must never warn (0-warning conformance holds)."""
+    root = make_bucket()
+    doc = root / "library" / "linked.md"
+    doc.write_text(
+        "---\ntitle: L\ntype: note\naurora: library\n---\n\n"
+        "## Summary\n\nLinks out.\n\n---\n\n"
+        'A [titled](notes.md "Good Notes") link, an [angled](<notes.md>) one.\n',
+        encoding="utf-8",
+    )
+    assert [f for f in warnings(root) if f.code == "W4"] == []

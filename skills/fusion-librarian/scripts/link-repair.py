@@ -62,6 +62,27 @@ SKIP_NAMES = {"MANIFEST.md", "INDEX.md"}
 LINK_RE = re.compile(r"\]\(([^)#][^)]*)\)")
 _SCHEME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
 
+# CommonMark §6.3: a destination may sit in <angle brackets>, and a
+# "…"/'…' title may follow after whitespace — neither is part of the
+# path, and the title must survive a rewrite untouched.
+_DEST_RE = re.compile(
+    r"^(?:<(?P<angled>[^>]*)>|(?P<bare>[^\s<]\S*))"
+    r"(?P<title>\s+(?:\"[^\"]*\"|'[^']*'))?$"
+)
+
+
+def _split_destination(raw: str):
+    """Return (path-ish destination, title suffix to preserve on
+    rewrite) — liberal: text matching no known shape IS the destination."""
+    m = _DEST_RE.match(raw.strip())
+    if not m:
+        return raw.strip(), ""
+    dest = m.group("angled")
+    if dest is None:
+        dest = m.group("bare")
+    return dest, m.group("title") or ""
+
+
 # Code is not prose: fenced blocks and inline code spans never carry a
 # real relative link, so they're blanked out before extraction — the
 # same fix as cli/src/fusion/document.py's `_blank_code` (twin
@@ -162,18 +183,20 @@ def _index_candidates(root: Path):
 
 
 def _extract_links(text: str):
-    """Yield (raw_target, path_part, anchor) for every candidate relative
-    link — http(s)/mailto skipped by scheme, anchor-only already excluded
-    by LINK_RE's negative first-char class, and fenced/inline code
-    blanked first so code is never read as prose."""
+    """Yield (raw_target, path_part, anchor, title) for every candidate
+    relative link — http(s)/mailto skipped by scheme (checked after the
+    peel, so <https://…> is caught too), anchor-only already excluded by
+    LINK_RE's negative first-char class, and fenced/inline code blanked
+    first so code is never read as prose."""
     for m in LINK_RE.finditer(_blank_code(text)):
         target = m.group(1)
-        if _SCHEME_RE.match(target):
+        dest, title = _split_destination(target)
+        if _SCHEME_RE.match(dest):
             continue
-        path_part, _, anchor = target.partition("#")
+        path_part, _, anchor = dest.partition("#")
         if not path_part:
             continue
-        yield target, path_part, anchor
+        yield target, path_part, anchor, title
 
 
 # ── scan ─────────────────────────────────────────────────────────────────
@@ -187,7 +210,7 @@ def scan(root: Path) -> dict:
     for doc in _iter_docs(root):
         doc_rel = doc.relative_to(root).as_posix()
         text = doc.read_text(encoding="utf-8", errors="replace")
-        for raw_target, path_part, anchor in _extract_links(text):
+        for raw_target, path_part, anchor, title in _extract_links(text):
             if (doc.parent / path_part).exists():
                 continue  # not broken
 
@@ -207,7 +230,9 @@ def scan(root: Path) -> dict:
                 continue
 
             new_path = os.path.relpath(root / chosen, start=doc.parent)
-            target = new_path.replace(os.sep, "/") + (f"#{anchor}" if anchor else "")
+            target = (
+                new_path.replace(os.sep, "/") + (f"#{anchor}" if anchor else "") + title
+            )
             proposals.append(
                 {
                     "doc": doc_rel,
@@ -304,7 +329,8 @@ def apply_proposals(root: Path, proposals: list) -> int:
         if not doc_path.is_file():
             raise RepairError(f"proposals[{i}]: doc does not exist: {doc_rel!r}")
 
-        target_path_part, _, _ = target.partition("#")
+        dest, _ = _split_destination(target)
+        target_path_part, _, _ = dest.partition("#")
         target_abs = (doc_path.parent / target_path_part).resolve()
         if not target_abs.is_relative_to(root):
             raise RepairError(f"proposals[{i}]: target escapes the bucket: {target!r}")
