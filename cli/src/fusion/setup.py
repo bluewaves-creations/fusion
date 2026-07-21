@@ -14,6 +14,7 @@ import importlib.resources
 import os
 import shutil
 from pathlib import Path
+from typing import Any
 
 
 class SetupError(Exception):
@@ -51,7 +52,9 @@ def tree_digest(path: Path) -> str:
     return h.hexdigest()
 
 
-def install_canonical(payload: Path, skills_dir: Path, force: bool) -> list[dict]:
+def install_canonical(
+    payload: Path, skills_dir: Path, force: bool
+) -> list[dict[str, Any]]:
     skills_dir.mkdir(parents=True, exist_ok=True)
     results = []
     for skill in sorted(payload.glob("fusion-*")):
@@ -170,7 +173,7 @@ AGENTS = [
 ]
 
 
-def detect_agents(home: Path) -> list[dict]:
+def detect_agents(home: Path) -> list[dict[str, Any]]:
     found = []
     for row in AGENTS:
         if (home / row["marker"]).is_dir():
@@ -188,7 +191,7 @@ def _points_into(link: Path, canonical: Path) -> bool:
         return False
 
 
-def _sweep_legacy(agent: dict, canonical: Path) -> list[dict]:
+def _sweep_legacy(agent: dict[str, Any], canonical: Path) -> list[dict[str, Any]]:
     """Remove OUR leftovers from a dir an earlier release linked into.
 
     fusion-cli <= 1.2.0 symlinked (or copy-fell-back) into Pi's and
@@ -244,7 +247,9 @@ def _sweep_legacy(agent: dict, canonical: Path) -> list[dict]:
     return results
 
 
-def fan_out(canonical: Path, agents: list[dict], force: bool) -> list[dict]:
+def fan_out(
+    canonical: Path, agents: list[dict[str, Any]], force: bool
+) -> list[dict[str, Any]]:
     results = []
     skills = sorted(canonical.glob("fusion-*"))
     for agent in agents:
@@ -367,7 +372,7 @@ def fan_out(canonical: Path, agents: list[dict], force: bool) -> list[dict]:
     return results
 
 
-def remove_all(canonical: Path, home: Path) -> list[dict]:
+def remove_all(canonical: Path, home: Path) -> list[dict[str, Any]]:
     results = []
     for agent in detect_agents(home):
         if agent["mode"] == "standard":
@@ -418,7 +423,7 @@ def remove_all(canonical: Path, home: Path) -> list[dict]:
     return results
 
 
-def environment_advice(home: Path) -> list[dict]:
+def environment_advice(home: Path) -> list[dict[str, Any]]:
     import os as _os
     import subprocess
 
@@ -475,7 +480,7 @@ def environment_advice(home: Path) -> list[dict]:
 
 def run_setup(
     home: Path, skills_dir: Path, force: bool, no_agents: bool, remove: bool
-) -> dict:
+) -> dict[str, Any]:
     if remove:
         results = remove_all(skills_dir, home)
         return {

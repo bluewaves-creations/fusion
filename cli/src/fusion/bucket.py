@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
+from typing import Any, Iterator
 
 from .document import Document, read_document, split_frontmatter
 
@@ -29,22 +29,22 @@ REQUIRED_BUCKET_FIELDS: tuple[str, ...] = (
 @dataclass
 class Bucket:
     root: Path
-    frontmatter: dict | None
+    frontmatter: dict[str, Any] | None
     fm_error: str | None
 
-    def _get(self, key: str):
+    def _get(self, key: str) -> Any:
         return (self.frontmatter or {}).get(key)
 
     @property
-    def name(self):
+    def name(self) -> Any:
         return self._get("name")
 
     @property
-    def kind(self):
+    def kind(self) -> Any:
         return self._get("kind")
 
     @property
-    def description(self):
+    def description(self) -> Any:
         return self._get("description")
 
     @property

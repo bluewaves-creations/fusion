@@ -13,15 +13,18 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Any, Callable
 
 from .setup import payload_version
+
+Runner = Callable[..., "subprocess.CompletedProcess[Any]"]
 
 
 class UpdateError(Exception):
     """An update step that cannot proceed."""
 
 
-def _runner():
+def _runner() -> Runner:
     return subprocess.run
 
 
@@ -37,14 +40,14 @@ def find_uv(home: Path) -> Path | None:
     return None
 
 
-def uv_owns_install(uv: Path, run) -> bool:
+def uv_owns_install(uv: Path, run: Runner) -> bool:
     proc = run([str(uv), "tool", "list"], capture_output=True, text=True)
     if proc.returncode != 0:
         return False
     return any(line.split()[:1] == ["fusion-cli"] for line in proc.stdout.splitlines())
 
 
-def fusion_binary(uv: Path, run) -> Path:
+def fusion_binary(uv: Path, run: Runner) -> Path:
     proc = run([str(uv), "tool", "dir", "--bin"], capture_output=True, text=True)
     if proc.returncode != 0 or not proc.stdout.strip():
         raise UpdateError(

@@ -5,12 +5,13 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import asdict
 from pathlib import Path
+from typing import Any, Iterator
 
 from . import bucket, hub, ledger
-from .document import AURORAS
+from .document import AURORAS, Document
 
 
-def filter_since(entries: list[ledger.Entry], since: str | None):
+def filter_since(entries: list[ledger.Entry], since: str | None) -> list[ledger.Entry]:
     if not since:
         return entries
     if since == "last-reflection":
@@ -22,11 +23,11 @@ def filter_since(entries: list[ledger.Entry], since: str | None):
     return [e for e in entries if e.date >= since]
 
 
-def status(root: Path, since: str | None = None) -> dict:
+def status(root: Path, since: str | None = None) -> dict[str, Any]:
     b = bucket.load(root)
-    auroras: Counter = Counter()
-    types: Counter = Counter()
-    activities: Counter = Counter()
+    auroras: Counter[str] = Counter()
+    types: Counter[str] = Counter()
+    activities: Counter[str] = Counter()
     total = 0
     for zone, rel, doc in bucket.iter_documents(root):
         total += 1
@@ -45,7 +46,7 @@ def status(root: Path, since: str | None = None) -> dict:
     }
 
 
-def _hub_buckets():
+def _hub_buckets() -> Iterator[tuple[str, Path]]:
     """Yield (bucket_name, root) for every readable hub bucket — read means
     a BUCKET.md exists, not that the bucket holds any documents yet."""
     for entry in hub.load():
@@ -56,14 +57,14 @@ def _hub_buckets():
         yield (b.name or entry.name), root
 
 
-def _hub_documents():
+def _hub_documents() -> Iterator[tuple[str, str, Path, Document]]:
     """Yield (bucket_name, zone, rel, doc) across every readable hub bucket."""
     for name, root in _hub_buckets():
         for zone, rel, doc in bucket.iter_documents(root):
             yield name, zone, rel, doc
 
 
-def missing_hub_entries() -> list[dict]:
+def missing_hub_entries() -> list[dict[str, Any]]:
     """Hub entries whose path holds no readable BUCKET.md — a bucket not
     yet cloned to this machine, moved, or gone."""
     return [
@@ -73,7 +74,9 @@ def missing_hub_entries() -> list[dict]:
     ]
 
 
-def _item(name: str, zone: str, rel, doc, date=None) -> dict:
+def _item(
+    name: str, zone: str, rel: Path, doc: Document, date: str | None = None
+) -> dict[str, Any]:
     return {
         "bucket": name,
         "title": doc.title or rel.stem,
@@ -85,8 +88,8 @@ def _item(name: str, zone: str, rel, doc, date=None) -> dict:
     }
 
 
-def today() -> dict:
-    groups: dict[str, list] = {}
+def today() -> dict[str, Any]:
+    groups: dict[str, list[dict[str, Any]]] = {}
     buckets: list[str] = []
     for name, root in _hub_buckets():
         buckets.append(name)
@@ -106,9 +109,9 @@ def today() -> dict:
     return {"buckets": buckets, "groups": ordered, "missing": missing_hub_entries()}
 
 
-def agenda() -> dict:
-    dated: list[dict] = []
-    active: list[dict] = []
+def agenda() -> dict[str, Any]:
+    dated: list[dict[str, Any]] = []
+    active: list[dict[str, Any]] = []
     for name, zone, rel, doc in _hub_documents():
         if "archive" in rel.parts or doc.aurora == "archive":
             continue

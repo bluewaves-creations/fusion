@@ -8,6 +8,7 @@ import sys
 from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from . import __version__, bucket, checker, hub, indexer, ledger, scaffold, views
 
@@ -23,14 +24,14 @@ def _fail(message: str, as_json: bool = False) -> int:
     return 1
 
 
-def _emit(payload, as_json: bool, human: str) -> None:
+def _emit(payload: Any, as_json: bool, human: str) -> None:
     if as_json:
         print(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
     elif human:
         print(human)
 
 
-def _root_from(args, attr: str = "path") -> Path | None:
+def _root_from(args: argparse.Namespace, attr: str = "path") -> Path | None:
     """Resolve the bucket root from a positional path / --bucket / cwd."""
     explicit = getattr(args, attr, None)
     if explicit:
@@ -46,7 +47,7 @@ def _parse_at(raw: str | None) -> datetime | None:
 # ── commands ─────────────────────────────────────────────────────────────
 
 
-def cmd_new(args) -> int:
+def cmd_new(args: argparse.Namespace) -> int:
     actor = ledger.resolve_actor(args.as_)
     try:
         root, warnings = scaffold.new_bucket(
@@ -69,7 +70,7 @@ def cmd_new(args) -> int:
     return 0
 
 
-def cmd_hub(args) -> int:
+def cmd_hub(args: argparse.Namespace) -> int:
     if args.hub_cmd == "add":
         root = Path(args.path).expanduser().resolve()
         b = bucket.load(root)
@@ -112,7 +113,7 @@ def cmd_hub(args) -> int:
     return 0
 
 
-def cmd_log(args) -> int:
+def cmd_log(args: argparse.Namespace) -> int:
     root = _root_from(args, "bucket")
     if root is None or not (root / "BUCKET.md").is_file():
         given = getattr(args, "bucket", None)
@@ -147,7 +148,7 @@ def cmd_log(args) -> int:
     return 0
 
 
-def cmd_index(args) -> int:
+def cmd_index(args: argparse.Namespace) -> int:
     root = _root_from(args)
     if root is None or not (root / "BUCKET.md").is_file():
         given = getattr(args, "path", None)
@@ -168,7 +169,7 @@ def cmd_index(args) -> int:
     return 0
 
 
-def _check_hub(args) -> int:
+def _check_hub(args: argparse.Namespace) -> int:
     findings = checker.check_hub()
     entries = hub.load()
     if args.json:
@@ -198,7 +199,7 @@ def _check_hub(args) -> int:
     return 0
 
 
-def cmd_check(args) -> int:
+def cmd_check(args: argparse.Namespace) -> int:
     if getattr(args, "hub", False):
         return _check_hub(args)
     root = _root_from(args)
@@ -241,7 +242,7 @@ def cmd_check(args) -> int:
     return 1 if errors else 0
 
 
-def cmd_status(args) -> int:
+def cmd_status(args: argparse.Namespace) -> int:
     root = _root_from(args)
     if root is None or not (root / "BUCKET.md").is_file():
         given = getattr(args, "path", None)
@@ -267,7 +268,7 @@ def cmd_status(args) -> int:
     return 0
 
 
-def _render_items(items) -> list[str]:
+def _render_items(items: list[dict[str, Any]]) -> list[str]:
     return [
         f"    · [{i['bucket']}] {i['title']} — {i['path']}"
         + (f" ({i['status']})" if i["status"] else "")
@@ -275,7 +276,7 @@ def _render_items(items) -> list[str]:
     ]
 
 
-def cmd_today(args) -> int:
+def cmd_today(args: argparse.Namespace) -> int:
     t = views.today()
     for m in t["missing"]:
         print(
@@ -296,7 +297,7 @@ def cmd_today(args) -> int:
     return 0
 
 
-def cmd_agenda(args) -> int:
+def cmd_agenda(args: argparse.Namespace) -> int:
     a = views.agenda()
     for m in a["missing"]:
         print(
@@ -320,7 +321,7 @@ def cmd_agenda(args) -> int:
     return 0
 
 
-def cmd_setup(args) -> int:
+def cmd_setup(args: argparse.Namespace) -> int:
     from fusion import setup as setup_mod
     import os as _os
 
@@ -342,7 +343,7 @@ def cmd_setup(args) -> int:
     return 0
 
 
-def _render_setup(report: dict) -> list[str]:
+def _render_setup(report: dict[str, Any]) -> list[str]:
     lines = []
     if "removed" in report:
         for r in report["removed"]:
@@ -361,7 +362,7 @@ def _render_setup(report: dict) -> list[str]:
     return lines
 
 
-def cmd_update(args) -> int:
+def cmd_update(args: argparse.Namespace) -> int:
     from fusion import update as update_mod
 
     setup_args = []
@@ -388,14 +389,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"fusion {__version__}")
     sub = parser.add_subparsers(dest="command")
 
-    def flag_json(p):
+    def flag_json(p: argparse.ArgumentParser) -> None:
         p.add_argument(
             "--json",
             action="store_true",
             help="machine output — agents parse, never scrape",
         )
 
-    def flag_as(p):
+    def flag_as(p: argparse.ArgumentParser) -> None:
         p.add_argument(
             "--as",
             dest="as_",
@@ -595,7 +596,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.print_help()
         return 0
     try:
-        return args.func(args)
+        exit_code: int = args.func(args)
+        return exit_code
     except SystemExit:
         raise
     except Exception as exc:  # the notary reports surprises, never crashes bare

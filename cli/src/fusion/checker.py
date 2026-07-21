@@ -7,6 +7,7 @@ import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from . import hub, indexer, ledger, manifest
 from .bucket import DOC_ZONES, REQUIRED_BUCKET_FIELDS, ZONES, load, iter_documents
@@ -34,7 +35,7 @@ class Finding:
     message: str
 
 
-def _missing_fields(mapping: dict, fields: tuple[str, ...]) -> list[str]:
+def _missing_fields(mapping: dict[str, Any], fields: tuple[str, ...]) -> list[str]:
     """A required field is missing when absent, None, or blank."""
     return [
         f

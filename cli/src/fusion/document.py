@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import yaml
 
@@ -69,34 +70,34 @@ def _blank_code(body: str) -> str:
 @dataclass
 class Document:
     path: Path
-    frontmatter: dict | None
+    frontmatter: dict[str, Any] | None
     fm_error: str | None
     summary_first: bool
     summary_line: str | None
     summary_only: bool = False
     links: list[str] = field(default_factory=list)
 
-    def _get(self, key: str):
+    def _get(self, key: str) -> Any:
         return (self.frontmatter or {}).get(key)
 
     @property
-    def title(self):
+    def title(self) -> Any:
         return self._get("title")
 
     @property
-    def type(self):
+    def type(self) -> Any:
         return self._get("type")
 
     @property
-    def aurora(self):
+    def aurora(self) -> Any:
         return self._get("aurora")
 
     @property
-    def status(self):
+    def status(self) -> Any:
         return self._get("status")
 
 
-def split_frontmatter(text: str) -> tuple[dict | None, str | None, str]:
+def split_frontmatter(text: str) -> tuple[dict[str, Any] | None, str | None, str]:
     """Return (frontmatter, error, body). Liberal: never raises."""
     if not text.startswith("---\n"):
         return None, "no frontmatter block", text
