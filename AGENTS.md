@@ -50,7 +50,7 @@ Green means exit 0, evidence pasted. All gates, end of every task.
 - Skills: `uv run --with pytest --with pyyaml --with openpyxl --with pymupdf --with pillow pytest skills/fusion-intake/tests -q` · `uv run --with pytest --with pyyaml pytest skills/fusion-librarian/tests -q`
 - Shell: `shellcheck install.sh`
 - Build: `cd cli && uv build --wheel`
-- Lint/Types: `uvx ruff check cli` · `uvx ruff format --check cli` · `uvx --with pyyaml mypy cli/src/fusion` — red at adoption 2026-07-21; advisory until craft/PLAN.md Batch 1 lands, then blocking.
+- Lint/Types: `uv run --project cli ruff check .` · `uv run --project cli ruff format --check .` (repo root) · `cd cli && uv run mypy src/fusion`
 - CI: GitHub Actions `ci.yml`, 3-OS matrix — CI red blocks finish even on local green.
 
 ## Flow
