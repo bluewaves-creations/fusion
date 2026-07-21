@@ -1,11 +1,12 @@
 """Stage-1 engine: admit -> MANIFEST, extractive conversion, vision prep,
 link, cleanup. The lossless contract, tested."""
+
 import shutil
 import zipfile
 
 import pytest
 import yaml
-from conftest import bucket, seed_source  # noqa: F401 (fixture)
+from conftest import seed_source
 
 import convert
 import make_fixtures as fx
@@ -22,6 +23,7 @@ def put_inbox(root, name, maker):
 
 
 # ── admit ────────────────────────────────────────────────────────────────
+
 
 def test_admit_moves_and_registers(bucket):
     put_inbox(bucket, "scores.xlsx", fx.make_xlsx)
@@ -92,6 +94,7 @@ def test_admit_refuses_traversal_inbox_path(bucket, tmp_path):
 
 # ── extractive paths ─────────────────────────────────────────────────────
 
+
 def test_xlsx_extractive_is_born_conformant(bucket):
     put_inbox(bucket, "Q1 Scores.xlsx", fx.make_xlsx)
     rec = admit(bucket, "Q1 Scores.xlsx")
@@ -109,7 +112,7 @@ def test_xlsx_extractive_is_born_conformant(bucket):
     # lossless table facts: exact numbers, pipe escaped, empty col pruned
     assert "78.5" in doc and "| 91 |" in doc
     assert "steady \\| improving" in doc
-    assert "| supplier | score | notes |" in doc   # all-empty column pruned
+    assert "| supplier | score | notes |" in doc  # all-empty column pruned
     assert "## Scores" in doc and "## Meta" in doc
     # slug filename
     assert out["output_file"].endswith("library/records/q1-scores.md")
@@ -120,8 +123,8 @@ def test_csv_extractive_bom_and_numbers(bucket):
     rec = admit(bucket, "inventory.csv")
     out = convert.prepare(bucket, rec["source"])
     doc = (bucket / out["output_file"]).read_text(encoding="utf-8")
-    assert "12500.50" in doc          # verbatim, never rounded
-    assert "﻿" not in doc      # BOM consumed
+    assert "12500.50" in doc  # verbatim, never rounded
+    assert "﻿" not in doc  # BOM consumed
     assert "Jazzmaster 1962" in doc
 
 
@@ -147,26 +150,31 @@ def test_prepare_reconcile_merges_frontmatter(bucket):
     # created: date and an unknown key that must survive untouched
     existing = bucket / "library" / "records" / "inventory.md"
     existing.parent.mkdir(parents=True, exist_ok=True)
-    existing_fm = {"title": "Inventory (curated)", "type": "record",
-                   "aurora": "library",
-                   "source": "sources/records/inventory-old.csv",
-                   "created": "2020-01-01", "flavor": "umami"}
-    existing.write_text(convert.render_document(
-        existing_fm, "Old summary.", "Old body."), encoding="utf-8")
+    existing_fm = {
+        "title": "Inventory (curated)",
+        "type": "record",
+        "aurora": "library",
+        "source": "sources/records/inventory-old.csv",
+        "created": "2020-01-01",
+        "flavor": "umami",
+    }
+    existing.write_text(
+        convert.render_document(existing_fm, "Old summary.", "Old body."),
+        encoding="utf-8",
+    )
 
     put_inbox(bucket, "inventory-v2.csv", fx.make_csv)
     rec = admit(bucket, "inventory-v2.csv")
-    out = convert.prepare(bucket, rec["source"], slug="inventory",
-                          reconcile=True)
+    out = convert.prepare(bucket, rec["source"], slug="inventory", reconcile=True)
     assert out["reconcile"] is True
     doc = existing.read_text(encoding="utf-8")
     fm = yaml.safe_load(doc.split("---\n", 2)[1])
-    assert fm["created"] == "2020-01-01"          # original preserved
-    assert fm["flavor"] == "umami"                # unknown key preserved
-    assert fm["updated"] == convert.TODAY         # bumped
-    assert fm["title"] == "Inventory (curated)"   # existing value wins
+    assert fm["created"] == "2020-01-01"  # original preserved
+    assert fm["flavor"] == "umami"  # unknown key preserved
+    assert fm["updated"] == convert.TODAY  # bumped
+    assert fm["title"] == "Inventory (curated)"  # existing value wins
     assert fm["source"] == "sources/records/inventory-v2.csv"  # repointed
-    assert "12500.50" in doc                      # new content written
+    assert "12500.50" in doc  # new content written
 
 
 def test_prepare_reconcile_yaml_date_survives_json(bucket):
@@ -184,13 +192,16 @@ def test_prepare_reconcile_yaml_date_survives_json(bucket):
         "source: sources/records/note-old.md\n"
         "created: 2020-01-01\n"
         "---\n\nOld summary.\n\n---\n\nOld body.\n",
-        encoding="utf-8")
+        encoding="utf-8",
+    )
 
     (bucket / "inbox" / "note-v2.md").write_text(
-        "New body, revised.\n", encoding="utf-8")
+        "New body, revised.\n", encoding="utf-8"
+    )
     rec = admit(bucket, "note-v2.md")
-    out = convert.prepare(bucket, rec["source"], dest="library/notes",
-                          slug="note", reconcile=True)
+    out = convert.prepare(
+        bucket, rec["source"], dest="library/notes", slug="note", reconcile=True
+    )
     assert out["reconcile"] is True
     assert out["front_matter_seed"]["created"] == "2020-01-01"
     assert (bucket / out["manifest"]).is_file()
@@ -199,14 +210,20 @@ def test_prepare_reconcile_yaml_date_survives_json(bucket):
 def test_dest_and_type_overrides(bucket):
     put_inbox(bucket, "inventory.csv", fx.make_csv)
     rec = admit(bucket, "inventory.csv", category="gear")
-    out = convert.prepare(bucket, rec["source"], dest="library/instruments",
-                          doc_type="inventory", slug="pedal-inventory")
+    out = convert.prepare(
+        bucket,
+        rec["source"],
+        dest="library/instruments",
+        doc_type="inventory",
+        slug="pedal-inventory",
+    )
     assert out["output_file"] == "library/instruments/pedal-inventory.md"
     doc = (bucket / out["output_file"]).read_text(encoding="utf-8")
     assert "type: inventory" in doc
 
 
 # ── vision prep paths ────────────────────────────────────────────────────
+
 
 def test_text_pdf_spotcheck(bucket):
     put_inbox(bucket, "audit.pdf", fx.make_text_pdf)
@@ -215,7 +232,7 @@ def test_text_pdf_spotcheck(bucket):
     assert out["done"] is False and out["path"] == "pdf_text"
     assert out["page_count"] == 2 == len(out["pages"])
     assert all(not p["needs_vision"] for p in out["pages"])
-    assert out["images"] == []        # nothing to spot-check
+    assert out["images"] == []  # nothing to spot-check
     assert out["front_matter_seed"]["aurora"] == "library"
     assert out["front_matter_seed"]["source"] == "sources/records/audit.pdf"
     assert (bucket / out["manifest"]).is_file()
@@ -233,15 +250,17 @@ def test_scanned_pdf_all_pages_rendered(bucket):
 def test_image_path(bucket):
     put_inbox(bucket, "photo.png", fx.make_png)
     rec = admit(bucket, "photo.png")
-    assert "converted" not in rec and "note" not in rec   # tiff-only fields
+    assert "converted" not in rec and "note" not in rec  # tiff-only fields
     out = convert.prepare(bucket, rec["source"])
     assert out["path"] == "image"
-    assert out["pages"] == [{"page": 1, "text": "", "text_chars": 0,
-                             "needs_vision": True}]
+    assert out["pages"] == [
+        {"page": 1, "text": "", "text_chars": 0, "needs_vision": True}
+    ]
     assert len(out["images"]) == 1
 
 
 # ── tiff -> png at admit (2026-07-12 ruling: no large tiffs) ─────────────
+
 
 def test_tiff_admits_as_png_with_note(bucket):
     put_inbox(bucket, "scan.tiff", fx.make_tiff)
@@ -253,7 +272,7 @@ def test_tiff_admits_as_png_with_note(bucket):
     assert not (bucket / "sources" / "records" / "scan.tiff").exists()
     png_path = bucket / "sources" / "records" / "scan.png"
     assert png_path.is_file()
-    assert png_path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"   # real PNG bytes
+    assert png_path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"  # real PNG bytes
     assert rec["sha256"] == convert.sha256_of(png_path)
 
     # MANIFEST row names the PNG, keyed to the PNG's own sha256
@@ -269,7 +288,10 @@ def test_tiff_admits_as_png_with_note(bucket):
     assert rec["converted"]["original_name"] == "scan.tiff"
     assert len(rec["converted"]["original_sha256"]) == 64
     assert rec["converted"]["original_sha256"] != rec["sha256"]
-    assert "scan.tiff" in rec["note"] and rec["converted"]["original_sha256"] in rec["note"]
+    assert (
+        "scan.tiff" in rec["note"]
+        and rec["converted"]["original_sha256"] in rec["note"]
+    )
     assert "scan.png" in rec["note"] and rec["sha256"] in rec["note"]
 
 
@@ -280,8 +302,9 @@ def test_tiff_png_flows_through_the_image_route(bucket):
     # admitted as a PNG, so Stage 2 sees it exactly like any other image —
     # no tiff-specific branch downstream of admit
     assert out["path"] == "image"
-    assert out["pages"] == [{"page": 1, "text": "", "text_chars": 0,
-                             "needs_vision": True}]
+    assert out["pages"] == [
+        {"page": 1, "text": "", "text_chars": 0, "needs_vision": True}
+    ]
     assert len(out["images"]) == 1
     assert out["images"][0].endswith(".png")
 
@@ -320,7 +343,8 @@ def test_eml_path_extracts_text_and_attachments(bucket):
 
 def test_markdown_passthrough(bucket):
     (bucket / "inbox" / "note.md").write_text(
-        "# A note\n\nJust words.\n", encoding="utf-8")
+        "# A note\n\nJust words.\n", encoding="utf-8"
+    )
     rec = admit(bucket, "note.md")
     out = convert.prepare(bucket, rec["source"])
     assert out["path"] == "text"
@@ -328,8 +352,7 @@ def test_markdown_passthrough(bucket):
     assert out["pages"][0]["needs_vision"] is False
 
 
-@pytest.mark.skipif(shutil.which("soffice") is None,
-                    reason="LibreOffice not on PATH")
+@pytest.mark.skipif(shutil.which("soffice") is None, reason="LibreOffice not on PATH")
 def test_docx_libreoffice_path(bucket):
     put_inbox(bucket, "procedure.docx", fx.make_docx)
     rec = admit(bucket, "procedure.docx")
@@ -337,7 +360,7 @@ def test_docx_libreoffice_path(bucket):
     assert out["path"] == "libreoffice"
     assert out["intermediate_pdf"].endswith(".pdf")
     assert out["page_count"] == len(out["pages"]) >= 1
-    assert len(out["images"]) == out["page_count"]   # ALL pages rendered
+    assert len(out["images"]) == out["page_count"]  # ALL pages rendered
     joined = " ".join(p["text"] for p in out["pages"])
     assert "Onboarding procedure" in joined
 
@@ -351,6 +374,7 @@ def test_docx_fails_fast_without_soffice(bucket, monkeypatch):
 
 
 # ── link + cleanup ───────────────────────────────────────────────────────
+
 
 def test_link_sets_library_column(bucket):
     put_inbox(bucket, "inventory.csv", fx.make_csv)
@@ -400,6 +424,7 @@ def test_slugify_strips_html_extensions():
 
 
 # ── fidelity hardening: merged cells, html mail, colliding attachments ────
+
 
 def test_html_only_mail_reads_clean(bucket):
     put_inbox(bucket, "quote.eml", fx.make_html_eml)
@@ -456,13 +481,17 @@ def test_merged_cells_keep_their_anchor_value(bucket):
     body = doc.split("---\n", 2)[2]
     assert "Q3 forecast" in body
     assert "| strings | 42.5 |" in body
-    assert "| item | amount |" in body          # column B survived pruning
-    assert "| Q3 forecast | Q3 forecast |" in body   # anchor unfolds across the merge
-    assert "| Wide title | Wide title |" in body     # merge-spanned column survives pruning
+    assert "| item | amount |" in body  # column B survived pruning
+    assert "| Q3 forecast | Q3 forecast |" in body  # anchor unfolds across the merge
+    assert (
+        "| Wide title | Wide title |" in body
+    )  # merge-spanned column survives pruning
 
 
-@pytest.mark.skipif(shutil.which("soffice") is None and shutil.which("libreoffice") is None,
-                    reason="LibreOffice not installed")
+@pytest.mark.skipif(
+    shutil.which("soffice") is None and shutil.which("libreoffice") is None,
+    reason="LibreOffice not installed",
+)
 def test_docx_page_break_yields_two_pages(bucket):
     put_inbox(bucket, "onboarding.docx", fx.make_docx_two_page)
     rec = admit(bucket, "onboarding.docx")
@@ -473,8 +502,8 @@ def test_docx_page_break_yields_two_pages(bucket):
 
 def test_html_to_text_direct():
     out = convert.html_to_text(
-        "<style>x{}</style><script>bad()</script>"
-        "<p>A &amp; B</p><p>C</p>")
+        "<style>x{}</style><script>bad()</script><p>A &amp; B</p><p>C</p>"
+    )
     assert out == "A & B\nC"
 
 
@@ -485,8 +514,10 @@ def test_html_routes_to_libreoffice():
     assert ".htm" in convert.SUPPORTED_EXTS
 
 
-@pytest.mark.skipif(shutil.which("soffice") is None and shutil.which("libreoffice") is None,
-                    reason="LibreOffice not installed")
+@pytest.mark.skipif(
+    shutil.which("soffice") is None and shutil.which("libreoffice") is None,
+    reason="LibreOffice not installed",
+)
 def test_html_page_via_libreoffice(bucket):
     put_inbox(bucket, "report.html", fx.make_html_page)
     rec = admit(bucket, "report.html")
@@ -509,6 +540,7 @@ def test_cell_to_string_floats_verbatim():
 
 # ── containers are delivery vehicles, not originals ─────────────────────
 
+
 def test_unpack_container_into_inbox_folder(bucket):
     zpath = bucket / "inbox" / "bundle.zip"
     with zipfile.ZipFile(zpath, "w") as zf:
@@ -520,7 +552,7 @@ def test_unpack_container_into_inbox_folder(bucket):
     assert (dest / "manifest.json").is_file()
     assert (dest / "notes" / "a.md").is_file()
     assert (dest / "assets" / "b.pdf").is_file()
-    assert not zpath.exists()               # the vehicle is discarded
+    assert not zpath.exists()  # the vehicle is discarded
     assert out["unpacked"] == 3
     assert out["dir"] == "inbox/bundle"
 
@@ -553,17 +585,18 @@ def test_unpack_refuses_zip_slip(bucket):
     # nothing written outside inbox, destination folder not left behind
     assert not (bucket / "inbox" / "evil").exists()
     assert not (bucket.parent / "evil.txt").exists()
-    assert zpath.exists()                   # the hostile zip itself is untouched
+    assert zpath.exists()  # the hostile zip itself is untouched
 
 
 def test_unpack_refuses_traversal_crafted_file_argument(bucket, tmp_path):
-    evil = tmp_path / "evil.zip"          # OUTSIDE the bucket
+    evil = tmp_path / "evil.zip"  # OUTSIDE the bucket
     import zipfile
+
     with zipfile.ZipFile(evil, "w") as z:
         z.writestr("payload.txt", "boo")
     with pytest.raises(convert.IntakeError, match="escapes"):
         convert.unpack(bucket, "../../evil.zip")
-    assert not (tmp_path / "evil").exists()   # nothing written outside
+    assert not (tmp_path / "evil").exists()  # nothing written outside
 
 
 def test_unpack_refuses_existing_destination(bucket):
@@ -595,12 +628,16 @@ def test_slugify_strips_structured_text_extensions():
 
 # ── batch: one op-list, validated whole, then moved ─────────────────────
 
+
 def write_doc(root, rel, title):
     p = root / rel
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(convert.render_document(
-        {"title": title, "type": "note", "aurora": "library"},
-        f"{title}.", "Body."), encoding="utf-8")
+    p.write_text(
+        convert.render_document(
+            {"title": title, "type": "note", "aurora": "library"}, f"{title}.", "Body."
+        ),
+        encoding="utf-8",
+    )
     return p
 
 
@@ -615,10 +652,14 @@ def test_batch_happy_path(bucket):
     write_doc(bucket, "library/records/a.md", "A")
     write_doc(bucket, "library/records/b.md", "B")
     ops = {
-        "admits": [{"file": "a.csv", "category": "records"},
-                   {"file": "b.csv", "category": "records"}],
-        "links": [{"source": "records/a.csv", "doc": "library/records/a.md"},
-                  {"source": "records/b.csv", "doc": "library/records/b.md"}],
+        "admits": [
+            {"file": "a.csv", "category": "records"},
+            {"file": "b.csv", "category": "records"},
+        ],
+        "links": [
+            {"source": "records/a.csv", "doc": "library/records/a.md"},
+            {"source": "records/b.csv", "doc": "library/records/b.md"},
+        ],
     }
     out = convert.batch(bucket, ops, actor="claude")
     assert out == {"admitted": 2, "linked": 2}
@@ -641,9 +682,11 @@ def test_batch_validation_before_damage(bucket):
     put_inbox(bucket, "b.csv", fx.make_csv)
     manifest_before = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
     ops = {
-        "admits": [{"file": "a.csv", "category": "records"},
-                   {"file": "ghost.csv", "category": "records"},
-                   {"file": "b.csv", "category": "records"}],
+        "admits": [
+            {"file": "a.csv", "category": "records"},
+            {"file": "ghost.csv", "category": "records"},
+            {"file": "b.csv", "category": "records"},
+        ],
         "links": [],
     }
     with pytest.raises(convert.IntakeError, match="inbox"):
@@ -690,8 +733,10 @@ def test_batch_link_source_already_admitted_before_batch(bucket):
     put_inbox(bucket, "old.csv", fx.make_csv)
     admit(bucket, "old.csv")
     write_doc(bucket, "library/records/old.md", "Old")
-    ops = {"admits": [], "links": [{"source": "records/old.csv",
-                                    "doc": "library/records/old.md"}]}
+    ops = {
+        "admits": [],
+        "links": [{"source": "records/old.csv", "doc": "library/records/old.md"}],
+    }
     out = convert.batch(bucket, ops, actor="claude")
     assert out == {"admitted": 0, "linked": 1}
 
@@ -705,10 +750,14 @@ def test_batch_missing_link_doc_aborts_before_any_link_written(bucket):
     write_doc(bucket, "library/records/a.md", "A")
     # b.md deliberately not written
     ops = {
-        "admits": [{"file": "a.csv", "category": "records"},
-                   {"file": "b.csv", "category": "records"}],
-        "links": [{"source": "records/a.csv", "doc": "library/records/a.md"},
-                  {"source": "records/b.csv", "doc": "library/records/b.md"}],
+        "admits": [
+            {"file": "a.csv", "category": "records"},
+            {"file": "b.csv", "category": "records"},
+        ],
+        "links": [
+            {"source": "records/a.csv", "doc": "library/records/a.md"},
+            {"source": "records/b.csv", "doc": "library/records/b.md"},
+        ],
     }
     with pytest.raises(convert.IntakeError, match="library/records/b.md"):
         convert.batch(bucket, ops, actor="claude")
@@ -725,10 +774,15 @@ def test_batch_rejects_duplicate_category_basename_within_batch(bucket):
     put_inbox(bucket, "dupe.csv", fx.make_csv)
     (bucket / "inbox" / "sub").mkdir()
     (bucket / "inbox" / "sub" / "dupe.csv").write_bytes(
-        (bucket / "inbox" / "dupe.csv").read_bytes())
-    ops = {"admits": [{"file": "dupe.csv", "category": "records"},
-                      {"file": "sub/dupe.csv", "category": "records"}],
-           "links": []}
+        (bucket / "inbox" / "dupe.csv").read_bytes()
+    )
+    ops = {
+        "admits": [
+            {"file": "dupe.csv", "category": "records"},
+            {"file": "sub/dupe.csv", "category": "records"},
+        ],
+        "links": [],
+    }
     with pytest.raises(convert.IntakeError, match="duplicate"):
         convert.batch(bucket, ops, actor="claude")
     assert not (bucket / "sources" / "records").exists()
@@ -736,11 +790,10 @@ def test_batch_rejects_duplicate_category_basename_within_batch(bucket):
 
 def test_batch_rejects_basename_collision_against_existing_manifest_row(bucket):
     put_inbox(bucket, "dupe.csv", fx.make_csv)
-    admit(bucket, "dupe.csv")   # already a MANIFEST row for records/dupe.csv
+    admit(bucket, "dupe.csv")  # already a MANIFEST row for records/dupe.csv
     put_inbox(bucket, "dupe2.csv", fx.make_csv)
     (bucket / "inbox" / "dupe2.csv").rename(bucket / "inbox" / "dupe.csv")
-    ops = {"admits": [{"file": "dupe.csv", "category": "records"}],
-           "links": []}
+    ops = {"admits": [{"file": "dupe.csv", "category": "records"}], "links": []}
     with pytest.raises(convert.IntakeError, match="immutable"):
         convert.batch(bucket, ops, actor="claude")
 
@@ -755,8 +808,10 @@ def test_batch_rejects_bad_actor(bucket):
 
 def test_batch_rejects_link_doc_not_zone_relative(bucket):
     put_inbox(bucket, "a.csv", fx.make_csv)
-    ops = {"admits": [{"file": "a.csv", "category": "records"}],
-           "links": [{"source": "records/a.csv", "doc": "inbox/sneaky.md"}]}
+    ops = {
+        "admits": [{"file": "a.csv", "category": "records"}],
+        "links": [{"source": "records/a.csv", "doc": "inbox/sneaky.md"}],
+    }
     with pytest.raises(convert.IntakeError, match="zone"):
         convert.batch(bucket, ops, actor="claude")
     assert (bucket / "inbox" / "a.csv").is_file()
@@ -764,9 +819,13 @@ def test_batch_rejects_link_doc_not_zone_relative(bucket):
 
 def test_batch_rejects_duplicate_inbox_file_in_two_admits(bucket):
     put_inbox(bucket, "a.csv", fx.make_csv)
-    ops = {"admits": [{"file": "a.csv", "category": "records"},
-                      {"file": "a.csv", "category": "other"}],
-           "links": []}
+    ops = {
+        "admits": [
+            {"file": "a.csv", "category": "records"},
+            {"file": "a.csv", "category": "other"},
+        ],
+        "links": [],
+    }
     with pytest.raises(convert.IntakeError, match="twice"):
         convert.batch(bucket, ops, actor="claude")
     assert (bucket / "inbox" / "a.csv").is_file()
@@ -789,9 +848,13 @@ def test_batch_refuses_disk_only_collision_before_any_mutation(bucket):
     seed_source(bucket, "records/z.pdf", "not a real pdf, just a placeholder")
     put_inbox(bucket, "z.pdf", lambda p: p.write_bytes(b"%PDF-1.4 fake"))
     manifest_before = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
-    ops = {"admits": [{"file": "a.csv", "category": "records"},
-                      {"file": "z.pdf", "category": "records"}],
-           "links": []}
+    ops = {
+        "admits": [
+            {"file": "a.csv", "category": "records"},
+            {"file": "z.pdf", "category": "records"},
+        ],
+        "links": [],
+    }
     with pytest.raises(convert.IntakeError, match="immutable"):
         convert.batch(bucket, ops, actor="claude")
     # a.csv (the good op, ordered first) is still in inbox — nothing moved
@@ -807,9 +870,10 @@ def test_batch_rejects_traversal_doc_path(bucket):
     # not a doc zone at all.
     put_inbox(bucket, "a.csv", fx.make_csv)
     manifest_before = (bucket / "sources" / "MANIFEST.md").read_text(encoding="utf-8")
-    ops = {"admits": [{"file": "a.csv", "category": "records"}],
-           "links": [{"source": "records/a.csv",
-                      "doc": "library/../inbox/evil.md"}]}
+    ops = {
+        "admits": [{"file": "a.csv", "category": "records"}],
+        "links": [{"source": "records/a.csv", "doc": "library/../inbox/evil.md"}],
+    }
     with pytest.raises(convert.IntakeError, match="zone"):
         convert.batch(bucket, ops, actor="claude")
     assert (bucket / "inbox" / "a.csv").is_file()
@@ -820,11 +884,15 @@ def test_batch_rejects_traversal_doc_path(bucket):
 
 # ── relink ───────────────────────────────────────────────────────────────
 
+
 def _doc(root, rel):
     p = root / rel
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text("---\ntitle: T\ntype: note\naurora: library\n---\n\n"
-                 "## Summary\n\nS.\n\n---\n\nBody.\n", encoding="utf-8")
+    p.write_text(
+        "---\ntitle: T\ntype: note\naurora: library\n---\n\n"
+        "## Summary\n\nS.\n\n---\n\nBody.\n",
+        encoding="utf-8",
+    )
     return rel
 
 
@@ -893,7 +961,17 @@ def test_relink_cli(bucket):
     old = _doc(bucket, "library/records/deed.md")
     convert.link(bucket, "records/deed.xlsx", old)
     new = _doc(bucket, "library/areas/legal/deed.md")
-    rc = convert.main(["relink", "--bucket", str(bucket),
-                       "--source", "records/deed.xlsx",
-                       "--from", old, "--to", new])
+    rc = convert.main(
+        [
+            "relink",
+            "--bucket",
+            str(bucket),
+            "--source",
+            "records/deed.xlsx",
+            "--from",
+            old,
+            "--to",
+            new,
+        ]
+    )
     assert rc == 0

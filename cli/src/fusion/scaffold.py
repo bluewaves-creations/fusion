@@ -1,4 +1,5 @@
 """fusion new — a complete bucket, born conformant (SPEC §2, §3)."""
+
 from __future__ import annotations
 
 import os
@@ -38,9 +39,9 @@ def _yaml_scalar(value: str) -> str:
         value, allow_unicode=True, width=2**31 - 1, default_style=style
     ).split("\n")[0]
 
+
 MANIFEST_HEADER = (
-    "# Manifest\n\n| file | added | by | sha256 | library |\n"
-    "|---|---|---|---|---|\n"
+    "# Manifest\n\n| file | added | by | sha256 | library |\n|---|---|---|---|---|\n"
 )
 
 GITATTRIBUTES = (
@@ -89,22 +90,20 @@ def new_bucket(
         (root / zone / ".gitkeep").write_text("", encoding="utf-8", newline="\n")
     (root / "BUCKET.md").write_text(
         BUCKET_TEMPLATE.format(
-            name=_yaml_scalar(name), kind=_yaml_scalar(kind),
+            name=_yaml_scalar(name),
+            kind=_yaml_scalar(kind),
             description=_yaml_scalar(description),
             description_body=description,
             created=at.strftime("%Y-%m-%d"),
         ),
-        encoding="utf-8", newline="\n",
+        encoding="utf-8",
+        newline="\n",
     )
     (root / "sources" / "MANIFEST.md").write_text(
         MANIFEST_HEADER, encoding="utf-8", newline="\n"
     )
-    (root / ".gitattributes").write_text(
-        GITATTRIBUTES, encoding="utf-8", newline="\n"
-    )
-    (root / ".gitignore").write_text(
-        GITIGNORE, encoding="utf-8", newline="\n"
-    )
+    (root / ".gitattributes").write_text(GITATTRIBUTES, encoding="utf-8", newline="\n")
+    (root / ".gitignore").write_text(GITIGNORE, encoding="utf-8", newline="\n")
     ledger.append(root, actor, "created", "BUCKET.md", note="bucket born", at=at)
     indexer.write_indexes(root, actor=None)
 
@@ -116,13 +115,15 @@ def new_bucket(
     ):
         try:
             result = subprocess.run(
-                cmd, cwd=root, capture_output=True, text=True, timeout=30,
+                cmd,
+                cwd=root,
+                capture_output=True,
+                text=True,
+                timeout=30,
                 env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
             )
             if result.returncode != 0:
-                warnings.append(
-                    f"{' '.join(cmd)}: {result.stderr.strip() or 'failed'}"
-                )
+                warnings.append(f"{' '.join(cmd)}: {result.stderr.strip() or 'failed'}")
                 break
         except FileNotFoundError:
             warnings.append("git not found — bucket created without a repository")

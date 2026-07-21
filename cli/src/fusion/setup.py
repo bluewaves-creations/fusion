@@ -5,6 +5,7 @@ written once, runs identically on macOS/Linux/Windows, and is tested.
 Never destroys content it did not create: foreign entries are warned and
 left unless --force. Writes only under the given directories.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -50,48 +51,60 @@ def tree_digest(path: Path) -> str:
     return h.hexdigest()
 
 
-def install_canonical(payload: Path, skills_dir: Path,
-                      force: bool) -> list[dict]:
+def install_canonical(payload: Path, skills_dir: Path, force: bool) -> list[dict]:
     skills_dir.mkdir(parents=True, exist_ok=True)
     results = []
     for skill in sorted(payload.glob("fusion-*")):
         dest = skills_dir / skill.name
         if dest.is_symlink():
             if not force:
-                results.append({
-                    "skill": skill.name, "action": "left",
-                    "detail": f"{dest} is a symlink you manage — "
-                              f"--force replaces it"})
+                results.append(
+                    {
+                        "skill": skill.name,
+                        "action": "left",
+                        "detail": f"{dest} is a symlink you manage — "
+                        f"--force replaces it",
+                    }
+                )
                 continue
             dest.unlink()
             shutil.copytree(skill, dest)
-            results.append({"skill": skill.name, "action": "replaced",
-                            "detail": str(dest)})
+            results.append(
+                {"skill": skill.name, "action": "replaced", "detail": str(dest)}
+            )
             continue
         if dest.is_dir():
             if tree_digest(dest) == tree_digest(skill):
-                results.append({"skill": skill.name, "action": "up-to-date",
-                                "detail": str(dest)})
+                results.append(
+                    {"skill": skill.name, "action": "up-to-date", "detail": str(dest)}
+                )
                 continue
             shutil.rmtree(dest)
             shutil.copytree(skill, dest)
-            results.append({"skill": skill.name, "action": "updated",
-                            "detail": str(dest)})
+            results.append(
+                {"skill": skill.name, "action": "updated", "detail": str(dest)}
+            )
             continue
         if dest.exists():
             if not force:
-                results.append({"skill": skill.name, "action": "left",
-                                "detail": f"{dest} is a file — "
-                                          f"--force replaces"})
+                results.append(
+                    {
+                        "skill": skill.name,
+                        "action": "left",
+                        "detail": f"{dest} is a file — --force replaces",
+                    }
+                )
                 continue
             dest.unlink()
             shutil.copytree(skill, dest)
-            results.append({"skill": skill.name, "action": "replaced",
-                            "detail": str(dest)})
+            results.append(
+                {"skill": skill.name, "action": "replaced", "detail": str(dest)}
+            )
             continue
         shutil.copytree(skill, dest)
-        results.append({"skill": skill.name, "action": "installed",
-                        "detail": str(dest)})
+        results.append(
+            {"skill": skill.name, "action": "installed", "detail": str(dest)}
+        )
     return results
 
 
@@ -103,29 +116,57 @@ def install_canonical(payload: Path, skills_dir: Path,
 # the agent's native standard-dir support was verified; setup sweeps
 # OUR leftovers out of it (attribution-checked, like everything else).
 AGENTS = [
-    {"name": "Claude Code", "marker": ".claude",
-     "skills_subdir": ".claude/skills", "mode": "link",
-     "docs_url": "https://code.claude.com/docs/en/skills"},
-    {"name": "Codex", "marker": ".codex",
-     "skills_subdir": ".agents/skills", "mode": "standard",
-     "legacy_subdir": ".codex/skills",
-     "docs_url": "https://developers.openai.com/codex/skills"},
-    {"name": "Pi", "marker": ".pi",
-     "skills_subdir": ".agents/skills", "mode": "standard",
-     "legacy_subdir": ".pi/agent/skills",
-     "docs_url": "https://pi.dev/docs/latest/skills"},
-    {"name": "Cursor", "marker": ".cursor",
-     "skills_subdir": ".agents/skills", "mode": "standard",
-     "docs_url": "https://cursor.com/docs/skills"},
-    {"name": "Gemini CLI", "marker": ".gemini",
-     "skills_subdir": ".agents/skills", "mode": "standard",
-     "docs_url": "https://geminicli.com/docs/cli/skills"},
-    {"name": "opencode", "marker": ".config/opencode",
-     "skills_subdir": ".agents/skills", "mode": "standard",
-     "docs_url": "https://opencode.ai/docs/skills"},
-    {"name": "Goose", "marker": ".config/goose",
-     "skills_subdir": ".agents/skills", "mode": "standard",
-     "docs_url": "https://block.github.io/goose/docs/mcp/skills-mcp"},
+    {
+        "name": "Claude Code",
+        "marker": ".claude",
+        "skills_subdir": ".claude/skills",
+        "mode": "link",
+        "docs_url": "https://code.claude.com/docs/en/skills",
+    },
+    {
+        "name": "Codex",
+        "marker": ".codex",
+        "skills_subdir": ".agents/skills",
+        "mode": "standard",
+        "legacy_subdir": ".codex/skills",
+        "docs_url": "https://developers.openai.com/codex/skills",
+    },
+    {
+        "name": "Pi",
+        "marker": ".pi",
+        "skills_subdir": ".agents/skills",
+        "mode": "standard",
+        "legacy_subdir": ".pi/agent/skills",
+        "docs_url": "https://pi.dev/docs/latest/skills",
+    },
+    {
+        "name": "Cursor",
+        "marker": ".cursor",
+        "skills_subdir": ".agents/skills",
+        "mode": "standard",
+        "docs_url": "https://cursor.com/docs/skills",
+    },
+    {
+        "name": "Gemini CLI",
+        "marker": ".gemini",
+        "skills_subdir": ".agents/skills",
+        "mode": "standard",
+        "docs_url": "https://geminicli.com/docs/cli/skills",
+    },
+    {
+        "name": "opencode",
+        "marker": ".config/opencode",
+        "skills_subdir": ".agents/skills",
+        "mode": "standard",
+        "docs_url": "https://opencode.ai/docs/skills",
+    },
+    {
+        "name": "Goose",
+        "marker": ".config/goose",
+        "skills_subdir": ".agents/skills",
+        "mode": "standard",
+        "docs_url": "https://block.github.io/goose/docs/mcp/skills-mcp",
+    },
 ]
 
 
@@ -162,27 +203,44 @@ def _sweep_legacy(agent: dict, canonical: Path) -> list[dict]:
         return []
     if _points_into(legacy, canonical):
         return []  # the legacy dir IS the canonical through an alias —
-                    # sweeping it would reach canonical entries
+        # sweeping it would reach canonical entries
     results = []
     for entry in sorted(legacy.glob("fusion-*")):
         row = {"agent": agent["name"], "skill": entry.name}
         if entry.is_symlink() and _points_into(entry, canonical):
             entry.unlink()
-            results.append({**row, "action": "unlinked",
-                            "detail": f"{entry} — this agent reads the "
-                                      f"standard dir; the extra link "
-                                      f"double-loaded every skill"})
-        elif (entry.is_dir() and not entry.is_symlink()
-              and (entry / ".fusion-setup").is_file()):
+            results.append(
+                {
+                    **row,
+                    "action": "unlinked",
+                    "detail": f"{entry} — this agent reads the "
+                    f"standard dir; the extra link "
+                    f"double-loaded every skill",
+                }
+            )
+        elif (
+            entry.is_dir()
+            and not entry.is_symlink()
+            and (entry / ".fusion-setup").is_file()
+        ):
             shutil.rmtree(entry)
-            results.append({**row, "action": "unlinked",
-                            "detail": f"{entry} — copy from an earlier "
-                                      f"fusion-cli; this agent reads the "
-                                      f"standard dir"})
+            results.append(
+                {
+                    **row,
+                    "action": "unlinked",
+                    "detail": f"{entry} — copy from an earlier "
+                    f"fusion-cli; this agent reads the "
+                    f"standard dir",
+                }
+            )
         else:
-            results.append({**row, "action": "left",
-                            "detail": f"{entry} is not attributable to "
-                                      f"setup — left in place"})
+            results.append(
+                {
+                    **row,
+                    "action": "left",
+                    "detail": f"{entry} is not attributable to setup — left in place",
+                }
+            )
     return results
 
 
@@ -193,19 +251,32 @@ def fan_out(canonical: Path, agents: list[dict], force: bool) -> list[dict]:
         if agent["mode"] == "standard":
             results.extend(_sweep_legacy(agent, canonical))
             if canonical.resolve() != agent["skills_dir"].resolve():
-                detail = (f"reads ~/.agents/skills — but your skills are "
-                          f"at {canonical}, which this agent does not read")
+                detail = (
+                    f"reads ~/.agents/skills — but your skills are "
+                    f"at {canonical}, which this agent does not read"
+                )
             else:
                 detail = "reads ~/.agents/skills — nothing to do"
-            results.append({"agent": agent["name"], "skill": "*",
-                            "action": "standard", "detail": detail})
+            results.append(
+                {
+                    "agent": agent["name"],
+                    "skill": "*",
+                    "action": "standard",
+                    "detail": detail,
+                }
+            )
             continue
         if _points_into(agent["skills_dir"], canonical):
-            results.append({
-                "agent": agent["name"], "skill": "*", "action": "served",
-                "detail": f"{agent['skills_dir']} resolves into "
-                          f"{canonical} — the canonical install already "
-                          f"serves this agent; nothing to link"})
+            results.append(
+                {
+                    "agent": agent["name"],
+                    "skill": "*",
+                    "action": "served",
+                    "detail": f"{agent['skills_dir']} resolves into "
+                    f"{canonical} — the canonical install already "
+                    f"serves this agent; nothing to link",
+                }
+            )
             continue
         agent["skills_dir"].mkdir(parents=True, exist_ok=True)
         for skill in skills:
@@ -214,56 +285,85 @@ def fan_out(canonical: Path, agents: list[dict], force: bool) -> list[dict]:
             replaced = False
             if target.is_symlink():
                 if _points_into(target, canonical):
-                    results.append({**row, "action": "up-to-date",
-                                    "detail": str(target)})
+                    results.append(
+                        {**row, "action": "up-to-date", "detail": str(target)}
+                    )
                     continue
                 if not force:
-                    results.append({**row, "action": "left",
-                                    "detail": f"{target} links elsewhere — "
-                                              f"--force replaces"})
+                    results.append(
+                        {
+                            **row,
+                            "action": "left",
+                            "detail": f"{target} links elsewhere — --force replaces",
+                        }
+                    )
                     continue
                 target.unlink()
                 replaced = True
             elif target.is_dir():
                 if target.resolve() == skill.resolve():
-                    results.append({**row, "action": "served",
-                                    "detail": f"{target} already resolves "
-                                              f"to the canonical skill"})
+                    results.append(
+                        {
+                            **row,
+                            "action": "served",
+                            "detail": f"{target} already resolves "
+                            f"to the canonical skill",
+                        }
+                    )
                     continue
                 if tree_digest(target) == tree_digest(skill):
-                    pass          # our current copy, refresh below keeps it current
+                    pass  # our current copy, refresh below keeps it current
                 elif (target / ".fusion-setup").is_file():
-                    pass          # our stale copy (sentinel proves provenance) — refresh
+                    pass  # our stale copy (sentinel proves provenance) — refresh
                 elif not force:
-                    results.append({**row, "action": "left",
-                                    "detail": f"{target} exists and is not "
-                                              f"ours — --force replaces"})
+                    results.append(
+                        {
+                            **row,
+                            "action": "left",
+                            "detail": f"{target} exists and is not "
+                            f"ours — --force replaces",
+                        }
+                    )
                     continue
                 else:
                     replaced = True
                 shutil.rmtree(target)
             elif target.exists():
                 if not force:
-                    results.append({**row, "action": "left",
-                                    "detail": f"{target} is a file — "
-                                              f"--force replaces"})
+                    results.append(
+                        {
+                            **row,
+                            "action": "left",
+                            "detail": f"{target} is a file — --force replaces",
+                        }
+                    )
                     continue
                 target.unlink()
                 replaced = True
             try:
                 os.symlink(skill, target, target_is_directory=True)
-                results.append({**row,
-                                "action": "replaced" if replaced else "linked",
-                                "detail": str(target)})
+                results.append(
+                    {
+                        **row,
+                        "action": "replaced" if replaced else "linked",
+                        "detail": str(target),
+                    }
+                )
             except OSError:
                 shutil.copytree(skill, target)
                 (target / ".fusion-setup").write_text(
                     f"{payload_version()}\n{tree_digest(skill)}\n",
-                    encoding="utf-8", newline="\n")
-                results.append({**row,
-                                "action": "replaced" if replaced else "copied",
-                                "detail": f"{target} (symlinks unavailable — "
-                                          f"re-run setup after upgrades)"})
+                    encoding="utf-8",
+                    newline="\n",
+                )
+                results.append(
+                    {
+                        **row,
+                        "action": "replaced" if replaced else "copied",
+                        "detail": f"{target} (symlinks unavailable — "
+                        f"re-run setup after upgrades)",
+                    }
+                )
     return results
 
 
@@ -275,31 +375,43 @@ def remove_all(canonical: Path, home: Path) -> list[dict]:
             continue
         if _points_into(agent["skills_dir"], canonical):
             continue  # entries here ARE the canonical skills; the
-                      # canonical phase below removes them exactly once
-        entries = (sorted(agent["skills_dir"].glob("fusion-*"))
-                   if agent["skills_dir"].is_dir() else [])
+            # canonical phase below removes them exactly once
+        entries = (
+            sorted(agent["skills_dir"].glob("fusion-*"))
+            if agent["skills_dir"].is_dir()
+            else []
+        )
         for entry in entries:
             row = {"agent": agent["name"], "skill": entry.name}
             if entry.is_symlink() and _points_into(entry, canonical):
                 entry.unlink()
-                results.append({**row, "action": "removed",
-                                "detail": str(entry)})
-            elif entry.is_dir() and not entry.is_symlink() \
-                    and (canonical / entry.name).is_dir() \
-                    and ((entry / ".fusion-setup").is_file()
-                         or tree_digest(entry) == tree_digest(canonical / entry.name)):
+                results.append({**row, "action": "removed", "detail": str(entry)})
+            elif (
+                entry.is_dir()
+                and not entry.is_symlink()
+                and (canonical / entry.name).is_dir()
+                and (
+                    (entry / ".fusion-setup").is_file()
+                    or tree_digest(entry) == tree_digest(canonical / entry.name)
+                )
+            ):
                 shutil.rmtree(entry)
-                results.append({**row, "action": "removed",
-                                "detail": str(entry)})
+                results.append({**row, "action": "removed", "detail": str(entry)})
             else:
-                results.append({**row, "action": "left",
-                                "detail": f"{entry} is not attributable to "
-                                          f"setup — left in place"})
+                results.append(
+                    {
+                        **row,
+                        "action": "left",
+                        "detail": f"{entry} is not attributable to "
+                        f"setup — left in place",
+                    }
+                )
     for skill in sorted(canonical.glob("fusion-*")):
         row = {"agent": "canonical", "skill": skill.name}
         if skill.is_symlink():
-            results.append({**row, "action": "left",
-                            "detail": f"{skill} is a symlink you manage"})
+            results.append(
+                {**row, "action": "left", "detail": f"{skill} is a symlink you manage"}
+            )
             continue
         shutil.rmtree(skill)
         results.append({**row, "action": "removed", "detail": str(skill)})
@@ -309,56 +421,80 @@ def remove_all(canonical: Path, home: Path) -> list[dict]:
 def environment_advice(home: Path) -> list[dict]:
     import os as _os
     import subprocess
+
     advice = []
     if shutil.which("fusion") is None:
         # spec §4d: fix PATH via uv's own mechanism when allowed
-        if _os.environ.get("FUSION_NO_MODIFY_PATH") != "1" \
-                and shutil.which("uv") is not None:
-            done = subprocess.run(["uv", "tool", "update-shell"],
-                                  capture_output=True).returncode == 0
-            advice.append({
-                "topic": "path",
-                "text": "uv tool update-shell ran — restart your shell so "
-                        "`fusion` resolves" if done else
-                        "uv tool update-shell failed — add uv's tool bin "
-                        "dir to PATH yourself (`uv tool dir --bin`)"})
+        if (
+            _os.environ.get("FUSION_NO_MODIFY_PATH") != "1"
+            and shutil.which("uv") is not None
+        ):
+            done = (
+                subprocess.run(
+                    ["uv", "tool", "update-shell"], capture_output=True
+                ).returncode
+                == 0
+            )
+            advice.append(
+                {
+                    "topic": "path",
+                    "text": "uv tool update-shell ran — restart your shell so "
+                    "`fusion` resolves"
+                    if done
+                    else "uv tool update-shell failed — add uv's tool bin "
+                    "dir to PATH yourself (`uv tool dir --bin`)",
+                }
+            )
         else:
-            advice.append({
-                "topic": "path",
-                "text": "the uv tool bin dir is not on PATH — run: "
-                        "uv tool update-shell (or manage PATH yourself)"})
+            advice.append(
+                {
+                    "topic": "path",
+                    "text": "the uv tool bin dir is not on PATH — run: "
+                    "uv tool update-shell (or manage PATH yourself)",
+                }
+            )
     if shutil.which("git") is None:
-        advice.append({
-            "topic": "git",
-            "text": "git not found — buckets are git repos; install git"})
+        advice.append(
+            {
+                "topic": "git",
+                "text": "git not found — buckets are git repos; install git",
+            }
+        )
     if shutil.which("soffice") is None:
-        advice.append({
-            "topic": "libreoffice",
-            "text": "LibreOffice (soffice) not found — only docx/pptx/"
-                    "legacy-office/html intake needs it "
-                    "(brew install --cask libreoffice · apt install "
-                    "libreoffice · winget install LibreOffice.LibreOffice)"})
+        advice.append(
+            {
+                "topic": "libreoffice",
+                "text": "LibreOffice (soffice) not found — only docx/pptx/"
+                "legacy-office/html intake needs it "
+                "(brew install --cask libreoffice · apt install "
+                "libreoffice · winget install LibreOffice.LibreOffice)",
+            }
+        )
     return advice
 
 
-def run_setup(home: Path, skills_dir: Path, force: bool,
-              no_agents: bool, remove: bool) -> dict:
+def run_setup(
+    home: Path, skills_dir: Path, force: bool, no_agents: bool, remove: bool
+) -> dict:
     if remove:
         results = remove_all(skills_dir, home)
-        return {"ok": True, "removed": results,
-                "next": ["uv tool uninstall fusion-cli"]}
+        return {
+            "ok": True,
+            "removed": results,
+            "next": ["uv tool uninstall fusion-cli"],
+        }
     payload = payload_root()
     skills = install_canonical(payload, skills_dir, force)
-    agents = [] if no_agents else fan_out(
-        skills_dir, detect_agents(home), force)
+    agents = [] if no_agents else fan_out(skills_dir, detect_agents(home), force)
     return {
         "ok": True,
         "cli": {"version": payload_version()},
         "skills": {"dir": str(skills_dir), "results": skills},
         "agents": agents,
         "advice": environment_advice(home),
-        "next": ["fusion new ~/buckets/personal --kind personal "
-                 "--description \"Home base.\"",
-                 "https://github.com/bluewaves-creations/fusion/blob/"
-                 "main/docs/GETTING-STARTED.md"],
+        "next": [
+            'fusion new ~/buckets/personal --kind personal --description "Home base."',
+            "https://github.com/bluewaves-creations/fusion/blob/"
+            "main/docs/GETTING-STARTED.md",
+        ],
     }

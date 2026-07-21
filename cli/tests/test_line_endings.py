@@ -4,6 +4,7 @@ byte-determinism for real, not just in CI's golden-fixture tests (a Windows
 user running `fusion index` or `fusion log` would silently start writing
 CRLF into their bucket's registers). This test pins the newline= parameter
 by asserting the actual bytes on disk, and is meaningful on every OS."""
+
 from fusion.cli import main
 
 
@@ -25,9 +26,22 @@ def test_index_writes_no_crlf(make_bucket, capsys):
 
 def test_log_append_writes_no_crlf(make_bucket, capsys):
     root = make_bucket()
-    assert main(["log", "noted", "library/notes.md",
-                 "--bucket", str(root), "--as", "test",
-                 "--note", "checked → clean"]) == 0
+    assert (
+        main(
+            [
+                "log",
+                "noted",
+                "library/notes.md",
+                "--bucket",
+                str(root),
+                "--as",
+                "test",
+                "--note",
+                "checked → clean",
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
 
     ledger_bytes = (root / "LEDGER.md").read_bytes()

@@ -1,6 +1,7 @@
 """End-to-end: real formats through gate -> admit -> prepare -> link,
 with the fusion CLI as the conformance oracle. Requires the repo checkout
 (uses uv --project cli); skipped outside it."""
+
 import json
 import os
 import shutil
@@ -8,7 +9,6 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from conftest import bucket  # noqa: F401
 
 import convert
 import gate
@@ -22,7 +22,10 @@ HAVE_CLI = (CLI / "pyproject.toml").is_file()
 def fusion(*args, cwd):
     return subprocess.run(
         ["uv", "run", "--project", str(CLI), "fusion", *args],
-        cwd=str(cwd), capture_output=True, text=True, timeout=120,
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
+        timeout=120,
         env={**os.environ, "FUSION_ACTOR": "claude"},
     )
 
@@ -52,18 +55,21 @@ def test_real_formats_end_to_end(bucket):
             doc_rel = out["output_file"]
         else:
             # Deterministic stand-in for the vision half: text pages only.
-            body = "\n\n".join(
-                p["text"] for p in out["pages"]) or "*(image content)*"
+            body = "\n\n".join(p["text"] for p in out["pages"]) or "*(image content)*"
             doc_rel = out["output_file"]
             doc = bucket / doc_rel
             doc.parent.mkdir(parents=True, exist_ok=True)
-            doc.write_text(convert.render_document(
-                out["front_matter_seed"],
-                "Converted for the integration run.", body), encoding="utf-8")
+            doc.write_text(
+                convert.render_document(
+                    out["front_matter_seed"], "Converted for the integration run.", body
+                ),
+                encoding="utf-8",
+            )
             convert.cleanup(bucket / out["run_dir"])
         convert.link(bucket, rec["source"], doc_rel)
-        r = fusion("log", "converted",
-                   f"sources/{rec['source']} → {doc_rel}", cwd=bucket)
+        r = fusion(
+            "log", "converted", f"sources/{rec['source']} → {doc_rel}", cwd=bucket
+        )
         assert r.returncode == 0, r.stderr
 
     r = fusion("index", cwd=bucket)

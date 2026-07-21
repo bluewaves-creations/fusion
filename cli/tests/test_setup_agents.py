@@ -1,4 +1,5 @@
 """Agent detection, fan-out, and the attribution-checked remove."""
+
 from pathlib import Path
 
 import pytest
@@ -22,8 +23,15 @@ def canonical(home) -> Path:
 
 def test_registry_shape():
     names = {a["name"] for a in setup.AGENTS}
-    assert {"Claude Code", "Codex", "Pi", "Cursor", "Gemini CLI",
-            "opencode", "Goose"} == names
+    assert {
+        "Claude Code",
+        "Codex",
+        "Pi",
+        "Cursor",
+        "Gemini CLI",
+        "opencode",
+        "Goose",
+    } == names
     modes = {a["name"]: a["mode"] for a in setup.AGENTS}
     assert modes["Claude Code"] == "link"
     assert modes["Pi"] == "standard"
@@ -48,7 +56,9 @@ def test_fan_out_links_link_agents_and_reports_standard(home, canonical):
     claude = [r for r in results if r["agent"] == "Claude Code"]
     assert {r["action"] for r in claude} == {"linked"}
     link = home / ".claude" / "skills" / "fusion-intake"
-    assert link.is_symlink() and link.resolve() == (canonical / "fusion-intake").resolve()
+    assert (
+        link.is_symlink() and link.resolve() == (canonical / "fusion-intake").resolve()
+    )
     cursor = [r for r in results if r["agent"] == "Cursor"]
     assert len(cursor) == 1 and cursor[0]["action"] == "standard"
     # idempotent re-run
@@ -77,8 +87,7 @@ def test_fan_out_standard_mode_warns_when_canonical_is_custom(home):
     custom_canonical = home / "custom-skills"
     setup.install_canonical(payload, custom_canonical, force=False)
     (home / ".cursor").mkdir()
-    results = setup.fan_out(custom_canonical, setup.detect_agents(home),
-                            force=False)
+    results = setup.fan_out(custom_canonical, setup.detect_agents(home), force=False)
     cursor = [r for r in results if r["agent"] == "Cursor"][0]
     assert cursor["action"] == "standard"
     assert "does not read" in cursor["detail"]
@@ -89,14 +98,20 @@ def test_fan_out_leaves_plain_file_unless_forced(home, canonical):
     skills_dir.mkdir(parents=True)
     (skills_dir / "fusion-intake").write_text("just a file\n")
     results = setup.fan_out(canonical, setup.detect_agents(home), force=False)
-    intake = [r for r in results if r["agent"] == "Claude Code"
-             and r["skill"] == "fusion-intake"][0]
+    intake = [
+        r
+        for r in results
+        if r["agent"] == "Claude Code" and r["skill"] == "fusion-intake"
+    ][0]
     assert intake["action"] == "left"
     assert (skills_dir / "fusion-intake").is_file()
     assert not (skills_dir / "fusion-intake").is_symlink()
     results = setup.fan_out(canonical, setup.detect_agents(home), force=True)
-    intake = [r for r in results if r["agent"] == "Claude Code"
-             and r["skill"] == "fusion-intake"][0]
+    intake = [
+        r
+        for r in results
+        if r["agent"] == "Claude Code" and r["skill"] == "fusion-intake"
+    ][0]
     assert intake["action"] == "replaced"
     assert (skills_dir / "fusion-intake").is_symlink()
 
@@ -106,6 +121,7 @@ def test_fan_out_copies_when_symlink_unavailable(home, canonical, monkeypatch):
 
     def no_symlink(*a, **k):
         raise OSError("symlinks disabled")
+
     monkeypatch.setattr(setup.os, "symlink", no_symlink)
     results = setup.fan_out(canonical, setup.detect_agents(home), force=False)
     claude = [r for r in results if r["agent"] == "Claude Code"]
@@ -116,7 +132,8 @@ def test_fan_out_copies_when_symlink_unavailable(home, canonical, monkeypatch):
     sentinel = copied / ".fusion-setup"
     assert sentinel.is_file()
     assert sentinel.read_text().splitlines()[1] == setup.tree_digest(
-        canonical / "fusion-intake")
+        canonical / "fusion-intake"
+    )
     # a stale copy refreshes on re-run, recognized via the sentinel branch
     # (a copy can never digest-equal the canonical skill — the sentinel
     # itself is an extra file — so the sentinel is what proves provenance)
@@ -133,14 +150,15 @@ def test_remove_all_is_attribution_checked(home, canonical):
     foreign = home / ".claude" / "skills" / "fusion-mine"
     foreign.mkdir()
     results = setup.remove_all(canonical, home)
-    assert foreign.is_dir()                      # not ours — untouched
+    assert foreign.is_dir()  # not ours — untouched
     assert not (home / ".claude" / "skills" / "fusion-intake").exists()
     assert not (canonical / "fusion-intake").exists()
     assert any(r["action"] == "removed" for r in results)
 
 
 def test_remove_all_removes_sentinel_copies_and_leaves_foreign(
-        home, canonical, monkeypatch):
+    home, canonical, monkeypatch
+):
     (home / ".claude").mkdir()
     # a foreign dir sharing a canonical skill's name — same shape, no
     # sentinel, different content — must survive removal untouched
@@ -151,21 +169,28 @@ def test_remove_all_removes_sentinel_copies_and_leaves_foreign(
 
     def no_symlink(*a, **k):
         raise OSError("symlinks disabled")
+
     monkeypatch.setattr(setup.os, "symlink", no_symlink)
     setup.fan_out(canonical, setup.detect_agents(home), force=False)
     ours = home / ".claude" / "skills" / "fusion-intake"
-    assert (ours / ".fusion-setup").is_file()   # our sentinel-marked copy
+    assert (ours / ".fusion-setup").is_file()  # our sentinel-marked copy
 
     results = setup.remove_all(canonical, home)
 
-    assert not ours.exists()                     # our copy: removed
-    intake = [r for r in results if r["agent"] == "Claude Code"
-              and r["skill"] == "fusion-intake"][0]
+    assert not ours.exists()  # our copy: removed
+    intake = [
+        r
+        for r in results
+        if r["agent"] == "Claude Code" and r["skill"] == "fusion-intake"
+    ][0]
     assert intake["action"] == "removed"
-    assert foreign.is_dir()                      # foreign: left in place
+    assert foreign.is_dir()  # foreign: left in place
     assert (foreign / "data.txt").read_text() == "do not touch\n"
-    planner = [r for r in results if r["agent"] == "Claude Code"
-               and r["skill"] == "fusion-planner"][0]
+    planner = [
+        r
+        for r in results
+        if r["agent"] == "Claude Code" and r["skill"] == "fusion-planner"
+    ][0]
     assert planner["action"] == "left"
 
 
@@ -173,10 +198,8 @@ def test_fan_out_survives_skills_dir_symlinked_to_canonical(home, canonical):
     # the topology that destroyed skills in v1.1.0-v1.2.0: the agent's
     # whole skills dir is a symlink AT the canonical directory
     (home / ".claude").mkdir()
-    (home / ".claude" / "skills").symlink_to(
-        canonical, target_is_directory=True)
-    results = setup.fan_out(canonical, setup.detect_agents(home),
-                            force=False)
+    (home / ".claude" / "skills").symlink_to(canonical, target_is_directory=True)
+    results = setup.fan_out(canonical, setup.detect_agents(home), force=False)
     claude = [r for r in results if r["agent"] == "Claude Code"]
     assert len(claude) == 1 and claude[0]["action"] == "served"
     # the canonical skills are alive, real, and readable
@@ -184,11 +207,9 @@ def test_fan_out_survives_skills_dir_symlinked_to_canonical(home, canonical):
     assert not (canonical / "fusion-intake").is_symlink()
 
 
-def test_remove_all_survives_skills_dir_symlinked_to_canonical(
-        home, canonical):
+def test_remove_all_survives_skills_dir_symlinked_to_canonical(home, canonical):
     (home / ".claude").mkdir()
-    (home / ".claude" / "skills").symlink_to(
-        canonical, target_is_directory=True)
+    (home / ".claude" / "skills").symlink_to(canonical, target_is_directory=True)
     results = setup.remove_all(canonical, home)
     # the guard means the agent sweep never touches the alias — every
     # removal row must come from the canonical phase
@@ -204,15 +225,15 @@ def test_fan_out_standard_sweeps_our_legacy_links(home, canonical):
     legacy = home / ".pi" / "agent" / "skills"
     legacy.mkdir(parents=True)
     (legacy / "fusion-intake").symlink_to(
-        canonical / "fusion-intake", target_is_directory=True)
-    stale_copy = legacy / "fusion-planner"     # 1.2.0 copy-fallback relic
+        canonical / "fusion-intake", target_is_directory=True
+    )
+    stale_copy = legacy / "fusion-planner"  # 1.2.0 copy-fallback relic
     stale_copy.mkdir()
     (stale_copy / "SKILL.md").write_text("old payload")
     (stale_copy / ".fusion-setup").write_text("1.0\nabc\n")
-    mine = legacy / "fusion-mine"              # the user's own, not ours
+    mine = legacy / "fusion-mine"  # the user's own, not ours
     mine.mkdir()
-    results = setup.fan_out(canonical, setup.detect_agents(home),
-                            force=False)
+    results = setup.fan_out(canonical, setup.detect_agents(home), force=False)
     pi = {r["skill"]: r for r in results if r["agent"] == "Pi"}
     assert pi["fusion-intake"]["action"] == "unlinked"
     assert not (legacy / "fusion-intake").exists()
@@ -220,7 +241,7 @@ def test_fan_out_standard_sweeps_our_legacy_links(home, canonical):
     assert not stale_copy.exists()
     assert pi["fusion-mine"]["action"] == "left"
     assert mine.is_dir()
-    assert pi["*"]["action"] == "standard"     # and Pi reads the std dir
+    assert pi["*"]["action"] == "standard"  # and Pi reads the std dir
     # no new links were created in the legacy dir
     assert not (legacy / "fusion-analyst").exists()
 
@@ -230,11 +251,11 @@ def test_remove_all_sweeps_legacy_dirs(home, canonical):
     legacy = home / ".codex" / "skills"
     legacy.mkdir(parents=True)
     (legacy / "fusion-intake").symlink_to(
-        canonical / "fusion-intake", target_is_directory=True)
+        canonical / "fusion-intake", target_is_directory=True
+    )
     results = setup.remove_all(canonical, home)
     assert not (legacy / "fusion-intake").exists()
-    assert any(r["agent"] == "Codex" and r["action"] == "unlinked"
-               for r in results)
+    assert any(r["agent"] == "Codex" and r["action"] == "unlinked" for r in results)
     assert not (canonical / "fusion-intake").exists()
 
 
@@ -245,16 +266,14 @@ def test_sweep_legacy_skips_dir_aliased_at_canonical(home, canonical):
     # the alias and unlink it
     (home / ".pi").mkdir()
     (home / ".pi" / "agent").mkdir()
-    (home / ".pi" / "agent" / "skills").symlink_to(
-        canonical, target_is_directory=True)
+    (home / ".pi" / "agent" / "skills").symlink_to(canonical, target_is_directory=True)
     store = canonical / "_store" / "fusion-extra"
     store.mkdir(parents=True)
     (store / "SKILL.md").write_text("---\nname: fusion-extra\n---\n")
     user_link = canonical / "fusion-extra"
     user_link.symlink_to(store, target_is_directory=True)
-    results = setup.fan_out(canonical, setup.detect_agents(home),
-                            force=False)
-    assert user_link.is_symlink()          # the user's link survives
+    results = setup.fan_out(canonical, setup.detect_agents(home), force=False)
+    assert user_link.is_symlink()  # the user's link survives
     pi = [r for r in results if r["agent"] == "Pi"]
     assert [r["action"] for r in pi] == ["standard"]  # sweep stayed out
     # remove is equally alias-safe

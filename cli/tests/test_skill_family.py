@@ -3,6 +3,7 @@
 Dynamic discovery: validates every skills/<name>/ that exists, so the gate
 holds from the first skill to the fourth without edits.
 """
+
 import re
 from pathlib import Path
 
@@ -11,7 +12,11 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILLS_DIR = REPO_ROOT / "skills"
 FRONTMATTER_WHITELIST = {
-    "name", "description", "license", "compatibility", "metadata",
+    "name",
+    "description",
+    "license",
+    "compatibility",
+    "metadata",
     "allowed-tools",
 }
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -21,8 +26,7 @@ def skill_dirs():
     if not SKILLS_DIR.is_dir():
         return []
     return sorted(
-        p for p in SKILLS_DIR.iterdir()
-        if p.is_dir() and (p / "SKILL.md").is_file()
+        p for p in SKILLS_DIR.iterdir() if p.is_dir() and (p / "SKILL.md").is_file()
     )
 
 
@@ -31,6 +35,7 @@ def parse_frontmatter(path: Path) -> dict:
     assert text.startswith("---\n"), f"{path}: no frontmatter block"
     end = text.index("\n---", 4)
     import yaml
+
     fm = yaml.safe_load(text[4:end])
     assert isinstance(fm, dict), f"{path}: frontmatter is not a mapping"
     return fm

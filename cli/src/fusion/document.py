@@ -1,4 +1,5 @@
 """Read Fusion documents — the liberal reader (SPEC §0, §4)."""
+
 from __future__ import annotations
 
 import re
@@ -8,8 +9,14 @@ from pathlib import Path
 import yaml
 
 AURORAS: tuple[str, ...] = (
-    "commitments", "focus", "ops", "collab",
-    "life", "explore", "archive", "library",
+    "commitments",
+    "focus",
+    "ops",
+    "collab",
+    "life",
+    "explore",
+    "archive",
+    "library",
 )
 
 FILENAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*\.md$")
@@ -137,7 +144,7 @@ def _summary_only(body: str) -> bool:
         return False
     for j in range(i + 1, len(lines)):
         if lines[j].strip() == "---":
-            return not "".join(lines[j + 1:]).strip()
+            return not "".join(lines[j + 1 :]).strip()
     return False
 
 

@@ -6,6 +6,7 @@
 """fusion-analyst export: stdin JSON {"headers": [...], "rows": [[...]]}
 -> csv / json / xlsx on disk. Deterministic; the judgment (what to export)
 happened before the pipe."""
+
 import argparse
 import csv
 import json
@@ -15,8 +16,7 @@ from pathlib import Path
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="fusion-analyst data export")
-    ap.add_argument("--format", "-f", choices=("csv", "json", "xlsx"),
-                    default="csv")
+    ap.add_argument("--format", "-f", choices=("csv", "json", "xlsx"), default="csv")
     ap.add_argument("--output", "-o", required=True)
     args = ap.parse_args(argv)
 
@@ -40,12 +40,15 @@ def main(argv=None) -> int:
                 w.writerow(headers)
             w.writerows(rows)
     elif args.format == "json":
-        records = ([dict(zip(headers, r)) for r in rows]
-                   if headers else rows)
-        out.write_text(json.dumps(records, indent=2, ensure_ascii=False),
-                       encoding="utf-8", newline="\n")
+        records = [dict(zip(headers, r)) for r in rows] if headers else rows
+        out.write_text(
+            json.dumps(records, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+            newline="\n",
+        )
     else:
         import openpyxl
+
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "export"
@@ -55,8 +58,7 @@ def main(argv=None) -> int:
             ws.append(r)
         wb.save(out)
 
-    print(json.dumps({"written": str(out), "rows": len(rows),
-                      "format": args.format}))
+    print(json.dumps({"written": str(out), "rows": len(rows), "format": args.format}))
     return 0
 
 

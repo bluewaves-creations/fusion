@@ -1,4 +1,5 @@
 """fusion status / today / agenda — the composed day (design spec §5)."""
+
 from __future__ import annotations
 
 from collections import Counter

@@ -67,8 +67,7 @@ def test_e5_not_summary_first(make_bucket):
         "---\ntitle: R\ntype: note\naurora: library\n---\n\nStraight to body.\n",
         encoding="utf-8",
     )
-    assert any(f.code == "E5" and f.path == "library/rushed.md"
-               for f in errors(root))
+    assert any(f.code == "E5" and f.path == "library/rushed.md" for f in errors(root))
 
 
 def test_e6_unknown_ledger_verb(make_bucket):
@@ -88,8 +87,10 @@ def test_e7_both_directions(make_bucket):
         fh.write("| ghost.pdf | 2026-07-10 | test | deadbeef00000000 | — |\n")
     found = [f for f in errors(root) if f.code == "E7" and "ghost.pdf" in f.message]
     assert found
-    assert ("manifest row's file is missing or invisible "
-            "(dot-directories are not scanned): ghost.pdf") in found[0].message
+    assert (
+        "manifest row's file is missing or invisible "
+        "(dot-directories are not scanned): ghost.pdf"
+    ) in found[0].message
 
 
 def test_e7_exemptions(make_bucket):
@@ -157,26 +158,29 @@ def test_e3_null_or_blank_required_field(make_bucket):
         encoding="utf-8",
     )
     found = errors(root)
-    assert any(f.code == "E3" and f.path == "library/nulled.md"
-               and "aurora" in f.message for f in found)
-    assert any(f.code == "E3" and f.path == "library/blank.md"
-               and "title" in f.message for f in found)
+    assert any(
+        f.code == "E3" and f.path == "library/nulled.md" and "aurora" in f.message
+        for f in found
+    )
+    assert any(
+        f.code == "E3" and f.path == "library/blank.md" and "title" in f.message
+        for f in found
+    )
 
 
 def test_e2_unreadable_bucket_card(make_bucket):
     root = make_bucket()
-    (root / "BUCKET.md").write_text("---\nname: [unclosed\n---\n\nBody.\n",
-                                    encoding="utf-8")
-    assert any(f.code == "E2" and "unreadable" in f.message
-               for f in errors(root))
+    (root / "BUCKET.md").write_text(
+        "---\nname: [unclosed\n---\n\nBody.\n", encoding="utf-8"
+    )
+    assert any(f.code == "E2" and "unreadable" in f.message for f in errors(root))
 
 
 def test_dot_directories_are_invisible(make_bucket):
     root = make_bucket()
     trash = root / "library" / ".trash"
     trash.mkdir()
-    (trash / "Not A Slug.md").write_text("no frontmatter at all",
-                                         encoding="utf-8")
+    (trash / "Not A Slug.md").write_text("no frontmatter at all", encoding="utf-8")
     cache = root / "sources" / ".cache"
     cache.mkdir()
     (cache / "junk file.pdf").write_bytes(b"%PDF-1.4")
@@ -189,7 +193,8 @@ def test_blank_aurora_reports_e3_only(make_bucket):
     (root / "library" / "blank.md").write_text(
         '---\ntitle: Blank\ntype: note\naurora: ""\n---\n\n'
         "## Summary\n\nBlank aurora.\n\n---\n\nBody.\n",
-        encoding="utf-8")
+        encoding="utf-8",
+    )
     findings = [f for f in check(root) if f.path.endswith("blank.md")]
     codes = [f.code for f in findings]
     assert "E3" in codes

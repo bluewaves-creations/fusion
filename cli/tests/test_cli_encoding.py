@@ -2,6 +2,7 @@
 and mid-dots fusion's human-readable output uses. main_entry() reconfigures
 stdout/stderr to UTF-8 before anything is printed — this proves that
 reconfiguration actually takes effect, without needing a real Windows box."""
+
 import io
 
 from fusion.cli import _utf8_streams

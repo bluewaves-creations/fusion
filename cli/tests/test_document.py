@@ -8,8 +8,14 @@ from fusion.document import (
 
 def test_auroras_are_the_eight_verbatim():
     assert AURORAS == (
-        "commitments", "focus", "ops", "collab",
-        "life", "explore", "archive", "library",
+        "commitments",
+        "focus",
+        "ops",
+        "collab",
+        "life",
+        "explore",
+        "archive",
+        "library",
     )
 
 
@@ -81,7 +87,9 @@ def test_read_document_not_summary_first(tmp_path):
 
 def test_read_document_summary_without_separator(tmp_path):
     p = tmp_path / "x.md"
-    p.write_text("---\ntitle: X\n---\n\n## Summary\n\ntext but no rule\n", encoding="utf-8")
+    p.write_text(
+        "---\ntitle: X\n---\n\n## Summary\n\ntext but no rule\n", encoding="utf-8"
+    )
     assert read_document(p).summary_first is False
 
 
@@ -111,8 +119,10 @@ def test_summary_line_is_verbatim(tmp_path):
 
 
 def test_read_document_strips_utf8_bom(tmp_path):
-    body = ("---\ntitle: Bom Test\ntype: note\naurora: library\n---\n\n"
-            "## Summary\n\nStill fine.\n\n---\n\nBody.\n")
+    body = (
+        "---\ntitle: Bom Test\ntype: note\naurora: library\n---\n\n"
+        "## Summary\n\nStill fine.\n\n---\n\nBody.\n"
+    )
     p = tmp_path / "doc.md"
     p.write_bytes(b"\xef\xbb\xbf" + body.encode("utf-8"))
     doc = read_document(p)
@@ -121,8 +131,10 @@ def test_read_document_strips_utf8_bom(tmp_path):
 
 
 def test_read_document_tolerates_crlf(tmp_path):
-    body = ("---\ntitle: Crlf Test\ntype: note\naurora: library\n---\n\n"
-            "## Summary\n\nStill fine.\n\n---\n\nBody.\n")
+    body = (
+        "---\ntitle: Crlf Test\ntype: note\naurora: library\n---\n\n"
+        "## Summary\n\nStill fine.\n\n---\n\nBody.\n"
+    )
     p = tmp_path / "doc.md"
     p.write_bytes(body.replace("\n", "\r\n").encode("utf-8"))
     doc = read_document(p)
@@ -132,13 +144,18 @@ def test_read_document_tolerates_crlf(tmp_path):
 
 # ── code is not prose ───────────────────────────────────────────────────
 
+
 def _doc(body: str) -> str:
-    return ("---\ntitle: X\ntype: note\naurora: library\n---\n\n"
-            "## Summary\n\nS.\n\n---\n\n" + body)
+    return (
+        "---\ntitle: X\ntype: note\naurora: library\n---\n\n"
+        "## Summary\n\nS.\n\n---\n\n" + body
+    )
 
 
 def test_links_ignores_fenced_block_only_link(tmp_path):
-    body = "Text before.\n\n```\nSee [x](broken.md) for an example.\n```\n\nText after.\n"
+    body = (
+        "Text before.\n\n```\nSee [x](broken.md) for an example.\n```\n\nText after.\n"
+    )
     p = tmp_path / "x.md"
     p.write_text(_doc(body), encoding="utf-8")
     assert read_document(p).links == []
@@ -196,14 +213,21 @@ def test_links_tilde_fence_also_blanked(tmp_path):
 
 def test_summary_only_field(tmp_path):
     p = tmp_path / "stub.md"
-    p.write_text("---\ntitle: S\ntype: note\naurora: library\n---\n\n"
-                 "## Summary\n\nOnly this.\n\n---\n", encoding="utf-8")
+    p.write_text(
+        "---\ntitle: S\ntype: note\naurora: library\n---\n\n"
+        "## Summary\n\nOnly this.\n\n---\n",
+        encoding="utf-8",
+    )
     assert read_document(p).summary_only is True
     p2 = tmp_path / "real.md"
-    p2.write_text("---\ntitle: S\ntype: note\naurora: library\n---\n\n"
-                  "## Summary\n\nLine.\n\n---\n\nBody.\n", encoding="utf-8")
+    p2.write_text(
+        "---\ntitle: S\ntype: note\naurora: library\n---\n\n"
+        "## Summary\n\nLine.\n\n---\n\nBody.\n",
+        encoding="utf-8",
+    )
     assert read_document(p2).summary_only is False
     p3 = tmp_path / "loose.md"
-    p3.write_text("---\ntitle: S\ntype: note\naurora: library\n---\n\nProse.\n",
-                  encoding="utf-8")
+    p3.write_text(
+        "---\ntitle: S\ntype: note\naurora: library\n---\n\nProse.\n", encoding="utf-8"
+    )
     assert read_document(p3).summary_only is False

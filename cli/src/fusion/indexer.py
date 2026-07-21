@@ -1,4 +1,5 @@
 """INDEX.md generation — two implementations, identical bytes (SPEC §8)."""
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -26,8 +27,7 @@ def _zone_documents(zone_dir: Path) -> list[Path]:
         p
         for p in sorted(zone_dir.rglob("*.md"))
         if p.name != "INDEX.md"
-        and not any(part.startswith(".")
-                    for part in p.relative_to(zone_dir).parts)
+        and not any(part.startswith(".") for part in p.relative_to(zone_dir).parts)
     ]
 
 
@@ -69,7 +69,12 @@ def write_indexes(
         count = len(_zone_documents(zone_dir))
         if changed and actor:
             plural = "s" if count != 1 else ""
-            ledger.append(bucket_root, actor, "indexed",
-                          f"{zone}/ ({count} document{plural})", at=at)
+            ledger.append(
+                bucket_root,
+                actor,
+                "indexed",
+                f"{zone}/ ({count} document{plural})",
+                at=at,
+            )
         results.append({"zone": zone, "documents": count, "changed": changed})
     return results

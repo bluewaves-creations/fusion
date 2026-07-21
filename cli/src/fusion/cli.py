@@ -1,4 +1,5 @@
 """fusion — the notary. Records, checks, composes; never judges."""
+
 from __future__ import annotations
 
 import argparse
@@ -12,6 +13,7 @@ from . import __version__, bucket, checker, hub, indexer, ledger, scaffold, view
 
 
 # ── plumbing ─────────────────────────────────────────────────────────────
+
 
 def _fail(message: str, as_json: bool = False) -> int:
     if as_json:
@@ -43,12 +45,16 @@ def _parse_at(raw: str | None) -> datetime | None:
 
 # ── commands ─────────────────────────────────────────────────────────────
 
+
 def cmd_new(args) -> int:
     actor = ledger.resolve_actor(args.as_)
     try:
         root, warnings = scaffold.new_bucket(
-            Path(args.path), name=args.name, kind=args.kind,
-            description=args.description, actor=actor,
+            Path(args.path),
+            name=args.name,
+            kind=args.kind,
+            description=args.description,
+            actor=actor,
         )
     except scaffold.ScaffoldError as exc:
         return _fail(str(exc), args.json)
@@ -69,28 +75,30 @@ def cmd_hub(args) -> int:
         b = bucket.load(root)
         if b.frontmatter is None:
             return _fail(f"not a bucket (no readable BUCKET.md): {root}", args.json)
-        missing = [f for f in ("name", "kind", "description")
-                   if not str(b.frontmatter.get(f) or "").strip()]
+        missing = [
+            f
+            for f in ("name", "kind", "description")
+            if not str(b.frontmatter.get(f) or "").strip()
+        ]
         if missing:
             return _fail(f"BUCKET.md missing: {', '.join(missing)}", args.json)
         try:
-            hub.add(hub.HubEntry(b.name, b.kind, hub.display_path(root),
-                                  b.description))
+            hub.add(hub.HubEntry(b.name, b.kind, hub.display_path(root), b.description))
         except ValueError as exc:
             return _fail(str(exc), args.json)
-        _emit({"registered": b.name}, args.json,
-              f"'{b.name}' registered in the hub.")
+        _emit({"registered": b.name}, args.json, f"'{b.name}' registered in the hub.")
         return 0
     if args.hub_cmd == "remove":
         if not hub.remove(args.name):
             return _fail(f"no bucket named '{args.name}' in the hub", args.json)
-        _emit({"removed": args.name}, args.json,
-              f"'{args.name}' retired from the hub. The files live on.")
+        _emit(
+            {"removed": args.name},
+            args.json,
+            f"'{args.name}' retired from the hub. The files live on.",
+        )
         return 0
     entries = hub.load()
-    flagged = [
-        (e, not (hub.resolve(e) / "BUCKET.md").is_file()) for e in entries
-    ]
+    flagged = [(e, not (hub.resolve(e) / "BUCKET.md").is_file()) for e in entries]
     lines = []
     for e, missing in flagged:
         lines.append(f"- **{e.name}** · {e.kind} · {e.path} — {e.description}")
@@ -100,8 +108,9 @@ def cmd_hub(args) -> int:
                 f"or `fusion hub remove {e.name}`"
             )
     human = "\n".join(lines) or "the hub is empty — `fusion new` a bucket."
-    _emit([{**asdict(e), "missing": missing} for e, missing in flagged],
-          args.json, human)
+    _emit(
+        [{**asdict(e), "missing": missing} for e, missing in flagged], args.json, human
+    )
     return 0
 
 
@@ -109,26 +118,34 @@ def cmd_log(args) -> int:
     root = _root_from(args, "bucket")
     if root is None or not (root / "BUCKET.md").is_file():
         given = getattr(args, "bucket", None)
-        return _fail(f"no bucket at: {given}" if given else
-                     "not inside a bucket (no BUCKET.md found) — use --bucket",
-                     args.json)
+        return _fail(
+            f"no bucket at: {given}"
+            if given
+            else "not inside a bucket (no BUCKET.md found) — use --bucket",
+            args.json,
+        )
     if args.verb is None:
         entries = views.filter_since(ledger.read(root), args.since)
-        human = "\n".join(
-            f"{e.date} {ledger.format_line(e)[2:]}" for e in entries
-        ) or "the ledger is empty — nothing has happened yet."
+        human = (
+            "\n".join(f"{e.date} {ledger.format_line(e)[2:]}" for e in entries)
+            or "the ledger is empty — nothing has happened yet."
+        )
         _emit([asdict(e) for e in entries], args.json, human)
         return 0
     if args.object is None:
         return _fail("log needs an object: fusion log <verb> <object>", args.json)
     actor = ledger.resolve_actor(args.as_)
     try:
-        entry = ledger.append(root, actor, args.verb, args.object,
-                              note=args.note, at=_parse_at(args.at))
+        entry = ledger.append(
+            root, actor, args.verb, args.object, note=args.note, at=_parse_at(args.at)
+        )
     except ValueError as exc:
         return _fail(str(exc), args.json)
-    _emit(asdict(entry), args.json,
-          f"logged: {entry.date} {ledger.format_line(entry)[2:]}")
+    _emit(
+        asdict(entry),
+        args.json,
+        f"logged: {entry.date} {ledger.format_line(entry)[2:]}",
+    )
     return 0
 
 
@@ -136,8 +153,12 @@ def cmd_index(args) -> int:
     root = _root_from(args)
     if root is None or not (root / "BUCKET.md").is_file():
         given = getattr(args, "path", None)
-        return _fail(f"no bucket at: {given}" if given else
-                     "not inside a bucket (no BUCKET.md found)", args.json)
+        return _fail(
+            f"no bucket at: {given}"
+            if given
+            else "not inside a bucket (no BUCKET.md found)",
+            args.json,
+        )
     actor = ledger.resolve_actor(args.as_)
     results = indexer.write_indexes(root, actor=actor)
     human = "\n".join(
@@ -153,20 +174,29 @@ def _check_hub(args) -> int:
     findings = checker.check_hub()
     entries = hub.load()
     if args.json:
-        _emit({
-            "hub": str(hub.hub_path()),
-            "buckets": len(entries),
-            "ok": not findings,
-            "warnings": [asdict(f) for f in findings],
-        }, True, "")
+        _emit(
+            {
+                "hub": str(hub.hub_path()),
+                "buckets": len(entries),
+                "ok": not findings,
+                "warnings": [asdict(f) for f in findings],
+            },
+            True,
+            "",
+        )
     else:
         for f in findings:
             print(f"  {f.code} · {f.path} — {f.message}")
         n, w = len(entries), len(findings)
-        verdict = ("every bucket answers." if not findings
-                   else "some buckets are not where the hub says.")
-        print(f"hub: {n} bucket{'s' if n != 1 else ''} · "
-              f"{w} warning{'s' if w != 1 else ''} — {verdict}")
+        verdict = (
+            "every bucket answers."
+            if not findings
+            else "some buckets are not where the hub says."
+        )
+        print(
+            f"hub: {n} bucket{'s' if n != 1 else ''} · "
+            f"{w} warning{'s' if w != 1 else ''} — {verdict}"
+        )
     return 0
 
 
@@ -191,20 +221,25 @@ def cmd_check(args) -> int:
                 "errors": [asdict(f) for f in errors],
                 "warnings": [asdict(f) for f in warnings],
             },
-            True, "",
+            True,
+            "",
         )
     else:
         for f in findings:
             print(f"  {f.code} · {f.path} — {f.message}")
         verdict = (
-            "clean, carry on." if not findings
-            else "the notary objects." if errors
+            "clean, carry on."
+            if not findings
+            else "the notary objects."
+            if errors
             else "drift, not damage."
         )
         plural_e = "" if len(errors) == 1 else "s"
         plural_w = "" if len(warnings) == 1 else "s"
-        print(f"{name}: {len(errors)} error{plural_e} · "
-              f"{len(warnings)} warning{plural_w} — {verdict}")
+        print(
+            f"{name}: {len(errors)} error{plural_e} · "
+            f"{len(warnings)} warning{plural_w} — {verdict}"
+        )
     return 1 if errors else 0
 
 
@@ -212,8 +247,12 @@ def cmd_status(args) -> int:
     root = _root_from(args)
     if root is None or not (root / "BUCKET.md").is_file():
         given = getattr(args, "path", None)
-        return _fail(f"no bucket at: {given}" if given else
-                     "not inside a bucket (no BUCKET.md found)", args.json)
+        return _fail(
+            f"no bucket at: {given}"
+            if given
+            else "not inside a bucket (no BUCKET.md found)",
+            args.json,
+        )
     s = views.status(root, since=args.since)
     lines = [f"{s['bucket']} — {s['documents']} documents"]
     for label in ("auroras", "types", "activities"):
@@ -246,8 +285,10 @@ def cmd_today(args) -> int:
             f"clone it there, or `fusion hub remove {m['name']}`",
             file=sys.stderr,
         )
-    lines = [f"Today across {len(t['buckets'])} bucket"
-             f"{'s' if len(t['buckets']) != 1 else ''}"]
+    lines = [
+        f"Today across {len(t['buckets'])} bucket"
+        f"{'s' if len(t['buckets']) != 1 else ''}"
+    ]
     for aurora, items in t["groups"].items():
         lines.append(f"  {aurora}:")
         lines += _render_items(items)
@@ -284,15 +325,18 @@ def cmd_agenda(args) -> int:
 def cmd_setup(args) -> int:
     from fusion import setup as setup_mod
     import os as _os
+
     home = Path.home()
     skills_dir = Path(
         args.skills_dir
         or _os.environ.get("FUSION_SKILLS_DIR")
-        or home / ".agents" / "skills").expanduser()
+        or home / ".agents" / "skills"
+    ).expanduser()
     no_agents = args.no_agents or _os.environ.get("FUSION_NO_AGENTS") == "1"
     try:
-        report = setup_mod.run_setup(home, skills_dir, args.force,
-                                     no_agents, args.remove)
+        report = setup_mod.run_setup(
+            home, skills_dir, args.force, no_agents, args.remove
+        )
     except setup_mod.SetupError as exc:
         return _fail(str(exc), args.json)
     lines = _render_setup(report)
@@ -321,6 +365,7 @@ def _render_setup(report: dict) -> list[str]:
 
 def cmd_update(args) -> int:
     from fusion import update as update_mod
+
     setup_args = []
     if args.force:
         setup_args.append("--force")
@@ -336,115 +381,210 @@ def cmd_update(args) -> int:
 
 # ── parser ───────────────────────────────────────────────────────────────
 
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="fusion",
         description="Fusion — the notary. Records, checks, composes; never judges.",
     )
-    parser.add_argument("--version", action="version",
-                        version=f"fusion {__version__}")
+    parser.add_argument("--version", action="version", version=f"fusion {__version__}")
     sub = parser.add_subparsers(dest="command")
 
     def flag_json(p):
-        p.add_argument("--json", action="store_true",
-                       help="machine output — agents parse, never scrape")
+        p.add_argument(
+            "--json",
+            action="store_true",
+            help="machine output — agents parse, never scrape",
+        )
 
     def flag_as(p):
-        p.add_argument("--as", dest="as_", metavar="ACTOR",
-                       help="who holds the pen (default: FUSION_ACTOR, then "
-                            "the OS username)")
+        p.add_argument(
+            "--as",
+            dest="as_",
+            metavar="ACTOR",
+            help="who holds the pen (default: FUSION_ACTOR, then the OS username)",
+        )
 
-    p = sub.add_parser("new", help="scaffold a bucket and register it", description="Scaffold a conformant bucket at PATH — six zones, BUCKET.md, an opened ledger — and register it in the hub.")
+    p = sub.add_parser(
+        "new",
+        help="scaffold a bucket and register it",
+        description="Scaffold a conformant bucket at PATH — six zones, BUCKET.md, an opened ledger — and register it in the hub.",
+    )
     p.add_argument("path", help="directory to create (missing or empty)")
     p.add_argument("--name", help="bucket name (default: directory name)")
-    p.add_argument("--kind", default="personal",
-                   help="personal · company · studio · club · …")
-    p.add_argument("--description",
-                   help="one line on what this bucket is for (lands in "
-                        "BUCKET.md and the hub)")
-    flag_as(p); flag_json(p)
+    p.add_argument(
+        "--kind", default="personal", help="personal · company · studio · club · …"
+    )
+    p.add_argument(
+        "--description",
+        help="one line on what this bucket is for (lands in BUCKET.md and the hub)",
+    )
+    flag_as(p)
+    flag_json(p)
     p.set_defaults(func=cmd_new)
 
-    p = sub.add_parser("hub", help="list, register, or retire buckets", description="The registry at ~/.fusion/hub.md (override: FUSION_HUB) — the agent's map of your buckets. No subcommand: list.")
+    p = sub.add_parser(
+        "hub",
+        help="list, register, or retire buckets",
+        description="The registry at ~/.fusion/hub.md (override: FUSION_HUB) — the agent's map of your buckets. No subcommand: list.",
+    )
     hub_sub = p.add_subparsers(dest="hub_cmd")
     flag_json(p)
-    pa = hub_sub.add_parser("add", help="register an existing bucket", description="Register an existing bucket (reads its BUCKET.md).")
+    pa = hub_sub.add_parser(
+        "add",
+        help="register an existing bucket",
+        description="Register an existing bucket (reads its BUCKET.md).",
+    )
     pa.add_argument("path", help="bucket root to register")
     flag_json(pa)
-    pr = hub_sub.add_parser("remove", help="retire a bucket from the hub", description="Retire a bucket from the hub. Files stay where they are.")
+    pr = hub_sub.add_parser(
+        "remove",
+        help="retire a bucket from the hub",
+        description="Retire a bucket from the hub. Files stay where they are.",
+    )
     pr.add_argument("name", help="registered bucket name")
     flag_json(pr)
     p.set_defaults(func=cmd_hub, hub_cmd=None)
     pa.set_defaults(func=cmd_hub, hub_cmd="add")
     pr.set_defaults(func=cmd_hub, hub_cmd="remove")
 
-    p = sub.add_parser("log", help="append to the ledger, or read it", description="Append one signed entry to the append-only ledger — or, with no arguments, read it.", epilog="Read mode: 'fusion log' alone prints the ledger; --since DATE or --since last-reflection narrows it. The bucket resolves from --bucket, else by walking up from the current directory.")
-    p.add_argument("verb", nargs="?",
-                   help=f"one of: {', '.join(ledger.VERBS)}")
-    p.add_argument("object", nargs="?", help="what was acted on — a path, or 'a → b' for a move")
+    p = sub.add_parser(
+        "log",
+        help="append to the ledger, or read it",
+        description="Append one signed entry to the append-only ledger — or, with no arguments, read it.",
+        epilog="Read mode: 'fusion log' alone prints the ledger; --since DATE or --since last-reflection narrows it. The bucket resolves from --bucket, else by walking up from the current directory.",
+    )
+    p.add_argument("verb", nargs="?", help=f"one of: {', '.join(ledger.VERBS)}")
+    p.add_argument(
+        "object", nargs="?", help="what was acted on — a path, or 'a → b' for a move"
+    )
     p.add_argument("--note")
-    p.add_argument("--at", metavar="'YYYY-MM-DD HH:MM'",
-                   help="entry timestamp (default: now)")
-    p.add_argument("--since", metavar="DATE|last-reflection",
-                   help="read mode: entries since a date or the last reflection")
+    p.add_argument(
+        "--at", metavar="'YYYY-MM-DD HH:MM'", help="entry timestamp (default: now)"
+    )
+    p.add_argument(
+        "--since",
+        metavar="DATE|last-reflection",
+        help="read mode: entries since a date or the last reflection",
+    )
     p.add_argument("--bucket", help="bucket root (default: walk up from cwd)")
-    flag_as(p); flag_json(p)
+    flag_as(p)
+    flag_json(p)
     p.set_defaults(func=cmd_log)
 
-    p = sub.add_parser("index", help="regenerate INDEX.md in library/ and activities/", description="Regenerate library/INDEX.md and activities/INDEX.md from the documents on disk. Deterministic: same tree, same bytes.")
-    p.add_argument("path", nargs="?", help="bucket root (default: walk up from the current directory)")
-    flag_as(p); flag_json(p)
+    p = sub.add_parser(
+        "index",
+        help="regenerate INDEX.md in library/ and activities/",
+        description="Regenerate library/INDEX.md and activities/INDEX.md from the documents on disk. Deterministic: same tree, same bytes.",
+    )
+    p.add_argument(
+        "path",
+        nargs="?",
+        help="bucket root (default: walk up from the current directory)",
+    )
+    flag_as(p)
+    flag_json(p)
     p.set_defaults(func=cmd_index)
 
-    p = sub.add_parser("check", help="audit a bucket against the convention", description="Audit a bucket against the convention (SPEC §11). Exit 1 on errors; warnings never fail the check. --hub (or running outside any bucket) audits the hub instead: every registered bucket present and answering to its name.")
-    p.add_argument("path", nargs="?", help="bucket root (default: walk up from the current directory)")
-    p.add_argument("--hub", action="store_true",
-                   help="audit the hub instead: every entry answers at its path")
+    p = sub.add_parser(
+        "check",
+        help="audit a bucket against the convention",
+        description="Audit a bucket against the convention (SPEC §11). Exit 1 on errors; warnings never fail the check. --hub (or running outside any bucket) audits the hub instead: every registered bucket present and answering to its name.",
+    )
+    p.add_argument(
+        "path",
+        nargs="?",
+        help="bucket root (default: walk up from the current directory)",
+    )
+    p.add_argument(
+        "--hub",
+        action="store_true",
+        help="audit the hub instead: every entry answers at its path",
+    )
     flag_json(p)
     p.set_defaults(func=cmd_check)
 
-    p = sub.add_parser("status", help="one bucket at a glance", description="One bucket at a glance: documents per zone, active work, the ledger's recent tail.")
-    p.add_argument("path", nargs="?", help="bucket root (default: walk up from the current directory)")
+    p = sub.add_parser(
+        "status",
+        help="one bucket at a glance",
+        description="One bucket at a glance: documents per zone, active work, the ledger's recent tail.",
+    )
+    p.add_argument(
+        "path",
+        nargs="?",
+        help="bucket root (default: walk up from the current directory)",
+    )
     p.add_argument("--since", metavar="DATE|last-reflection")
     flag_json(p)
     p.set_defaults(func=cmd_status)
 
-    p = sub.add_parser("today", help="the composed day, across the hub", description="The composed morning across every hub bucket: commitments and active work, grouped by aurora.")
+    p = sub.add_parser(
+        "today",
+        help="the composed day, across the hub",
+        description="The composed morning across every hub bucket: commitments and active work, grouped by aurora.",
+    )
     flag_json(p)
     p.set_defaults(func=cmd_today)
 
-    p = sub.add_parser("agenda", help="the wider horizon, across the hub", description="The wider horizon across the hub: dated items first (due:/date:), then active work.")
+    p = sub.add_parser(
+        "agenda",
+        help="the wider horizon, across the hub",
+        description="The wider horizon across the hub: dated items first (due:/date:), then active work.",
+    )
     flag_json(p)
     p.set_defaults(func=cmd_agenda)
 
-    p = sub.add_parser("setup", help="install skills into agents; --remove undoes it",
-                       description="Install the bundled skills to the canonical "
-                       "skills directory (~/.agents/skills) and make them available "
-                       "to every detected agent — most read that directory "
-                       "natively; agents that do not (Claude Code) get symlinks. "
-                       "--remove undoes exactly what setup can prove it created.")
-    p.add_argument("--force", action="store_true",
-                   help="replace foreign entries setup would otherwise leave")
-    p.add_argument("--remove", action="store_true",
-                   help="undo setup (attribution-checked), print the uninstall closer")
-    p.add_argument("--skills-dir", help="canonical destination (default ~/.agents/skills; env FUSION_SKILLS_DIR)")
-    p.add_argument("--no-agents", action="store_true",
-                   help="skip agent fan-out (env FUSION_NO_AGENTS=1)")
+    p = sub.add_parser(
+        "setup",
+        help="install skills into agents; --remove undoes it",
+        description="Install the bundled skills to the canonical "
+        "skills directory (~/.agents/skills) and make them available "
+        "to every detected agent — most read that directory "
+        "natively; agents that do not (Claude Code) get symlinks. "
+        "--remove undoes exactly what setup can prove it created.",
+    )
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help="replace foreign entries setup would otherwise leave",
+    )
+    p.add_argument(
+        "--remove",
+        action="store_true",
+        help="undo setup (attribution-checked), print the uninstall closer",
+    )
+    p.add_argument(
+        "--skills-dir",
+        help="canonical destination (default ~/.agents/skills; env FUSION_SKILLS_DIR)",
+    )
+    p.add_argument(
+        "--no-agents",
+        action="store_true",
+        help="skip agent fan-out (env FUSION_NO_AGENTS=1)",
+    )
     flag_json(p)
     p.set_defaults(func=cmd_setup)
 
-    p = sub.add_parser("update", help="upgrade fusion-cli and refresh the skills",
-                       description="Bring the whole system current: upgrade "
-                       "fusion-cli through uv, then re-run `fusion setup` "
-                       "from the new binary so the bundled skills refresh "
-                       "everywhere setup put them. Equivalent to: "
-                       "uv tool upgrade fusion-cli && fusion setup.")
-    p.add_argument("--force", action="store_true",
-                   help="forwarded to setup: replace foreign entries")
-    p.add_argument("--skills-dir",
-                   help="forwarded to setup: canonical destination")
-    p.add_argument("--no-agents", action="store_true",
-                   help="forwarded to setup: skip agent fan-out")
+    p = sub.add_parser(
+        "update",
+        help="upgrade fusion-cli and refresh the skills",
+        description="Bring the whole system current: upgrade "
+        "fusion-cli through uv, then re-run `fusion setup` "
+        "from the new binary so the bundled skills refresh "
+        "everywhere setup put them. Equivalent to: "
+        "uv tool upgrade fusion-cli && fusion setup.",
+    )
+    p.add_argument(
+        "--force",
+        action="store_true",
+        help="forwarded to setup: replace foreign entries",
+    )
+    p.add_argument("--skills-dir", help="forwarded to setup: canonical destination")
+    p.add_argument(
+        "--no-agents",
+        action="store_true",
+        help="forwarded to setup: skip agent fan-out",
+    )
     p.set_defaults(func=cmd_update)
 
     return parser
@@ -461,8 +601,9 @@ def main(argv: list[str] | None = None) -> int:
     except SystemExit:
         raise
     except Exception as exc:  # the notary reports surprises, never crashes bare
-        return _fail(f"unexpected: {type(exc).__name__}: {exc}",
-                    getattr(args, "json", False))
+        return _fail(
+            f"unexpected: {type(exc).__name__}: {exc}", getattr(args, "json", False)
+        )
 
 
 def _utf8_streams() -> None:

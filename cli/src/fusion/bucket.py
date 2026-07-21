@@ -1,4 +1,5 @@
 """The bucket — zones, identity card, and document iteration (SPEC §2, §3)."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -8,11 +9,20 @@ from typing import Iterator
 from .document import Document, read_document, split_frontmatter
 
 ZONES: tuple[str, ...] = (
-    "inbox", "sources", "library", "activities", "workbench", "output",
+    "inbox",
+    "sources",
+    "library",
+    "activities",
+    "workbench",
+    "output",
 )
 DOC_ZONES: tuple[str, ...] = ("library", "activities", "output")
 REQUIRED_BUCKET_FIELDS: tuple[str, ...] = (
-    "name", "kind", "description", "fusion_version", "created",
+    "name",
+    "kind",
+    "description",
+    "fusion_version",
+    "created",
 )
 
 
@@ -72,6 +82,7 @@ def iter_documents(
         for path in sorted(zone_dir.rglob("*.md")):
             rel = path.relative_to(zone_dir)
             if path.name == "INDEX.md" or any(
-                    part.startswith(".") for part in rel.parts):
+                part.startswith(".") for part in rel.parts
+            ):
                 continue
             yield zone, rel, read_document(path)

@@ -1,5 +1,6 @@
 """Fixtures for the fusion-intake script suite. No fusion package imports —
 the skill is self-contained; buckets are built by hand to SPEC 1.0."""
+
 import sys
 from pathlib import Path
 
@@ -26,8 +27,7 @@ Scratch bucket.
 """
 
 MANIFEST_HEADER = (
-    "# Manifest\n\n| file | added | by | sha256 | library |\n"
-    "|---|---|---|---|---|\n"
+    "# Manifest\n\n| file | added | by | sha256 | library |\n|---|---|---|---|---|\n"
 )
 
 ZONES = ("inbox", "sources", "library", "activities", "workbench", "output")
@@ -39,10 +39,10 @@ def bucket(tmp_path):
     for zone in ZONES:
         (root / zone).mkdir(parents=True)
     (root / "BUCKET.md").write_text(
-        BUCKET_CARD.format(name="scratch"), encoding="utf-8")
+        BUCKET_CARD.format(name="scratch"), encoding="utf-8"
+    )
     (root / "LEDGER.md").write_text("# Ledger\n", encoding="utf-8")
-    (root / "sources" / "MANIFEST.md").write_text(
-        MANIFEST_HEADER, encoding="utf-8")
+    (root / "sources" / "MANIFEST.md").write_text(MANIFEST_HEADER, encoding="utf-8")
     return root
 
 

@@ -1,4 +1,5 @@
 """~/.fusion/hub.md — the machine's registry of buckets (SPEC §1)."""
+
 from __future__ import annotations
 
 import os

@@ -7,6 +7,7 @@ Source resolution order:
   2. <cli>/skills      — building from an sdist (the sdist hook below
                          copies skills/ inside so wheel-from-sdist works)
 """
+
 import shutil
 from pathlib import Path
 
@@ -41,8 +42,9 @@ class SkillsBundleHook(BuildHookInterface):
         if staged.exists():
             shutil.rmtree(staged)
         for skill in sorted(src.glob("fusion-*")):
-            shutil.copytree(skill, staged / skill.name,
-                            ignore=shutil.ignore_patterns(*EXCLUDE))
+            shutil.copytree(
+                skill, staged / skill.name, ignore=shutil.ignore_patterns(*EXCLUDE)
+            )
 
     def finalize(self, version, build_data, artifact_path):
         staged = Path(self.root) / "src" / "fusion" / "_skills"

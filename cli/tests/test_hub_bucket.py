@@ -81,6 +81,7 @@ def test_iter_documents_fixture(fixture_bucket):
     docs = list(bucket.iter_documents(fixture_bucket))
     assert len(docs) == 7
     from collections import Counter
+
     zone_counts = Counter(zone for zone, _, _ in docs)
     assert zone_counts == {"library": 3, "activities": 3, "output": 1}
     names = {rel.name for _, rel, _ in docs}
@@ -100,6 +101,8 @@ def test_iter_documents_skips_dot_directories(tmp_path):
     (lib / "workspace.md").write_text("junk", encoding="utf-8")
     (tmp_path / "library" / "real.md").write_text(
         "---\ntitle: Real\ntype: note\naurora: library\n---\n\n"
-        "## Summary\n\nReal.\n\n---\n\nBody.\n", encoding="utf-8")
+        "## Summary\n\nReal.\n\n---\n\nBody.\n",
+        encoding="utf-8",
+    )
     rels = [rel.as_posix() for _, rel, _ in bucket.iter_documents(tmp_path)]
     assert rels == ["real.md"]

@@ -5,6 +5,7 @@
 # ///
 """Generate real legacy-format fixtures for the intake tests. Imported by
 the test modules; also runnable standalone to eyeball the artifacts."""
+
 import zipfile
 from email.message import EmailMessage
 from pathlib import Path
@@ -13,10 +14,11 @@ from pathlib import Path
 def make_xlsx(path: Path):
     """Two sheets, exact numbers, a pipe cell, an all-empty column."""
     import openpyxl
+
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Scores"
-    ws.append(["supplier", "score", None, "notes"])   # 3rd column all-empty
+    ws.append(["supplier", "score", None, "notes"])  # 3rd column all-empty
     ws.append(["Acme Corp", 78.5, None, "steady | improving"])
     ws.append(["Northwind", 91, None, "top tier"])
     ws2 = wb.create_sheet("Meta")
@@ -26,17 +28,20 @@ def make_xlsx(path: Path):
 
 def make_csv(path: Path):
     path.write_bytes(
-        ("﻿" "item,qty,price\nJazzmaster 1962,1,12500.50\n"
-         "Pedalboard,1,2300\n").encode("utf-8"))
+        ("﻿item,qty,price\nJazzmaster 1962,1,12500.50\nPedalboard,1,2300\n").encode(
+            "utf-8"
+        )
+    )
 
 
 def make_text_pdf(path: Path):
     """Two pages with a healthy text layer."""
     import fitz
+
     doc = fitz.open()
     for n in (1, 2):
         page = doc.new_page()
-        text = (f"Page {n} of the supplier audit. " * 12)
+        text = f"Page {n} of the supplier audit. " * 12
         page.insert_text((72, 72), text, fontsize=11)
     doc.save(path)
     doc.close()
@@ -45,6 +50,7 @@ def make_text_pdf(path: Path):
 def make_scanned_pdf(path: Path):
     """One page, no text layer at all — drawing only."""
     import fitz
+
     doc = fitz.open()
     page = doc.new_page()
     page.draw_line((72, 72), (400, 400))
@@ -87,22 +93,36 @@ def make_eml(path: Path):
     msg["Subject"] = "Re: rehearsal schedule"
     msg["Date"] = "Thu, 09 Jul 2026 10:15:00 +0200"
     msg.set_content("Rehearsal moves to Thursday. Bring the Jazzmaster.\n")
-    msg.add_attachment(b"setlist,song\n1,First Light\n",
-                       maintype="text", subtype="csv", filename="setlist.csv")
+    msg.add_attachment(
+        b"setlist,song\n1,First Light\n",
+        maintype="text",
+        subtype="csv",
+        filename="setlist.csv",
+    )
     path.write_bytes(bytes(msg))
 
 
 def make_png(path: Path):
     """Tiny valid PNG (1x1, red) — hand-assembled, no dependencies."""
-    import struct, zlib
+    import struct
+    import zlib
+
     def chunk(tag, data):
         c = tag + data
-        return struct.pack(">I", len(data)) + c + struct.pack(
-            ">I", zlib.crc32(c) & 0xFFFFFFFF)
+        return (
+            struct.pack(">I", len(data))
+            + c
+            + struct.pack(">I", zlib.crc32(c) & 0xFFFFFFFF)
+        )
+
     ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
     idat = zlib.compress(b"\x00\xff\x00\x00")
-    path.write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr)
-                     + chunk(b"IDAT", idat) + chunk(b"IEND", b""))
+    path.write_bytes(
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", ihdr)
+        + chunk(b"IDAT", idat)
+        + chunk(b"IEND", b"")
+    )
 
 
 DOCX_TWO_PAGE_DOCUMENT = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -134,7 +154,8 @@ def make_html_eml(path: Path):
         "<script>alert('tracking')</script></head>"
         "<body><p>Quote for Dupont &amp; Fils: total 1250 euros.</p>"
         "<p>Valid until <b>2026-08-01</b>.</p></body></html>",
-        subtype="html")
+        subtype="html",
+    )
     path.write_bytes(bytes(msg))
 
 
@@ -146,10 +167,12 @@ def make_eml_colliding_attachments(path: Path):
     msg["Subject"] = "Both riders"
     msg["Date"] = "Fri, 10 Jul 2026 10:00:00 +0200"
     msg.set_content("Two riders attached, same filename.\n")
-    msg.add_attachment(b"rider one\n", maintype="text", subtype="plain",
-                       filename="rider.txt")
-    msg.add_attachment(b"rider two\n", maintype="text", subtype="plain",
-                       filename="rider.txt")
+    msg.add_attachment(
+        b"rider one\n", maintype="text", subtype="plain", filename="rider.txt"
+    )
+    msg.add_attachment(
+        b"rider two\n", maintype="text", subtype="plain", filename="rider.txt"
+    )
     path.write_bytes(bytes(msg))
 
 
@@ -162,10 +185,12 @@ def make_eml_casefold_colliding_attachments(path: Path):
     msg["Subject"] = "Rider, twice"
     msg["Date"] = "Fri, 10 Jul 2026 11:00:00 +0200"
     msg.set_content("Two riders attached, same name modulo case.\n")
-    msg.add_attachment(b"rider upper\n", maintype="text", subtype="plain",
-                       filename="Rider.txt")
-    msg.add_attachment(b"rider lower\n", maintype="text", subtype="plain",
-                       filename="rider.txt")
+    msg.add_attachment(
+        b"rider upper\n", maintype="text", subtype="plain", filename="Rider.txt"
+    )
+    msg.add_attachment(
+        b"rider lower\n", maintype="text", subtype="plain", filename="rider.txt"
+    )
     path.write_bytes(bytes(msg))
 
 
@@ -178,14 +203,16 @@ def make_eml_dotdot_attachment(path: Path):
     msg["Subject"] = "Hostile filename"
     msg["Date"] = "Fri, 10 Jul 2026 12:00:00 +0200"
     msg.set_content("One attachment with a hostile filename.\n")
-    msg.add_attachment(b"payload\n", maintype="application",
-                       subtype="octet-stream", filename="..")
+    msg.add_attachment(
+        b"payload\n", maintype="application", subtype="octet-stream", filename=".."
+    )
     path.write_bytes(bytes(msg))
 
 
 def make_merged_xlsx(path: Path):
     """A merged title spanning two columns — the anchor value must survive."""
     import openpyxl
+
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Budget"
@@ -210,25 +237,32 @@ def make_html_page(path: Path):
         "<table><tr><th>channel</th><th>revenue</th></tr>"
         "<tr><td>direct</td><td>412000</td></tr>"
         "<tr><td>partners</td><td>187500</td></tr></table>"
-        "</body></html>", encoding="utf-8")
+        "</body></html>",
+        encoding="utf-8",
+    )
 
 
 def make_tiff(path: Path, frames: int = 1):
     """A real tiff, single- or multi-frame, deterministic pixels — no
     external tool required, just Pillow."""
     from PIL import Image
+
     colors = [(200, 30, 30), (30, 200, 30), (30, 30, 200)]
-    imgs = [Image.new("RGB", (4, 4), colors[i % len(colors)])
-            for i in range(max(frames, 1))]
-    imgs[0].save(path, format="TIFF", save_all=frames > 1,
-                append_images=imgs[1:])
+    imgs = [
+        Image.new("RGB", (4, 4), colors[i % len(colors)]) for i in range(max(frames, 1))
+    ]
+    imgs[0].save(path, format="TIFF", save_all=frames > 1, append_images=imgs[1:])
 
 
 if __name__ == "__main__":
     out = Path("fixtures-preview")
     out.mkdir(exist_ok=True)
-    make_xlsx(out / "scores.xlsx"); make_csv(out / "inventory.csv")
-    make_text_pdf(out / "audit.pdf"); make_scanned_pdf(out / "scan.pdf")
-    make_docx(out / "procedure.docx"); make_eml(out / "mail.eml")
-    make_png(out / "photo.png"); make_tiff(out / "scan.tiff")
+    make_xlsx(out / "scores.xlsx")
+    make_csv(out / "inventory.csv")
+    make_text_pdf(out / "audit.pdf")
+    make_scanned_pdf(out / "scan.pdf")
+    make_docx(out / "procedure.docx")
+    make_eml(out / "mail.eml")
+    make_png(out / "photo.png")
+    make_tiff(out / "scan.tiff")
     print(f"fixtures in {out}/")

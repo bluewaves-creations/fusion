@@ -3,6 +3,7 @@
 Same isolation contract as test_cli_setup.py: no real subprocess is
 ever reached; a fake runner records the exact command sequence.
 """
+
 import subprocess
 from pathlib import Path
 from types import SimpleNamespace
@@ -20,8 +21,15 @@ STUB_UV = str(Path("/stub/uv"))
 class FakeRunner:
     """Answers uv/fusion invocations from a script of canned results."""
 
-    def __init__(self, bin_dir: Path, *, list_stdout="fusion-cli v1.2.1\n- fusion\n",
-                 list_rc=0, upgrade_rc=0, setup_rc=0):
+    def __init__(
+        self,
+        bin_dir: Path,
+        *,
+        list_stdout="fusion-cli v1.2.1\n- fusion\n",
+        list_rc=0,
+        upgrade_rc=0,
+        setup_rc=0,
+    ):
         self.bin_dir = bin_dir
         self.list_stdout = list_stdout
         self.list_rc = list_rc
@@ -33,8 +41,9 @@ class FakeRunner:
         self.calls.append([str(a) for a in argv])
         prog, rest = Path(argv[0]).name, [str(a) for a in argv[1:]]
         if prog.startswith("uv") and rest == ["tool", "list"]:
-            return SimpleNamespace(returncode=self.list_rc,
-                                   stdout=self.list_stdout, stderr="")
+            return SimpleNamespace(
+                returncode=self.list_rc, stdout=self.list_stdout, stderr=""
+            )
         if prog.startswith("uv") and rest == ["tool", "upgrade", "fusion-cli"]:
             return SimpleNamespace(returncode=self.upgrade_rc, stdout="", stderr="")
         if prog.startswith("uv") and rest == ["tool", "dir", "--bin"]:
@@ -49,12 +58,16 @@ def sandbox(tmp_path, monkeypatch):
     home = tmp_path / "home"
     home.mkdir()
     monkeypatch.setenv("HOME", str(home))
-    monkeypatch.setenv("USERPROFILE", str(home))          # windows
+    monkeypatch.setenv("USERPROFILE", str(home))  # windows
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: home))
-    monkeypatch.setattr(update.shutil, "which",
-                        lambda name, *a, **kw: "/stub/uv" if name == "uv" else None)
-    monkeypatch.setattr(subprocess, "run",
-                        lambda *a, **kw: pytest.fail("real subprocess reached"))
+    monkeypatch.setattr(
+        update.shutil,
+        "which",
+        lambda name, *a, **kw: "/stub/uv" if name == "uv" else None,
+    )
+    monkeypatch.setattr(
+        subprocess, "run", lambda *a, **kw: pytest.fail("real subprocess reached")
+    )
     bin_dir = tmp_path / "toolbin"
     bin_dir.mkdir()
     (bin_dir / "fusion").write_text("")
@@ -81,11 +94,15 @@ def test_update_forwards_setup_flags(sandbox, monkeypatch):
     runner = FakeRunner(sandbox.bin_dir)
     _install_runner(monkeypatch, runner)
     custom = str(sandbox.home / "custom-skills")
-    assert main(["update", "--force", "--skills-dir", custom,
-                 "--no-agents"]) == 0
-    assert runner.calls[-1] == [str(sandbox.bin_dir / "fusion"), "setup",
-                                "--force", "--skills-dir", custom,
-                                "--no-agents"]
+    assert main(["update", "--force", "--skills-dir", custom, "--no-agents"]) == 0
+    assert runner.calls[-1] == [
+        str(sandbox.bin_dir / "fusion"),
+        "setup",
+        "--force",
+        "--skills-dir",
+        custom,
+        "--no-agents",
+    ]
 
 
 def test_update_propagates_setup_exit_code(sandbox, monkeypatch):
@@ -125,8 +142,7 @@ def test_update_refuses_non_uv_install(sandbox, monkeypatch, capsys):
     assert runner.calls == [[STUB_UV, "tool", "list"]]
 
 
-def test_update_reports_failed_upgrade_with_retry_ritual(sandbox, monkeypatch,
-                                                         capsys):
+def test_update_reports_failed_upgrade_with_retry_ritual(sandbox, monkeypatch, capsys):
     runner = FakeRunner(sandbox.bin_dir, upgrade_rc=1)
     _install_runner(monkeypatch, runner)
     assert main(["update"]) == 1

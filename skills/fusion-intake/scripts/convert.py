@@ -21,6 +21,7 @@ runs a validated admit+link op-list in one process for delivery-scale
 intake (references/delivery.md) — it reuses `admit`/`link`, never a second
 writer.
 """
+
 import argparse
 import csv as csv_mod
 import hashlib
@@ -40,12 +41,31 @@ from pathlib import Path
 
 import yaml
 
-AURORAS = ("commitments", "focus", "ops", "collab", "life", "explore",
-           "archive", "library")
+AURORAS = (
+    "commitments",
+    "focus",
+    "ops",
+    "collab",
+    "life",
+    "explore",
+    "archive",
+    "library",
+)
 
 EXTRACTIVE_EXTS = {".xlsx", ".csv"}
-LIBREOFFICE_EXTS = {".docx", ".pptx", ".doc", ".odt", ".rtf", ".key",
-                    ".pages", ".ppt", ".xls", ".html", ".htm"}
+LIBREOFFICE_EXTS = {
+    ".docx",
+    ".pptx",
+    ".doc",
+    ".odt",
+    ".rtf",
+    ".key",
+    ".pages",
+    ".ppt",
+    ".xls",
+    ".html",
+    ".htm",
+}
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 # Tiffs are never stored as tiffs: sources/ would carry needlessly large
 # files for no fidelity gain over a lossless PNG (human ruling, 2026-07-12
@@ -56,8 +76,15 @@ IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
 TIFF_EXTS = {".tif", ".tiff"}
 MAIL_EXTS = {".eml"}
 TEXT_EXTS = {".md", ".txt", ".json", ".yaml", ".yml"}
-SUPPORTED_EXTS = (EXTRACTIVE_EXTS | LIBREOFFICE_EXTS | IMAGE_EXTS | TIFF_EXTS
-                  | MAIL_EXTS | TEXT_EXTS | {".pdf"})
+SUPPORTED_EXTS = (
+    EXTRACTIVE_EXTS
+    | LIBREOFFICE_EXTS
+    | IMAGE_EXTS
+    | TIFF_EXTS
+    | MAIL_EXTS
+    | TEXT_EXTS
+    | {".pdf"}
+)
 
 # Containers are DELIVERY VEHICLES, not originals: `unpack` extracts them
 # into inbox/ and discards the zip — the members become the originals.
@@ -68,10 +95,9 @@ CONTAINER_EXTS = {".zip", ".athena"}
 # hold finished documents, only originals and ephemeral staging.
 DOC_ZONES = {"library", "activities", "output"}
 
-TEXT_COVERAGE_MIN_CHARS = 100   # below this a page is scanned/figure
+TEXT_COVERAGE_MIN_CHARS = 100  # below this a page is scanned/figure
 RENDER_DPI = 150
-EXCEL_ERRORS = {"#REF!", "#N/A", "#VALUE!", "#DIV/0!", "#NAME?", "#NULL!",
-                "#NUM!"}
+EXCEL_ERRORS = {"#REF!", "#N/A", "#VALUE!", "#DIV/0!", "#NAME?", "#NULL!", "#NUM!"}
 
 TODAY = datetime.now().strftime("%Y-%m-%d")
 
@@ -81,6 +107,7 @@ class IntakeError(Exception):
 
 
 # ── shared helpers ───────────────────────────────────────────────────────
+
 
 def sha256_of(path: Path) -> str:
     h = hashlib.sha256()
@@ -111,7 +138,8 @@ def tiff_to_png(src: Path, dest: Path) -> None:
                 "(silently keeping just the first frame would violate the "
                 "fidelity contract); split it into single-frame files and "
                 "admit them individually, or convert it to a single-frame "
-                "tiff/png before dropping it in inbox/")
+                "tiff/png before dropping it in inbox/"
+            )
         img.load()
         # PNG cannot encode every tiff pixel mode (CMYK, palette variants
         # with exotic depth, …) — fall back to a standard mode rather than
@@ -127,8 +155,12 @@ def tiff_to_png(src: Path, dest: Path) -> None:
 
 def slugify(name: str) -> str:
     """SPEC §4 filename: lowercase, hyphen-separated, stem <=60 chars."""
-    stem = re.sub(r"\.(xlsx|docx|pptx|csv|pdf|eml|md|txt|png|jpe?g|webp|gif|html?|json|ya?ml)$",
-                  "", name, flags=re.IGNORECASE)
+    stem = re.sub(
+        r"\.(xlsx|docx|pptx|csv|pdf|eml|md|txt|png|jpe?g|webp|gif|html?|json|ya?ml)$",
+        "",
+        name,
+        flags=re.IGNORECASE,
+    )
     stem = stem.lower()
     stem = re.sub(r"[^a-z0-9]+", "-", stem).strip("-")
     stem = re.sub(r"-+", "-", stem)
@@ -145,7 +177,7 @@ def cell_to_string(cell) -> str:
     if isinstance(cell, float):
         if cell.is_integer():
             return str(int(cell))
-        return repr(cell)   # shortest round-trippable form — verbatim, never rounded
+        return repr(cell)  # shortest round-trippable form — verbatim, never rounded
     if isinstance(cell, int):
         return str(cell)
     if isinstance(cell, datetime):
@@ -163,8 +195,7 @@ def prune_empty_columns(rows):
         return rows
     width = max(len(r) for r in rows)
     padded = [list(r) + [None] * (width - len(r)) for r in rows]
-    keep = [i for i in range(width)
-            if any(cell_to_string(r[i]) != "" for r in padded)]
+    keep = [i for i in range(width) if any(cell_to_string(r[i]) != "" for r in padded)]
     return [[r[i] for i in keep] for r in padded] if keep else []
 
 
@@ -175,19 +206,21 @@ def rows_to_table(rows) -> str:
     if not rows or not rows[0]:
         return "*No data*"
     string_rows = [[cell_to_string(c) for c in r] for r in rows]
-    lines = ["| " + " | ".join(string_rows[0]) + " |",
-             "| " + " | ".join(["---"] * len(rows[0])) + " |"]
+    lines = [
+        "| " + " | ".join(string_rows[0]) + " |",
+        "| " + " | ".join(["---"] * len(rows[0])) + " |",
+    ]
     lines += ["| " + " | ".join(r) + " |" for r in string_rows[1:]]
     return "\n".join(lines)
 
 
 def render_document(fm: dict, summary: str, body: str) -> str:
-    front = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True,
-                           width=2**31 - 1)
+    front = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True, width=2**31 - 1)
     return f"---\n{front}---\n\n## Summary\n\n{summary}\n\n---\n\n{body}\n"
 
 
 # ── MANIFEST (single writer lives here) ──────────────────────────────────
+
 
 def _manifest_path(root: Path) -> Path:
     return root / "sources" / "MANIFEST.md"
@@ -196,8 +229,12 @@ def _manifest_path(root: Path) -> Path:
 def manifest_append(root: Path, rel: str, actor: str, sha: str) -> None:
     path = _manifest_path(root)
     if not path.is_file():
-        path.write_text("# Manifest\n\n| file | added | by | sha256 | library |\n"
-                        "|---|---|---|---|---|\n", encoding="utf-8", newline="\n")
+        path.write_text(
+            "# Manifest\n\n| file | added | by | sha256 | library |\n"
+            "|---|---|---|---|---|\n",
+            encoding="utf-8",
+            newline="\n",
+        )
     text = path.read_text(encoding="utf-8")
     if not text.endswith("\n"):
         text += "\n"
@@ -230,8 +267,7 @@ def manifest_relink(root: Path, rel: str, old_doc: str, new_doc: str) -> None:
     if not path.is_file():
         raise IntakeError(f"no manifest at {path}")
     if old_doc == new_doc:
-        raise IntakeError(
-            f"relink is a change: --from and --to are both {old_doc!r}")
+        raise IntakeError(f"relink is a change: --from and --to are both {old_doc!r}")
     if not (Path(root) / new_doc).is_file():
         raise IntakeError(f"relink target does not exist on disk: {new_doc}")
     lines = path.read_text(encoding="utf-8").splitlines()
@@ -241,17 +277,19 @@ def manifest_relink(root: Path, rel: str, old_doc: str, new_doc: str) -> None:
             continue
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
         if len(cells) == 5 and cells[0] == rel:
-            values = ([] if cells[4] in ("—", "")
-                      else [v.strip() for v in cells[4].split(",")])
+            values = (
+                []
+                if cells[4] in ("—", "")
+                else [v.strip() for v in cells[4].split(",")]
+            )
             if old_doc not in values:
                 raise IntakeError(
                     f"cell does not carry {old_doc!r} for source {rel} "
-                    f"(cell: {cells[4]!r})")
+                    f"(cell: {cells[4]!r})"
+                )
             if new_doc in values:
-                raise IntakeError(
-                    f"cell already carries {new_doc!r} for source {rel}")
-            cells[4] = ", ".join(
-                new_doc if v == old_doc else v for v in values)
+                raise IntakeError(f"cell already carries {new_doc!r} for source {rel}")
+            cells[4] = ", ".join(new_doc if v == old_doc else v for v in values)
             lines[i] = "| " + " | ".join(cells) + " |"
             hit = True
             break
@@ -278,6 +316,7 @@ def _manifest_rels(root: Path) -> set:
 
 # ── admit ────────────────────────────────────────────────────────────────
 
+
 def admit(root: Path, inbox_rel: str, category: str, actor: str) -> dict:
     root = Path(root)
     # Resolve the inbox root once and require the target to stay under it —
@@ -297,7 +336,8 @@ def admit(root: Path, inbox_rel: str, category: str, actor: str) -> dict:
     if src.suffix.lower() not in SUPPORTED_EXTS:
         raise IntakeError(
             f"unsupported format: {src.suffix.lower()} — the gate refuses "
-            "what it cannot preserve; the file stays in inbox/")
+            "what it cannot preserve; the file stays in inbox/"
+        )
     if not actor or any(c.isspace() for c in actor):
         raise IntakeError(f"actor must be a single token: {actor!r}")
     category = category.strip().strip("/")
@@ -306,7 +346,8 @@ def admit(root: Path, inbox_rel: str, category: str, actor: str) -> dict:
     if any(c in src.name for c in "|\n\r") or any(c in category for c in "|\n\r"):
         raise IntakeError(
             f"'|' and newlines break the manifest grammar: {src.name!r} — "
-            "rename the incoming file before admitting it")
+            "rename the incoming file before admitting it"
+        )
     is_tiff = src.suffix.lower() in TIFF_EXTS
     # A tiff is never admitted as a tiff (2026-07-12 ruling): the PNG IS the
     # original from here on, so the collision check, the MANIFEST row, and
@@ -316,12 +357,13 @@ def admit(root: Path, inbox_rel: str, category: str, actor: str) -> dict:
     if dest.exists():
         raise IntakeError(
             f"sources/ is immutable and {category}/{dest_name} already "
-            "exists — rename the incoming file before admitting it")
+            "exists — rename the incoming file before admitting it"
+        )
     if is_tiff:
         original_name = src.name
         original_sha = sha256_of(src)
-        tiff_to_png(src, dest)          # raises before touching dest on
-        src.unlink()                    # multi-frame; conservative refusal
+        tiff_to_png(src, dest)  # raises before touching dest on
+        src.unlink()  # multi-frame; conservative refusal
         sha = sha256_of(dest)
     else:
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -336,18 +378,22 @@ def admit(root: Path, inbox_rel: str, category: str, actor: str) -> dict:
         # for the caller to sign — SKILL.md step 2 logs this `note` via
         # `fusion log noted` right after admit, same run.
         result["converted"] = {
-            "from_format": "tiff", "to_format": "png",
-            "original_name": original_name, "original_sha256": original_sha,
+            "from_format": "tiff",
+            "to_format": "png",
+            "original_name": original_name,
+            "original_sha256": original_sha,
         }
         result["note"] = (
             f"tiff→png at admit: {original_name} (sha256 {original_sha}) "
             f"→ {dest_name} (sha256 {sha}) — original tiff bytes not "
             "retained (waived per 2026-07-12 ruling: no need for large "
-            "tiff files)")
+            "tiff files)"
+        )
     return result
 
 
 # ── unpack: containers are delivery vehicles, not originals ─────────────
+
 
 def unpack(root: Path, inbox_rel: str) -> dict:
     """Extract a container (.zip / .athena) sitting in inbox/ into a sibling
@@ -363,31 +409,31 @@ def unpack(root: Path, inbox_rel: str) -> dict:
     src = root / "inbox" / inbox_rel
     src_resolved = src.resolve()
     if not src_resolved.is_relative_to(inbox_root):
-        raise IntakeError(
-            f"container path escapes inbox/: {inbox_rel!r}")
+        raise IntakeError(f"container path escapes inbox/: {inbox_rel!r}")
     if not src.is_file():
         raise IntakeError(f"not in inbox/: {inbox_rel}")
     if src.suffix.lower() not in CONTAINER_EXTS:
         raise IntakeError(
             f"not a container: {src.suffix.lower()} — unpack only handles "
-            f"{sorted(CONTAINER_EXTS)}")
+            f"{sorted(CONTAINER_EXTS)}"
+        )
     if not zipfile.is_zipfile(src):
         raise IntakeError(f"not a readable zip: {inbox_rel}")
 
     stem = src_resolved.stem
-    dest = src_resolved.parent / stem   # sibling of the container — nested
-                                # vehicles keep their folder context, not
-                                # inbox root — computed from the RESOLVED
-                                # src so a traversal-crafted parent can't
-                                # smuggle a dest outside inbox/ either.
+    dest = src_resolved.parent / stem  # sibling of the container — nested
+    # vehicles keep their folder context, not
+    # inbox root — computed from the RESOLVED
+    # src so a traversal-crafted parent can't
+    # smuggle a dest outside inbox/ either.
     if not dest.is_relative_to(inbox_root):
-        raise IntakeError(
-            f"container path escapes inbox/: {inbox_rel!r}")
+        raise IntakeError(f"container path escapes inbox/: {inbox_rel!r}")
     dest_rel = str(dest.relative_to(inbox_root.parent))
     if dest.exists():
         raise IntakeError(
             f"destination already exists: {dest_rel} — refusing to "
-            "merge a container into existing content")
+            "merge a container into existing content"
+        )
 
     with zipfile.ZipFile(src) as zf:
         members = []
@@ -408,7 +454,8 @@ def unpack(root: Path, inbox_rel: str) -> dict:
             if not target.is_relative_to(dest_resolved):
                 raise IntakeError(
                     f"zip-slip attempt in {inbox_rel}: hostile member "
-                    f"{info.filename!r} escapes {dest_rel}/ — unpack refused")
+                    f"{info.filename!r} escapes {dest_rel}/ — unpack refused"
+                )
             targets.append((info, target))
 
         dest.mkdir(parents=True)
@@ -427,15 +474,23 @@ def unpack(root: Path, inbox_rel: str) -> dict:
 
 # ── prepare: routing + engines ───────────────────────────────────────────
 
+
 def probe_pdf_text_layer(pdf_path: Path):
     import fitz
+
     records = []
     doc = fitz.open(str(pdf_path))
     try:
         for i, page in enumerate(doc, 1):
             text = page.get_text().strip()
-            records.append({"page": i, "text": text, "text_chars": len(text),
-                            "needs_vision": len(text) < TEXT_COVERAGE_MIN_CHARS})
+            records.append(
+                {
+                    "page": i,
+                    "text": text,
+                    "text_chars": len(text),
+                    "needs_vision": len(text) < TEXT_COVERAGE_MIN_CHARS,
+                }
+            )
     finally:
         doc.close()
     return records
@@ -443,12 +498,12 @@ def probe_pdf_text_layer(pdf_path: Path):
 
 def render_pdf_pages(pdf_path: Path, out_dir: Path, pages=None):
     import fitz
+
     out_dir.mkdir(parents=True, exist_ok=True)
     written = []
     doc = fitz.open(str(pdf_path))
     try:
-        targets = (list(range(1, doc.page_count + 1))
-                   if pages is None else sorted(pages))
+        targets = list(range(1, doc.page_count + 1)) if pages is None else sorted(pages)
         for n in targets:
             if 1 <= n <= doc.page_count:
                 pix = doc.load_page(n - 1).get_pixmap(dpi=RENDER_DPI)
@@ -466,7 +521,8 @@ def require_soffice() -> str:
         raise IntakeError(
             "LibreOffice not found: 'soffice' must be on PATH for "
             "docx/pptx/legacy office formats (declared in SKILL.md "
-            "compatibility). Install it or add it to PATH. No fallback.")
+            "compatibility). Install it or add it to PATH. No fallback."
+        )
     return exe
 
 
@@ -474,23 +530,26 @@ def soffice_to_pdf(src: Path, out_dir: Path) -> Path:
     exe = require_soffice()
     out_dir.mkdir(parents=True, exist_ok=True)
     proc = subprocess.run(
-        [exe, "--headless", "--convert-to", "pdf", "--outdir",
-         str(out_dir), str(src)],
-        capture_output=True, text=True, timeout=300)
+        [exe, "--headless", "--convert-to", "pdf", "--outdir", str(out_dir), str(src)],
+        capture_output=True,
+        text=True,
+        timeout=300,
+    )
     pdf = out_dir / (src.stem + ".pdf")
     if proc.returncode != 0 or not pdf.exists():
         raise IntakeError(
             f"soffice failed on {src.name} (rc={proc.returncode}): "
-            f"{proc.stderr.strip()[:400]}")
+            f"{proc.stderr.strip()[:400]}"
+        )
     return pdf
 
 
 class _HTMLText(HTMLParser):
     """Text of an HTML mail body: entities decoded (convert_charrefs),
     script/style dropped whole, block tags become line breaks."""
+
     _SKIP = {"script", "style"}
-    _BREAK = {"p", "br", "div", "tr", "li", "table",
-              "h1", "h2", "h3", "h4", "h5", "h6"}
+    _BREAK = {"p", "br", "div", "tr", "li", "table", "h1", "h2", "h3", "h4", "h5", "h6"}
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -518,15 +577,16 @@ def html_to_text(html: str) -> str:
     parser = _HTMLText()
     parser.feed(html)
     parser.close()
-    lines = [re.sub(r"[ \t]+", " ", ln).strip()
-             for ln in "".join(parser._chunks).splitlines()]
+    lines = [
+        re.sub(r"[ \t]+", " ", ln).strip()
+        for ln in "".join(parser._chunks).splitlines()
+    ]
     return "\n".join(ln for ln in lines if ln)
 
 
 def eml_to_text(path: Path, work_dir: Path):
     msg = BytesParser(policy=policy.default).parse(open(path, "rb"))
-    lines = [f"{h}: {msg[h]}" for h in ("From", "To", "Date", "Subject")
-             if msg[h]]
+    lines = [f"{h}: {msg[h]}" for h in ("From", "To", "Date", "Subject") if msg[h]]
     body = msg.get_body(preferencelist=("plain", "html"))
     content = body.get_content() if body else ""
     if body and body.get_content_subtype() == "html":
@@ -562,8 +622,9 @@ def _route(ext: str) -> str:
         return "mail"
     if ext in TEXT_EXTS:
         return "text"
-    raise IntakeError(f"unsupported format: {ext} — the gate refuses "
-                      "what it cannot preserve")
+    raise IntakeError(
+        f"unsupported format: {ext} — the gate refuses what it cannot preserve"
+    )
 
 
 def _sheet_matrix(ws):
@@ -574,8 +635,9 @@ def _sheet_matrix(ws):
         if rng.min_row - 1 >= len(rows):
             continue
         anchor_row = rows[rng.min_row - 1]
-        anchor = (anchor_row[rng.min_col - 1]
-                  if rng.min_col - 1 < len(anchor_row) else None)
+        anchor = (
+            anchor_row[rng.min_col - 1] if rng.min_col - 1 < len(anchor_row) else None
+        )
         for r in range(rng.min_row, min(rng.max_row, len(rows)) + 1):
             row = rows[r - 1]
             for c in range(rng.min_col, min(rng.max_col, len(row)) + 1):
@@ -585,6 +647,7 @@ def _sheet_matrix(ws):
 
 def _xlsx_body(path: Path):
     import openpyxl
+
     wb = openpyxl.load_workbook(path, data_only=True)
     sections, sheets, rows_total = [], 0, 0
     for name in wb.sheetnames:
@@ -649,9 +712,15 @@ def _merge_reconcile_fm(existing_fm: dict, seed: dict) -> dict:
     return merged
 
 
-def prepare(root: Path, source_rel: str, dest: str | None = None,
-            slug: str | None = None, doc_type: str | None = None,
-            aurora: str = "library", reconcile: bool = False) -> dict:
+def prepare(
+    root: Path,
+    source_rel: str,
+    dest: str | None = None,
+    slug: str | None = None,
+    doc_type: str | None = None,
+    aurora: str = "library",
+    reconcile: bool = False,
+) -> dict:
     root = Path(root)
     src = root / "sources" / source_rel
     if not src.is_file():
@@ -663,8 +732,13 @@ def prepare(root: Path, source_rel: str, dest: str | None = None,
     dest = (dest or f"library/{category}").strip("/")
     slug = slug or slugify(src.name)
     out_rel = f"{dest}/{slug}.md"
-    seed = {"title": src.stem, "type": doc_type, "aurora": aurora,
-            "source": f"sources/{source_rel}", "created": TODAY}
+    seed = {
+        "title": src.stem,
+        "type": doc_type,
+        "aurora": aurora,
+        "source": f"sources/{source_rel}",
+        "created": TODAY,
+    }
     path = _route(src.suffix)
 
     if path == "extractive":
@@ -672,76 +746,96 @@ def prepare(root: Path, source_rel: str, dest: str | None = None,
             body, sheets, nrows = _xlsx_body(src)
         else:
             body, sheets, nrows = _csv_body(src)
-        summary = (f"Tabular data converted from {src.name}: "
-                   f"{sheets} sheet(s), {nrows} data row(s).")
+        summary = (
+            f"Tabular data converted from {src.name}: "
+            f"{sheets} sheet(s), {nrows} data row(s)."
+        )
         out = root / out_rel
         if out.exists() and not reconcile:
             raise IntakeError(
                 f"document exists: {out_rel} — pass --reconcile for a "
-                "confirmed update, or choose --slug")
+                "confirmed update, or choose --slug"
+            )
         if reconcile and out.exists():
             seed = _merge_reconcile_fm(_read_frontmatter(out), seed)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(render_document(seed, summary, body), encoding="utf-8",
-                       newline="\n")
-        return {"path": "extractive", "done": True, "source": source_rel,
-                "output_file": out_rel, "front_matter_seed": seed,
-                "reconcile": reconcile}
+        out.write_text(
+            render_document(seed, summary, body), encoding="utf-8", newline="\n"
+        )
+        return {
+            "path": "extractive",
+            "done": True,
+            "source": source_rel,
+            "output_file": out_rel,
+            "front_matter_seed": seed,
+            "reconcile": reconcile,
+        }
 
     # vision / structured paths get a work dir + manifest for Stage 2
     out = root / out_rel
     if out.exists() and not reconcile:
         raise IntakeError(
             f"document exists: {out_rel} — pass --reconcile for a "
-            "confirmed update, or choose --slug")
+            "confirmed update, or choose --slug"
+        )
     if reconcile and out.exists():
         seed = _merge_reconcile_fm(_read_frontmatter(out), seed)
 
     work = _work_dir(root)
-    record = {"path": path, "done": False, "source": source_rel,
-              "run_dir": str(work.relative_to(root)),
-              "output_file": out_rel, "front_matter_seed": seed,
-              "reconcile": reconcile,
-              "pages": [], "images": [], "attachments": [],
-              "intermediate_pdf": None}
+    record = {
+        "path": path,
+        "done": False,
+        "source": source_rel,
+        "run_dir": str(work.relative_to(root)),
+        "output_file": out_rel,
+        "front_matter_seed": seed,
+        "reconcile": reconcile,
+        "pages": [],
+        "images": [],
+        "attachments": [],
+        "intermediate_pdf": None,
+    }
 
     if path == "libreoffice":
         pdf = soffice_to_pdf(src, work)
         record["intermediate_pdf"] = str(pdf.relative_to(root))
         record["pages"] = probe_pdf_text_layer(pdf)
-        imgs = render_pdf_pages(pdf, work)                    # ALL pages
+        imgs = render_pdf_pages(pdf, work)  # ALL pages
         record["images"] = [str(p.relative_to(root)) for p in imgs]
     elif path == "pdf":
         probe = probe_pdf_text_layer(src)
         record["pages"] = probe
         if all(p["needs_vision"] for p in probe):
             record["path"] = "pdf_scanned"
-            imgs = render_pdf_pages(src, work)                # ALL pages
+            imgs = render_pdf_pages(src, work)  # ALL pages
         else:
             record["path"] = "pdf_text"
             imgs = render_pdf_pages(
-                src, work, pages=[p["page"] for p in probe if p["needs_vision"]])
+                src, work, pages=[p["page"] for p in probe if p["needs_vision"]]
+            )
         record["images"] = [str(p.relative_to(root)) for p in imgs]
     elif path == "image":
         copy = work / src.name
         shutil.copy2(src, copy)
-        record["pages"] = [{"page": 1, "text": "", "text_chars": 0,
-                            "needs_vision": True}]
+        record["pages"] = [
+            {"page": 1, "text": "", "text_chars": 0, "needs_vision": True}
+        ]
         record["images"] = [str(copy.relative_to(root))]
     elif path == "mail":
         text, attachments = eml_to_text(src, work)
-        record["pages"] = [{"page": 1, "text": text,
-                            "text_chars": len(text), "needs_vision": False}]
+        record["pages"] = [
+            {"page": 1, "text": text, "text_chars": len(text), "needs_vision": False}
+        ]
         record["attachments"] = attachments
     else:  # text passthrough
         text = src.read_text(encoding="utf-8", errors="replace")
-        record["pages"] = [{"page": 1, "text": text,
-                            "text_chars": len(text), "needs_vision": False}]
+        record["pages"] = [
+            {"page": 1, "text": text, "text_chars": len(text), "needs_vision": False}
+        ]
 
     record["page_count"] = len(record["pages"])
     manifest = work / "manifest.json"
-    manifest.write_text(json.dumps(record, indent=2), encoding="utf-8",
-                        newline="\n")
+    manifest.write_text(json.dumps(record, indent=2), encoding="utf-8", newline="\n")
     record["manifest"] = str(manifest.relative_to(root))
     return record
 
@@ -773,6 +867,7 @@ def relink(root: Path, source_rel: str, old_doc: str, new_doc: str) -> dict:
 #      missing NO link is written, not even the ones whose doc is fine.
 #   4. EXECUTE all links (reusing `link()`).
 
+
 def batch(root: Path, ops: dict, actor: str) -> dict:
     root = Path(root)
     if not actor or any(c.isspace() for c in actor):
@@ -795,7 +890,8 @@ def batch(root: Path, ops: dict, actor: str) -> dict:
         if file in seen_files:
             raise IntakeError(
                 f"admits[{i}]: {file!r} is admitted twice in this batch — "
-                "the first admit would move it before the second runs")
+                "the first admit would move it before the second runs"
+            )
         seen_files.add(file)
         src = root / "inbox" / file
         if not src.is_file():
@@ -804,11 +900,13 @@ def batch(root: Path, ops: dict, actor: str) -> dict:
             raise IntakeError(
                 f"admits[{i}]: unsupported format: {src.suffix.lower()} — "
                 "the gate refuses what it cannot preserve; the file stays "
-                "in inbox/")
+                "in inbox/"
+            )
         if any(c in src.name for c in "|\n\r") or any(c in category for c in "|\n\r"):
             raise IntakeError(
                 f"admits[{i}]: '|' and newlines break the manifest "
-                f"grammar: {src.name!r}")
+                f"grammar: {src.name!r}"
+            )
         rel = f"{category}/{src.name}"
         # A hand-placed file in sources/ with no MANIFEST row is a collision
         # too — checking existing_rels alone lets a mixed batch admit past
@@ -817,11 +915,12 @@ def batch(root: Path, ops: dict, actor: str) -> dict:
         if rel in existing_rels or (root / "sources" / rel).exists():
             raise IntakeError(
                 f"admits[{i}]: sources/ is immutable and {rel} already "
-                "exists — rename the incoming file before admitting it")
+                "exists — rename the incoming file before admitting it"
+            )
         if rel in batch_rels:
             raise IntakeError(
-                f"admits[{i}]: duplicate (category, basename) within this "
-                f"batch: {rel}")
+                f"admits[{i}]: duplicate (category, basename) within this batch: {rel}"
+            )
         batch_rels.add(rel)
 
     for i, op in enumerate(links):
@@ -838,19 +937,24 @@ def batch(root: Path, ops: dict, actor: str) -> dict:
         # above the zone root), not absolute, first segment in DOC_ZONES.
         norm_doc = posixpath.normpath(doc)
         doc_parts = norm_doc.split("/")
-        if (posixpath.isabs(norm_doc) or doc_parts[0] == ".."
-                or doc_parts[0] not in DOC_ZONES):
+        if (
+            posixpath.isabs(norm_doc)
+            or doc_parts[0] == ".."
+            or doc_parts[0] not in DOC_ZONES
+        ):
             raise IntakeError(
                 f"links[{i}]: doc must be zone-relative under "
-                f"{sorted(DOC_ZONES)}: {doc!r}")
-        op["doc"] = norm_doc   # store/compare the NORMALIZED path — later
-                                # phases (doc-exists check, link()) read
-                                # this same op dict, never the raw input
+                f"{sorted(DOC_ZONES)}: {doc!r}"
+            )
+        op["doc"] = norm_doc  # store/compare the NORMALIZED path — later
+        # phases (doc-exists check, link()) read
+        # this same op dict, never the raw input
         if source not in existing_rels and source not in batch_rels:
             raise IntakeError(
                 f"links[{i}]: link source will not exist: {source!r} — "
                 "not already registered in sources/ nor admitted by this "
-                "batch's own admits")
+                "batch's own admits"
+            )
 
     # ── phase 2: execute admits ───────────────────────────────────────────
     admitted = [admit(root, op["file"], op["category"], actor) for op in admits]
@@ -862,7 +966,8 @@ def batch(root: Path, ops: dict, actor: str) -> dict:
             raise IntakeError(
                 f"links[{i}]: doc does not exist: {doc!r} — write it "
                 "(Stage 2 conversion) before linking; no link in this "
-                "batch was written")
+                "batch was written"
+            )
 
     # ── phase 4: execute links ────────────────────────────────────────────
     for op in links:
@@ -882,6 +987,7 @@ def cleanup(run_dir: Path) -> None:
 
 # ── CLI ──────────────────────────────────────────────────────────────────
 
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="fusion-intake Stage-1 engine")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -892,46 +998,65 @@ def main(argv=None) -> int:
     p.add_argument("--category", required=True)
     p.add_argument("--actor", required=True)
 
-    p = sub.add_parser("unpack", help="container -> inbox folder "
-                       "(vehicle, not an original)")
+    p = sub.add_parser(
+        "unpack", help="container -> inbox folder (vehicle, not an original)"
+    )
     p.add_argument("--bucket", required=True)
     p.add_argument("--file", required=True, help="path relative to inbox/")
 
     p = sub.add_parser("prepare", help="route + convert / stage for vision")
     p.add_argument("--bucket", required=True)
     p.add_argument("--source", required=True, help="path relative to sources/")
-    p.add_argument("--dest", help="zone-relative output dir "
-                   "(default library/<category>)")
+    p.add_argument(
+        "--dest", help="zone-relative output dir (default library/<category>)"
+    )
     p.add_argument("--slug")
     p.add_argument("--type", dest="doc_type")
     p.add_argument("--aurora", default="library")
-    p.add_argument("--reconcile", action="store_true",
-                   help="confirmed update: reconcile the existing document "
-                   "in place instead of refusing the slug collision")
+    p.add_argument(
+        "--reconcile",
+        action="store_true",
+        help="confirmed update: reconcile the existing document "
+        "in place instead of refusing the slug collision",
+    )
 
     p = sub.add_parser("link", help="set the MANIFEST library column")
     p.add_argument("--bucket", required=True)
     p.add_argument("--source", required=True)
     p.add_argument("--doc", required=True)
 
-    p = sub.add_parser("relink", help="repoint one value in a MANIFEST "
-                       "library cell after a document moved")
+    p = sub.add_parser(
+        "relink",
+        help="repoint one value in a MANIFEST library cell after a document moved",
+    )
     p.add_argument("--bucket", required=True)
-    p.add_argument("--source", required=True,
-                   help="path relative to sources/")
-    p.add_argument("--from", dest="from_doc", required=True,
-                   help="current zone-relative doc path in the cell")
-    p.add_argument("--to", dest="to_doc", required=True,
-                   help="new zone-relative doc path (must exist)")
+    p.add_argument("--source", required=True, help="path relative to sources/")
+    p.add_argument(
+        "--from",
+        dest="from_doc",
+        required=True,
+        help="current zone-relative doc path in the cell",
+    )
+    p.add_argument(
+        "--to",
+        dest="to_doc",
+        required=True,
+        help="new zone-relative doc path (must exist)",
+    )
 
     p = sub.add_parser("cleanup", help="delete one work dir")
     p.add_argument("--run-dir", required=True)
 
-    p = sub.add_parser("batch", help="validated multi-op admit+link in one "
-                       "process (references/delivery.md)")
+    p = sub.add_parser(
+        "batch",
+        help="validated multi-op admit+link in one process (references/delivery.md)",
+    )
     p.add_argument("--bucket", required=True)
-    p.add_argument("--ops", required=True,
-                   help="path to a JSON op-list: {admits: [...], links: [...]}")
+    p.add_argument(
+        "--ops",
+        required=True,
+        help="path to a JSON op-list: {admits: [...], links: [...]}",
+    )
     p.add_argument("--actor", default="claude")
 
     args = ap.parse_args(argv)
@@ -941,14 +1066,19 @@ def main(argv=None) -> int:
         elif args.cmd == "unpack":
             out = unpack(Path(args.bucket), args.file)
         elif args.cmd == "prepare":
-            out = prepare(Path(args.bucket), args.source, dest=args.dest,
-                          slug=args.slug, doc_type=args.doc_type,
-                          aurora=args.aurora, reconcile=args.reconcile)
+            out = prepare(
+                Path(args.bucket),
+                args.source,
+                dest=args.dest,
+                slug=args.slug,
+                doc_type=args.doc_type,
+                aurora=args.aurora,
+                reconcile=args.reconcile,
+            )
         elif args.cmd == "link":
             out = link(Path(args.bucket), args.source, args.doc)
         elif args.cmd == "relink":
-            out = relink(Path(args.bucket), args.source,
-                         args.from_doc, args.to_doc)
+            out = relink(Path(args.bucket), args.source, args.from_doc, args.to_doc)
         elif args.cmd == "batch":
             ops = json.loads(Path(args.ops).read_text(encoding="utf-8"))
             out = batch(Path(args.bucket), ops, args.actor)

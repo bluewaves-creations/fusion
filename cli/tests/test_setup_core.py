@@ -1,7 +1,7 @@
 """setup core: payload resolution, canonical install, digests."""
+
 from pathlib import Path
 
-import pytest
 
 from fusion import setup
 
@@ -20,7 +20,11 @@ def test_payload_root_prefers_bundled_then_repo():
     # skills/ fallback resolves — and it contains the four real skills
     root = setup.payload_root()
     assert sorted(p.name for p in root.glob("fusion-*")) == [
-        "fusion-analyst", "fusion-intake", "fusion-librarian", "fusion-planner"]
+        "fusion-analyst",
+        "fusion-intake",
+        "fusion-librarian",
+        "fusion-planner",
+    ]
 
 
 def test_tree_digest_stable_and_content_sensitive(tmp_path):
@@ -37,7 +41,9 @@ def test_install_canonical_fresh(tmp_path):
     dest = tmp_path / "agents-skills"
     results = setup.install_canonical(payload, dest, force=False)
     assert {r["skill"]: r["action"] for r in results} == {
-        "fusion-intake": "installed", "fusion-librarian": "installed"}
+        "fusion-intake": "installed",
+        "fusion-librarian": "installed",
+    }
     assert (dest / "fusion-intake" / "references" / "guide.md").read_text() == "guide\n"
 
 

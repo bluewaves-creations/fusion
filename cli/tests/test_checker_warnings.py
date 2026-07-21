@@ -17,8 +17,17 @@ def _git_commit_all(root, message="test commit"):
     for cmd in (
         ["git", "init", "-q"],
         ["git", "add", "-A"],
-        ["git", "-c", "user.email=test@fusion.invalid",
-         "-c", "user.name=test", "commit", "-q", "-m", message],
+        [
+            "git",
+            "-c",
+            "user.email=test@fusion.invalid",
+            "-c",
+            "user.name=test",
+            "commit",
+            "-q",
+            "-m",
+            message,
+        ],
     ):
         subprocess.run(cmd, cwd=root, check=True, capture_output=True)
 
@@ -52,12 +61,16 @@ def test_w1_stale_inbox_and_dotfile_exemption(make_bucket):
 def test_w2_missing_and_stale_index(make_bucket):
     root = make_bucket()
     (root / "activities" / "INDEX.md").unlink()
-    assert any(f.code == "W2" and f.path == "activities/INDEX.md"
-               and "missing" in f.message for f in warnings(root))
+    assert any(
+        f.code == "W2" and f.path == "activities/INDEX.md" and "missing" in f.message
+        for f in warnings(root)
+    )
     root2 = make_bucket("scratch2")
     (root2 / "library" / "INDEX.md").write_text("stale bytes\n", encoding="utf-8")
-    assert any(f.code == "W2" and f.path == "library/INDEX.md"
-               and "stale" in f.message for f in warnings(root2))
+    assert any(
+        f.code == "W2" and f.path == "library/INDEX.md" and "stale" in f.message
+        for f in warnings(root2)
+    )
 
 
 ARCHIVED_DOC = """---
@@ -146,6 +159,7 @@ def test_w5_active_activity_unmentioned_between_reflections(make_bucket):
     (root / "LEDGER.md").write_text(LEDGER_TWO_REFLECTIONS, encoding="utf-8")
     # regenerate the activities INDEX so W2 stays quiet
     from fusion import indexer
+
     indexer.write_indexes(root)
     found = [f for f in warnings(root) if f.code == "W5"]
     assert [f.path for f in found] == ["activities/quiet/plan.md"]
@@ -157,6 +171,7 @@ def test_w5_silent_with_no_reflection(make_bucket):
     plan.parent.mkdir()
     plan.write_text(ACTIVE_PLAN, encoding="utf-8")
     from fusion import indexer
+
     indexer.write_indexes(root)
     assert "W5" not in wcodes(root)
 
@@ -184,6 +199,7 @@ def test_w5_fires_after_first_reflection(make_bucket):
         plan.write_text(ACTIVE_PLAN, encoding="utf-8")
     (root / "LEDGER.md").write_text(LEDGER_ONE_REFLECTION, encoding="utf-8")
     from fusion import indexer
+
     indexer.write_indexes(root)
     found = [f for f in warnings(root) if f.code == "W5"]
     assert [f.path for f in found] == ["activities/quiet/plan.md"]
@@ -193,10 +209,12 @@ def test_w5_applies_on_archive_paths_too(make_bucket):
     root = make_bucket()
     plan = root / "activities" / "archive" / "quiet" / "plan.md"
     plan.parent.mkdir(parents=True)
-    plan.write_text(ACTIVE_PLAN.replace("aurora: focus", "aurora: archive"),
-                    encoding="utf-8")
+    plan.write_text(
+        ACTIVE_PLAN.replace("aurora: focus", "aurora: archive"), encoding="utf-8"
+    )
     (root / "LEDGER.md").write_text(LEDGER_TWO_REFLECTIONS, encoding="utf-8")
     from fusion import indexer
+
     indexer.write_indexes(root)
     found = [f for f in warnings(root) if f.code == "W5"]
     assert [f.path for f in found] == ["activities/archive/quiet/plan.md"]
@@ -223,6 +241,7 @@ def test_w5_exempts_activities_born_after_the_reflection(make_bucket):
     plan.write_text(ACTIVE_PLAN, encoding="utf-8")
     (root / "LEDGER.md").write_text(LEDGER_REFLECTION_THEN_BIRTH, encoding="utf-8")
     from fusion import indexer
+
     indexer.write_indexes(root)
     assert "W5" not in wcodes(root)
 
@@ -238,6 +257,7 @@ def test_w5_directory_mention_suppresses(make_bucket):
     )
     (root / "LEDGER.md").write_text(ledger_text, encoding="utf-8")
     from fusion import indexer
+
     indexer.write_indexes(root)
     assert not [f for f in warnings(root) if f.code == "W5"]
 
@@ -249,15 +269,17 @@ def test_check_hub_dangling_and_drift(tmp_path, monkeypatch):
     monkeypatch.setenv("FUSION_HUB", str(tmp_path / "hub.md"))
     new_bucket(tmp_path / "here", description="d", actor="test")
     hub.add(hub.HubEntry("ghost", "personal", str(tmp_path / "gone"), "x"))
-    drifted, _ = new_bucket(tmp_path / "drift", name="oldname",
-                            description="d", actor="test")
+    drifted, _ = new_bucket(
+        tmp_path / "drift", name="oldname", description="d", actor="test"
+    )
     text = (drifted / "BUCKET.md").read_text(encoding="utf-8")
     (drifted / "BUCKET.md").write_text(
         text.replace("name: oldname", "name: newname"), encoding="utf-8"
     )
     findings = checker.check_hub()
     assert [(f.code, f.level) for f in findings] == [
-        ("H1", "warning"), ("H2", "warning")
+        ("H1", "warning"),
+        ("H2", "warning"),
     ]
     assert "ghost" in findings[0].message
     assert "newname" in findings[1].message
@@ -344,8 +366,7 @@ A summary and nothing else.
 
 def test_w8_summary_only_document(make_bucket):
     root = make_bucket()
-    (root / "library" / "stub.md").write_text(SUMMARY_ONLY_DOC,
-                                              encoding="utf-8")
+    (root / "library" / "stub.md").write_text(SUMMARY_ONLY_DOC, encoding="utf-8")
     found = [f for f in warnings(root) if f.code == "W8"]
     assert [f.path for f in found] == ["library/stub.md"]
     assert "only a summary" in found[0].message
@@ -354,7 +375,8 @@ def test_w8_summary_only_document(make_bucket):
 def test_w8_silent_with_a_body(make_bucket):
     root = make_bucket()
     (root / "library" / "real.md").write_text(
-        SUMMARY_ONLY_DOC + "\nBody text.\n", encoding="utf-8")
+        SUMMARY_ONLY_DOC + "\nBody text.\n", encoding="utf-8"
+    )
     assert not [f for f in warnings(root) if f.code == "W8"]
 
 
@@ -363,7 +385,8 @@ def test_w8_silent_when_not_summary_first(make_bucket):
     root = make_bucket()
     (root / "library" / "loose.md").write_text(
         "---\ntitle: L\ntype: note\naurora: library\n---\n\nJust prose.\n",
-        encoding="utf-8")
+        encoding="utf-8",
+    )
     assert not [f for f in warnings(root) if f.code == "W8"]
 
 
@@ -373,10 +396,14 @@ def test_w8_silent_for_pointer_documents(make_bucket):
     root = make_bucket()
     (root / "library" / "scan.md").write_text(
         SUMMARY_ONLY_DOC.replace(
-            "aurora: library", "aurora: library\nsource: sources/records/scan.pdf"),
-        encoding="utf-8")
+            "aurora: library", "aurora: library\nsource: sources/records/scan.pdf"
+        ),
+        encoding="utf-8",
+    )
     (root / "library" / "link.md").write_text(
         SUMMARY_ONLY_DOC.replace(
-            "aurora: library", "aurora: library\nresource: https://example.com/x"),
-        encoding="utf-8")
+            "aurora: library", "aurora: library\nresource: https://example.com/x"
+        ),
+        encoding="utf-8",
+    )
     assert not [f for f in warnings(root) if f.code == "W8"]

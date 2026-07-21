@@ -30,6 +30,7 @@ Usage:
     uv run link-repair.py scan --bucket <bucket-root> > proposals.json
     uv run link-repair.py apply --bucket <bucket-root> --proposals <file.json>
 """
+
 import argparse
 import json
 import os
@@ -110,6 +111,7 @@ class RepairError(Exception):
 
 # ── discovery ────────────────────────────────────────────────────────────
 
+
 def _iter_files(zone_dir: Path):
     for p in sorted(zone_dir.rglob("*")):
         if not p.is_file() or p.name in SKIP_NAMES:
@@ -176,6 +178,7 @@ def _extract_links(text: str):
 
 # ── scan ─────────────────────────────────────────────────────────────────
 
+
 def scan(root: Path) -> dict:
     root = Path(root)
     exact_idx, normalized_idx = _index_candidates(root)
@@ -205,10 +208,14 @@ def scan(root: Path) -> dict:
 
             new_path = os.path.relpath(root / chosen, start=doc.parent)
             target = new_path.replace(os.sep, "/") + (f"#{anchor}" if anchor else "")
-            proposals.append({
-                "doc": doc_rel, "link": raw_target,
-                "target": target, "confidence": confidence,
-            })
+            proposals.append(
+                {
+                    "doc": doc_rel,
+                    "link": raw_target,
+                    "target": target,
+                    "confidence": confidence,
+                }
+            )
 
     return {"proposals": proposals, "unrepairable": unrepairable}
 
@@ -223,16 +230,23 @@ def _print_table(result: dict) -> None:
 
     print(f"EXACT ({len(exact)}) — safe to apply as-is", file=sys.stderr)
     _rows(exact)
-    print(f"\nFUZZY ({len(fuzzy)}) — normalized match only, "
-          "confirm per group before applying", file=sys.stderr)
+    print(
+        f"\nFUZZY ({len(fuzzy)}) — normalized match only, "
+        "confirm per group before applying",
+        file=sys.stderr,
+    )
     _rows(fuzzy)
-    print(f"\nUNREPAIRABLE ({len(result['unrepairable'])}) — "
-          "ambiguous or no candidate, never guessed", file=sys.stderr)
+    print(
+        f"\nUNREPAIRABLE ({len(result['unrepairable'])}) — "
+        "ambiguous or no candidate, never guessed",
+        file=sys.stderr,
+    )
     for u in result["unrepairable"]:
         print(f"  {u['doc']}: {u['link']}", file=sys.stderr)
 
 
 # ── apply ────────────────────────────────────────────────────────────────
+
 
 def _split_frontmatter(text: str, doc_rel: str):
     if not text.startswith("---\n"):
@@ -244,14 +258,13 @@ def _split_frontmatter(text: str, doc_rel: str):
     fm = yaml.safe_load(text[4:end])
     if not isinstance(fm, dict):
         raise RepairError(f"frontmatter is not a mapping: {doc_rel}")
-    return fm, text[end + 4:]
+    return fm, text[end + 4 :]
 
 
 def _bump_updated(text: str, doc_rel: str) -> str:
     fm, rest = _split_frontmatter(text, doc_rel)
     fm["updated"] = TODAY
-    front = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True,
-                           width=2**31 - 1)
+    front = yaml.safe_dump(fm, sort_keys=False, allow_unicode=True, width=2**31 - 1)
     return f"---\n{front}---{rest}"
 
 
@@ -282,29 +295,29 @@ def apply_proposals(root: Path, proposals: list) -> int:
         if doc_path.name in SKIP_NAMES:
             raise RepairError(
                 f"proposals[{i}]: refuses a single-writer register, "
-                f"never a repair target (skip: {doc_rel!r})")
+                f"never a repair target (skip: {doc_rel!r})"
+            )
         if not any(doc_path.is_relative_to(z) for z in zone_roots.values()):
             raise RepairError(
-                f"proposals[{i}]: doc outside library/ or activities/: "
-                f"{doc_rel!r}")
+                f"proposals[{i}]: doc outside library/ or activities/: {doc_rel!r}"
+            )
         if not doc_path.is_file():
             raise RepairError(f"proposals[{i}]: doc does not exist: {doc_rel!r}")
 
         target_path_part, _, _ = target.partition("#")
         target_abs = (doc_path.parent / target_path_part).resolve()
         if not target_abs.is_relative_to(root):
-            raise RepairError(
-                f"proposals[{i}]: target escapes the bucket: {target!r}")
+            raise RepairError(f"proposals[{i}]: target escapes the bucket: {target!r}")
         if not target_abs.is_file():
             raise RepairError(
-                f"proposals[{i}]: target does not exist: {target!r} "
-                f"(doc {doc_rel!r})")
+                f"proposals[{i}]: target does not exist: {target!r} (doc {doc_rel!r})"
+            )
 
         text = doc_texts.setdefault(doc_path, doc_path.read_text(encoding="utf-8"))
         if f"]({link})" not in text:
             raise RepairError(
-                f"proposals[{i}]: link text not found verbatim in "
-                f"{doc_rel!r}: {link!r}")
+                f"proposals[{i}]: link text not found verbatim in {doc_rel!r}: {link!r}"
+            )
 
         if doc_path not in frontmatter_checked:
             # Raises RepairError (unparseable/missing frontmatter) before
@@ -333,20 +346,26 @@ def apply_proposals(root: Path, proposals: list) -> int:
 
 # ── CLI ──────────────────────────────────────────────────────────────────
 
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(
-        description="fusion-librarian link-repair: scan / apply")
+        description="fusion-librarian link-repair: scan / apply"
+    )
     sub = ap.add_subparsers(dest="cmd", required=True)
 
-    p = sub.add_parser("scan", help="propose repairs for broken relative "
-                       "links in library/ and activities/")
+    p = sub.add_parser(
+        "scan",
+        help="propose repairs for broken relative links in library/ and activities/",
+    )
     p.add_argument("--bucket", required=True)
 
-    p = sub.add_parser("apply", help="apply an approved subset of a "
-                       "scan's proposals")
+    p = sub.add_parser("apply", help="apply an approved subset of a scan's proposals")
     p.add_argument("--bucket", required=True)
-    p.add_argument("--proposals", required=True,
-                   help="JSON file: {\"proposals\": [...]} or a bare list")
+    p.add_argument(
+        "--proposals",
+        required=True,
+        help='JSON file: {"proposals": [...]} or a bare list',
+    )
 
     args = ap.parse_args(argv)
     root = Path(args.bucket).expanduser()

@@ -1,4 +1,5 @@
 """LEDGER.md — append-only, chronological, exactly one writer (SPEC §6)."""
+
 from __future__ import annotations
 
 import getpass
@@ -9,8 +10,16 @@ from datetime import datetime
 from pathlib import Path
 
 VERBS: tuple[str, ...] = (
-    "created", "converted", "classified", "indexed", "moved",
-    "promoted", "archived", "restructured", "shipped", "reflected",
+    "created",
+    "converted",
+    "classified",
+    "indexed",
+    "moved",
+    "promoted",
+    "archived",
+    "restructured",
+    "shipped",
+    "reflected",
     "noted",
 )
 
@@ -76,7 +85,12 @@ def append(
     """
     if verb not in VERBS:
         raise ValueError(f"verb must be one of: {', '.join(VERBS)}")
-    if not actor or actor != actor.strip() or any(c.isspace() for c in actor) or "·" in actor:
+    if (
+        not actor
+        or actor != actor.strip()
+        or any(c.isspace() for c in actor)
+        or "·" in actor
+    ):
         raise ValueError(
             f"actor must be a single token with no spaces or '·': {actor!r}"
         )
@@ -84,14 +98,13 @@ def append(
     if note is not None:
         note = " ".join(note.split())
     at = at or datetime.now()
-    entry = Entry(at.strftime("%Y-%m-%d"), at.strftime("%H:%M"),
-                  actor, verb, obj, note)
+    entry = Entry(at.strftime("%Y-%m-%d"), at.strftime("%H:%M"), actor, verb, obj, note)
     path = bucket_root / "LEDGER.md"
     text = path.read_text(encoding="utf-8") if path.exists() else "# Ledger\n"
     lines = text.rstrip("\n").split("\n")
     heading = f"## {entry.date}"
     last_heading = next(
-        (l for l in reversed(lines) if l.startswith("## ")), None
+        (line for line in reversed(lines) if line.startswith("## ")), None
     )
     if last_heading == heading:
         lines.append(format_line(entry))

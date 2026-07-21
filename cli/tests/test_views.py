@@ -108,9 +108,7 @@ def test_today_skips_hub_entries_without_bucket(tmp_path, monkeypatch):
     hub.add(hub.HubEntry("ghost", "personal", str(tmp_path / "gone"), "missing"))
     t = views.today()
     assert t["buckets"] == []
-    assert t["missing"] == [
-        {"name": "ghost", "path": str(tmp_path / "gone")}
-    ]
+    assert t["missing"] == [{"name": "ghost", "path": str(tmp_path / "gone")}]
 
 
 def test_views_exclude_archive_aurora_off_archive_paths(two_bucket_hub):
@@ -120,12 +118,16 @@ def test_views_exclude_archive_aurora_off_archive_paths(two_bucket_hub):
     root = two_bucket_hub / "studio"
     plan_dir = root / "activities" / "mislabeled"
     plan_dir.mkdir()
-    doc = ("---\ntitle: Mislabeled\ntype: plan\naurora: archive\n"
-           "status: active\n---\n\n## Summary\n\nShould not compose.\n\n---\n\nBody.\n")
+    doc = (
+        "---\ntitle: Mislabeled\ntype: plan\naurora: archive\n"
+        "status: active\n---\n\n## Summary\n\nShould not compose.\n\n---\n\nBody.\n"
+    )
     (plan_dir / "plan.md").write_text(doc, encoding="utf-8")
 
     # Check that it does not appear in today()
-    everything = [i["path"] for items in views.today()["groups"].values() for i in items]
+    everything = [
+        i["path"] for items in views.today()["groups"].values() for i in items
+    ]
     assert not any("mislabeled" in p for p in everything)
 
     # Check that it does not appear in agenda()

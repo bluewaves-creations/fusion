@@ -7,8 +7,16 @@ from fusion import ledger
 
 def test_verbs_are_the_eleven_verbatim():
     assert ledger.VERBS == (
-        "created", "converted", "classified", "indexed", "moved",
-        "promoted", "archived", "restructured", "shipped", "reflected",
+        "created",
+        "converted",
+        "classified",
+        "indexed",
+        "moved",
+        "promoted",
+        "archived",
+        "restructured",
+        "shipped",
+        "reflected",
         "noted",
     )
 
@@ -18,7 +26,10 @@ def test_parse_fixture(fixture_bucket):
     assert len(entries) == 19
     first = entries[0]
     assert (first.date, first.time, first.actor, first.verb) == (
-        "2026-07-08", "09:00", "bertrand", "created"
+        "2026-07-08",
+        "09:00",
+        "bertrand",
+        "created",
     )
     assert first.obj == "BUCKET.md"
     assert first.note == "bucket born"
@@ -36,12 +47,24 @@ def test_read_missing_ledger_is_empty(tmp_path):
 
 def test_append_same_day_and_new_day(tmp_path):
     (tmp_path / "LEDGER.md").write_text("# Ledger\n", encoding="utf-8")
-    ledger.append(tmp_path, "claude", "created", "library/a.md",
-                  at=datetime(2026, 7, 10, 9, 0))
-    ledger.append(tmp_path, "claude", "noted", "workbench/b.md",
-                  note="half-baked", at=datetime(2026, 7, 10, 9, 5))
-    ledger.append(tmp_path, "pi", "indexed", "library/ (1 document)",
-                  at=datetime(2026, 7, 11, 8, 0))
+    ledger.append(
+        tmp_path, "claude", "created", "library/a.md", at=datetime(2026, 7, 10, 9, 0)
+    )
+    ledger.append(
+        tmp_path,
+        "claude",
+        "noted",
+        "workbench/b.md",
+        note="half-baked",
+        at=datetime(2026, 7, 10, 9, 5),
+    )
+    ledger.append(
+        tmp_path,
+        "pi",
+        "indexed",
+        "library/ (1 document)",
+        at=datetime(2026, 7, 11, 8, 0),
+    )
     text = (tmp_path / "LEDGER.md").read_text(encoding="utf-8")
     assert text == (
         "# Ledger\n"
@@ -57,8 +80,14 @@ def test_append_same_day_and_new_day(tmp_path):
 
 
 def test_append_creates_header_when_missing(tmp_path):
-    ledger.append(tmp_path, "claude", "created", "BUCKET.md",
-                  note="bucket born", at=datetime(2026, 7, 10, 9, 0))
+    ledger.append(
+        tmp_path,
+        "claude",
+        "created",
+        "BUCKET.md",
+        note="bucket born",
+        at=datetime(2026, 7, 10, 9, 0),
+    )
     text = (tmp_path / "LEDGER.md").read_text(encoding="utf-8")
     assert text.startswith("# Ledger\n\n## 2026-07-10\n")
 
@@ -74,18 +103,28 @@ def test_append_rejects_multiword_actor(tmp_path):
 
 
 def test_append_collapses_newlines_in_object_and_note(tmp_path):
-    entry = ledger.append(tmp_path, "claude", "noted", "a\nb",
-                          note="line one\nline two",
-                          at=datetime(2026, 7, 10, 9, 0))
+    entry = ledger.append(
+        tmp_path,
+        "claude",
+        "noted",
+        "a\nb",
+        note="line one\nline two",
+        at=datetime(2026, 7, 10, 9, 0),
+    )
     assert entry.obj == "a b" and entry.note == "line one line two"
     read = ledger.read(tmp_path)[0]
     assert (read.obj, read.note) == ("a b", "line one line two")
 
 
 def test_round_trip_note_with_em_dash(tmp_path):
-    ledger.append(tmp_path, "claude", "restructured", "library/",
-                  note="taxonomy — it stopped serving",
-                  at=datetime(2026, 7, 10, 9, 0))
+    ledger.append(
+        tmp_path,
+        "claude",
+        "restructured",
+        "library/",
+        note="taxonomy — it stopped serving",
+        at=datetime(2026, 7, 10, 9, 0),
+    )
     entry = ledger.read(tmp_path)[0]
     assert entry.note == "taxonomy — it stopped serving"
     assert entry.obj == "library/"
@@ -122,5 +161,6 @@ def test_parse_is_liberal_ignores_malformed_lines():
     entries = ledger.parse(text)
     # malformed lines are skipped; unknown verbs are read (validation is E6's job)
     assert [(e.verb, e.obj) for e in entries] == [
-        ("created", "library/a.md"), ("yeeted", "library/b.md"),
+        ("created", "library/a.md"),
+        ("yeeted", "library/b.md"),
     ]

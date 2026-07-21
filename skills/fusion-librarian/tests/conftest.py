@@ -1,6 +1,7 @@
 """Fixtures for the fusion-librarian script suite. No fusion package
 imports — the skill is self-contained; buckets are built by hand to
 SPEC 1.0 (mirrors fusion-intake's tests/conftest.py)."""
+
 import importlib.util
 import sys
 from pathlib import Path
@@ -15,7 +16,8 @@ sys.path.insert(0, str(SCRIPTS))
 # load it once under the underscored module name and register it in
 # sys.modules so every test file can `import link_repair as lr`.
 _spec = importlib.util.spec_from_file_location(
-    "link_repair", SCRIPTS / "link-repair.py")
+    "link_repair", SCRIPTS / "link-repair.py"
+)
 _link_repair = importlib.util.module_from_spec(_spec)
 sys.modules["link_repair"] = _link_repair
 _spec.loader.exec_module(_link_repair)
@@ -38,8 +40,7 @@ Scratch bucket.
 """
 
 MANIFEST_HEADER = (
-    "# Manifest\n\n| file | added | by | sha256 | library |\n"
-    "|---|---|---|---|---|\n"
+    "# Manifest\n\n| file | added | by | sha256 | library |\n|---|---|---|---|---|\n"
 )
 
 ZONES = ("inbox", "sources", "library", "activities", "workbench", "output")
@@ -67,10 +68,10 @@ def bucket(tmp_path):
     for zone in ZONES:
         (root / zone).mkdir(parents=True)
     (root / "BUCKET.md").write_text(
-        BUCKET_CARD.format(name="scratch"), encoding="utf-8")
+        BUCKET_CARD.format(name="scratch"), encoding="utf-8"
+    )
     (root / "LEDGER.md").write_text("# Ledger\n", encoding="utf-8")
-    (root / "sources" / "MANIFEST.md").write_text(
-        MANIFEST_HEADER, encoding="utf-8")
+    (root / "sources" / "MANIFEST.md").write_text(MANIFEST_HEADER, encoding="utf-8")
     return root
 
 

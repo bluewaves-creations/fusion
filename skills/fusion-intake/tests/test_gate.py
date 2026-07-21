@@ -1,4 +1,5 @@
 """Stage-1 gate: deterministic classification of inbox/ against sources/."""
+
 import json
 import random
 from pathlib import Path
@@ -7,10 +8,34 @@ from conftest import drop, seed_source
 
 import gate
 
-_VOCAB = ["alpha", "bravo", "charlie", "delta", "echo", "foxtrot", "golf",
-          "hotel", "india", "juliet", "kilo", "lima", "mike", "november",
-          "oscar", "papa", "quebec", "romeo", "sierra", "tango", "uniform",
-          "victor", "whiskey", "xray", "yankee", "zulu"]
+_VOCAB = [
+    "alpha",
+    "bravo",
+    "charlie",
+    "delta",
+    "echo",
+    "foxtrot",
+    "golf",
+    "hotel",
+    "india",
+    "juliet",
+    "kilo",
+    "lima",
+    "mike",
+    "november",
+    "oscar",
+    "papa",
+    "quebec",
+    "romeo",
+    "sierra",
+    "tango",
+    "uniform",
+    "victor",
+    "whiskey",
+    "xray",
+    "yankee",
+    "zulu",
+]
 
 
 def _prefix_at_least(nbytes: int, seed: int = 1) -> str:
@@ -134,9 +159,14 @@ def test_main_writes_manifest_into_workbench(bucket):
     runs = list((bucket / "workbench" / ".intake").glob("gate-*.json"))
     assert len(runs) == 1
     data = json.loads(runs[0].read_text(encoding="utf-8"))
-    assert data["counts"] == {"exact_dups": 0, "near_dups": 0,
-                              "update_candidates": 0, "clean_new": 1,
-                              "inbox_dups": 0, "containers": 0}
+    assert data["counts"] == {
+        "exact_dups": 0,
+        "near_dups": 0,
+        "update_candidates": 0,
+        "clean_new": 1,
+        "inbox_dups": 0,
+        "containers": 0,
+    }
 
 
 def test_locked_lineage_thresholds():
@@ -173,7 +203,7 @@ def test_tiff_classifies_like_any_other_image_not_refused(bucket):
     # shingles whatever is in inbox/, containers aside. A .tiff walks the
     # exact same clean_new / exact_dup path a .png would; the refusal (now
     # gone) lived only in convert.py admit()'s SUPPORTED_EXTS, one layer up.
-    tiff_bytes = b"II*\x00" + b"\x00\x01\x02\xff\xfe" * 24   # fake but binary
+    tiff_bytes = b"II*\x00" + b"\x00\x01\x02\xff\xfe" * 24  # fake but binary
     (bucket / "inbox" / "family-photo.tiff").write_bytes(tiff_bytes)
     result = run_gate(bucket)
     assert [f["incoming"] for f in result["clean_new"]] == ["family-photo.tiff"]
@@ -217,8 +247,16 @@ def test_similarity_cap_still_catches_reexport_by_shared_prefix(bucket):
     # only their tails (beyond the cap) differ. The gate must still see
     # them as a near-dup — it never reads past SIMILARITY_READ_CAP.
     prefix = _prefix_at_least(gate.SIMILARITY_READ_CAP + 4096)
-    seed_source(bucket, "reports/big.csv", prefix + " SOURCE ONLY TAIL DIFFERS HERE AND ONLY HERE")
-    drop(bucket, "big-reexport.csv", prefix + " INCOMING ONLY TAIL DIFFERS ELSEWHERE ENTIRELY")
+    seed_source(
+        bucket,
+        "reports/big.csv",
+        prefix + " SOURCE ONLY TAIL DIFFERS HERE AND ONLY HERE",
+    )
+    drop(
+        bucket,
+        "big-reexport.csv",
+        prefix + " INCOMING ONLY TAIL DIFFERS ELSEWHERE ENTIRELY",
+    )
     result = run_gate(bucket)
     assert len(result["near_dups"]) == 1
     entry = result["near_dups"][0]
@@ -230,11 +268,15 @@ def test_binary_incoming_skips_best_match_entirely(bucket, monkeypatch):
     # A handful of real-looking sources — enough to prove the mechanism
     # without building a 200-file fixture.
     for i in range(5):
-        seed_source(bucket, f"reports/src-{i}.csv",
-                    LONG_A + f" variant {i} extra trailing words to keep "
-                    "each source's shingles distinct from the others")
+        seed_source(
+            bucket,
+            f"reports/src-{i}.csv",
+            LONG_A + f" variant {i} extra trailing words to keep "
+            "each source's shingles distinct from the others",
+        )
     (bucket / "inbox" / "photo.bin").write_bytes(
-        b"\x00\x01\x02\xff\xfe\x03\x04\x05\xfd\xfc" * 40)
+        b"\x00\x01\x02\xff\xfe\x03\x04\x05\xfd\xfc" * 40
+    )
 
     calls = []
     real_similarity = gate.similarity

@@ -1,4 +1,5 @@
 """sources/MANIFEST.md — the register of preserved originals (SPEC §7)."""
+
 from __future__ import annotations
 
 import re

@@ -15,11 +15,13 @@ def tmp_hub(tmp_path, monkeypatch):
 
 def test_new_bucket_is_conformant(tmp_path):
     root, warnings = new_bucket(
-        tmp_path / "studio", kind="studio",
-        description="Music and gear.", actor="claude",
+        tmp_path / "studio",
+        kind="studio",
+        description="Music and gear.",
+        actor="claude",
         at=datetime(2026, 7, 10, 9, 0),
     )
-    assert check(root) == []          # zero errors, zero warnings, day one
+    assert check(root) == []  # zero errors, zero warnings, day one
     for zone in ("inbox", "workbench", "output"):
         assert (root / zone / ".gitkeep").exists()
     assert (root / "sources" / "MANIFEST.md").exists()
@@ -27,7 +29,9 @@ def test_new_bucket_is_conformant(tmp_path):
     entries = ledger.read(root)
     assert len(entries) == 1
     assert (entries[0].verb, entries[0].obj, entries[0].note) == (
-        "created", "BUCKET.md", "bucket born"
+        "created",
+        "BUCKET.md",
+        "bucket born",
     )
     assert (root / ".git").is_dir()
     card = (root / "BUCKET.md").read_text(encoding="utf-8")
@@ -58,8 +62,9 @@ def test_new_bucket_refuses_file_target(tmp_path):
 def test_new_bucket_refuses_taken_name(tmp_path):
     new_bucket(tmp_path / "studio", description="d", actor="claude")
     with pytest.raises(ScaffoldError, match="already registered"):
-        new_bucket(tmp_path / "elsewhere", name="studio",
-                   description="d", actor="claude")
+        new_bucket(
+            tmp_path / "elsewhere", name="studio", description="d", actor="claude"
+        )
 
 
 HOSTILE_DESCRIPTIONS = [
@@ -74,9 +79,12 @@ HOSTILE_DESCRIPTIONS = [
 
 def test_new_bucket_conformant_with_hostile_description(tmp_path):
     from fusion import bucket
+
     for i, description in enumerate(HOSTILE_DESCRIPTIONS):
         root, _ = new_bucket(
-            tmp_path / f"tricky-{i}", description=description, actor="claude",
+            tmp_path / f"tricky-{i}",
+            description=description,
+            actor="claude",
         )
         assert check(root) == []
         assert bucket.load(root).description == description
@@ -103,6 +111,7 @@ def test_hub_path_contraction_respects_boundaries(tmp_path, monkeypatch):
 def test_hub_failure_is_a_warning_not_an_error(tmp_path, monkeypatch):
     def boom(entry):
         raise ValueError("hub on fire")
+
     monkeypatch.setattr(hub, "add", boom)
     root, warnings = new_bucket(tmp_path / "b", description="d", actor="c")
     assert root.exists()
@@ -126,6 +135,6 @@ def test_new_bucket_writes_gitignore(tmp_path):
     assert "inbox/*.zip" in text
     assert "\r" not in text
     # a one-line comment above the patterns, per the delivery-vehicle rule
-    lines = [l for l in text.splitlines() if l.strip()]
+    lines = [line for line in text.splitlines() if line.strip()]
     assert lines[0].startswith("#")
-    assert sum(1 for l in lines if l.startswith("#")) == 1
+    assert sum(1 for line in lines if line.startswith("#")) == 1

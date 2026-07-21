@@ -34,8 +34,20 @@ def test_check_broken_bucket_exit_one(fixture_bucket, tmp_path, capsys):
 
 
 def test_new_then_hub_list(tmp_path, capsys):
-    assert main(["new", str(tmp_path / "studio"), "--kind", "studio",
-                 "--description", "Music.", "--json"]) == 0
+    assert (
+        main(
+            [
+                "new",
+                str(tmp_path / "studio"),
+                "--kind",
+                "studio",
+                "--description",
+                "Music.",
+                "--json",
+            ]
+        )
+        == 0
+    )
     born = out_json(capsys)
     assert born["bucket"] == "studio"
     assert main(["hub", "--json"]) == 0
@@ -57,8 +69,23 @@ def test_log_append_and_read(tmp_path, capsys):
     main(["new", str(tmp_path / "b"), "--description", "d"])
     capsys.readouterr()
     root = str(tmp_path / "b")
-    assert main(["log", "noted", "workbench/x.md", "--note", "hello",
-                 "--at", "2026-07-10 09:30", "--bucket", root, "--json"]) == 0
+    assert (
+        main(
+            [
+                "log",
+                "noted",
+                "workbench/x.md",
+                "--note",
+                "hello",
+                "--at",
+                "2026-07-10 09:30",
+                "--bucket",
+                root,
+                "--json",
+            ]
+        )
+        == 0
+    )
     appended = out_json(capsys)
     assert appended["verb"] == "noted" and appended["note"] == "hello"
     assert main(["log", "--bucket", root, "--json"]) == 0
@@ -97,8 +124,7 @@ def test_status_today_agenda_json(fixture_bucket, capsys):
 
 
 def test_every_command_has_help(capsys):
-    for cmd in ("new", "hub", "log", "index", "check",
-                "status", "today", "agenda"):
+    for cmd in ("new", "hub", "log", "index", "check", "status", "today", "agenda"):
         with pytest.raises(SystemExit) as exc:
             main([cmd, "--help"])
         assert exc.value.code == 0
@@ -123,14 +149,16 @@ def test_hub_add_resolves_relative_paths(tmp_path, monkeypatch, capsys):
     assert main(["hub", "add", "."]) == 0
     capsys.readouterr()
     from fusion import hub
+
     entry = hub.load()[0]
     assert entry.path not in (".", "./")
     from pathlib import Path as P
+
     assert P(entry.path).expanduser().is_absolute()
 
 
 def test_failure_emits_json_envelope(tmp_path, capsys, monkeypatch):
-    monkeypatch.chdir(tmp_path)          # nowhere near a bucket
+    monkeypatch.chdir(tmp_path)  # nowhere near a bucket
     assert main(["log", "noted", "x", "--json"]) == 1
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
@@ -154,9 +182,14 @@ def test_check_names_the_missing_path(capsys):
 
 def test_help_describes_every_command(capsys):
     needles = {
-        "new": "Scaffold", "hub": "registry", "log": "append-only",
-        "index": "Deterministic", "check": "SPEC", "status": "glance",
-        "today": "morning", "agenda": "horizon",
+        "new": "Scaffold",
+        "hub": "registry",
+        "log": "append-only",
+        "index": "Deterministic",
+        "check": "SPEC",
+        "status": "glance",
+        "today": "morning",
+        "agenda": "horizon",
     }
     for cmd, needle in needles.items():
         with pytest.raises(SystemExit):
@@ -222,7 +255,9 @@ def test_parent_listing_has_one_liners(capsys):
     assert exc.value.code == 0
     output = capsys.readouterr().out
     for cmd, oneliner in hub_sub_help.items():
-        assert oneliner in output, f"Hub subcommand help missing for '{cmd}': '{oneliner}'"
+        assert oneliner in output, (
+            f"Hub subcommand help missing for '{cmd}': '{oneliner}'"
+        )
 
 
 def test_hub_list_flags_missing(tmp_path, capsys, monkeypatch):

@@ -15,6 +15,7 @@ class and asks the human where the locked rule requires it.
 Usage:
     uv run <skill>/scripts/gate.py --bucket <bucket-root> [--out <path>]
 """
+
 import argparse
 import hashlib
 import json
@@ -26,11 +27,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 # Locked lineage thresholds (doc-converter, kept verbatim).
-NEAR_DUP_THRESHOLD = 0.85   # best content sim >= this (and not exact) -> near-dup
-UPDATE_SIM_FLOOR = 0.30     # [floor, near): name match -> update candidate
-SHINGLE_K = 3               # word-shingle size for similarity
+NEAR_DUP_THRESHOLD = 0.85  # best content sim >= this (and not exact) -> near-dup
+UPDATE_SIM_FLOOR = 0.30  # [floor, near): name match -> update candidate
+SHINGLE_K = 3  # word-shingle size for similarity
 
-SIMILARITY_READ_CAP = 512 * 1024  # bytes of text considered for similarity — enough to catch any real re-export/update
+SIMILARITY_READ_CAP = (
+    512 * 1024
+)  # bytes of text considered for similarity — enough to catch any real re-export/update
 
 _DATE_PREFIX = re.compile(r"^(?:\d{4}-\d{2}-\d{2}|\d{8})[_-]")
 _SEP_RUN = re.compile(r"[\s_-]+")
@@ -114,7 +117,7 @@ def _shingles(text, k: int = SHINGLE_K) -> set:
     tokens = _WORD.findall(text.lower())
     if len(tokens) < k:
         return set()
-    return {" ".join(tokens[i:i + k]) for i in range(len(tokens) - k + 1)}
+    return {" ".join(tokens[i : i + k]) for i in range(len(tokens) - k + 1)}
 
 
 def similarity(a, b) -> float:
@@ -135,9 +138,20 @@ def git_history(path: Path, cwd: Path, limit: int = 10) -> list:
     any failure (liberal reader)."""
     try:
         out = subprocess.run(
-            ["git", "log", "--follow", "--date=short",
-             f"-n{limit}", "--format=%ad\t%s", "--", str(path)],
-            cwd=str(cwd), capture_output=True, text=True, timeout=30,
+            [
+                "git",
+                "log",
+                "--follow",
+                "--date=short",
+                f"-n{limit}",
+                "--format=%ad\t%s",
+                "--",
+                str(path),
+            ],
+            cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            timeout=30,
         )
     except (OSError, subprocess.SubprocessError):
         return []
@@ -167,11 +181,16 @@ def _best_match(incoming_shingles: set, idx: SourceIndex, shingle_cache: dict):
 
 
 def classify_intake(inbox_dir: Path, sources_dir: Path, idx: SourceIndex) -> dict:
-    result = {"exact_dups": [], "near_dups": [],
-              "update_candidates": [], "clean_new": [], "inbox_dups": [],
-              "containers": []}
+    result = {
+        "exact_dups": [],
+        "near_dups": [],
+        "update_candidates": [],
+        "clean_new": [],
+        "inbox_dups": [],
+        "containers": [],
+    }
     seen_in_batch: dict = {}
-    shingle_cache: dict = {}   # source path -> shingle set, cached for this run only
+    shingle_cache: dict = {}  # source path -> shingle set, cached for this run only
     for f in _iter_files(Path(inbox_dir)):
         rel = str(f.relative_to(inbox_dir))
 
@@ -182,22 +201,26 @@ def classify_intake(inbox_dir: Path, sources_dir: Path, idx: SourceIndex) -> dic
         h = sha256_of(f)
 
         if h in seen_in_batch:
-            result["inbox_dups"].append({
-                "incoming": rel,
-                "duplicate_of": seen_in_batch[h],
-                "hash": h,
-                "auto_skip": True,
-            })
+            result["inbox_dups"].append(
+                {
+                    "incoming": rel,
+                    "duplicate_of": seen_in_batch[h],
+                    "hash": h,
+                    "auto_skip": True,
+                }
+            )
             continue
         seen_in_batch[h] = rel
 
         if h in idx.by_hash:
-            result["exact_dups"].append({
-                "incoming": rel,
-                "matched_source": idx.by_hash[h][0],
-                "hash": h,
-                "auto_skip": True,
-            })
+            result["exact_dups"].append(
+                {
+                    "incoming": rel,
+                    "matched_source": idx.by_hash[h][0],
+                    "hash": h,
+                    "auto_skip": True,
+                }
+            )
             continue
 
         name_match = normalize_filename(f.name) in idx.by_name
@@ -211,34 +234,47 @@ def classify_intake(inbox_dir: Path, sources_dir: Path, idx: SourceIndex) -> dic
             match_path, sim = None, 0.0
 
         if match_path is not None and sim >= NEAR_DUP_THRESHOLD:
-            result["near_dups"].append({
-                "incoming": rel, "matched_source": match_path,
-                "similarity": round(sim, 4), "auto_skip": False,
-            })
+            result["near_dups"].append(
+                {
+                    "incoming": rel,
+                    "matched_source": match_path,
+                    "similarity": round(sim, 4),
+                    "auto_skip": False,
+                }
+            )
         elif match_path is not None and sim >= UPDATE_SIM_FLOOR and name_match:
-            result["update_candidates"].append({
-                "incoming": rel, "matched_source": match_path,
-                "similarity": round(sim, 4),
-                "history": git_history(Path("sources") / match_path,
-                                       Path(sources_dir).parent),
-                "auto_skip": False,
-            })
+            result["update_candidates"].append(
+                {
+                    "incoming": rel,
+                    "matched_source": match_path,
+                    "similarity": round(sim, 4),
+                    "history": git_history(
+                        Path("sources") / match_path, Path(sources_dir).parent
+                    ),
+                    "auto_skip": False,
+                }
+            )
         elif match_path is not None and sim >= UPDATE_SIM_FLOOR:
-            result["near_dups"].append({
-                "incoming": rel, "matched_source": match_path,
-                "similarity": round(sim, 4), "auto_skip": False,
-            })
+            result["near_dups"].append(
+                {
+                    "incoming": rel,
+                    "matched_source": match_path,
+                    "similarity": round(sim, 4),
+                    "auto_skip": False,
+                }
+            )
         else:
             result["clean_new"].append({"incoming": rel})
     return result
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(
-        description="fusion-intake Stage-1 gate classifier")
+    ap = argparse.ArgumentParser(description="fusion-intake Stage-1 gate classifier")
     ap.add_argument("--bucket", required=True, help="bucket root")
-    ap.add_argument("--out", help="manifest path "
-                    "(default: <bucket>/workbench/.intake/gate-<runid>.json)")
+    ap.add_argument(
+        "--out",
+        help="manifest path (default: <bucket>/workbench/.intake/gate-<runid>.json)",
+    )
     args = ap.parse_args(argv)
 
     root = Path(args.bucket).expanduser().resolve()
@@ -254,11 +290,13 @@ def main(argv=None) -> int:
         "counts": {k: len(v) for k, v in buckets.items()},
         "buckets": buckets,
     }
-    out = Path(args.out) if args.out else (
-        root / "workbench" / ".intake" / f"gate-{uuid.uuid4().hex[:12]}.json")
+    out = (
+        Path(args.out)
+        if args.out
+        else (root / "workbench" / ".intake" / f"gate-{uuid.uuid4().hex[:12]}.json")
+    )
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(manifest, indent=2), encoding="utf-8",
-                   newline="\n")
+    out.write_text(json.dumps(manifest, indent=2), encoding="utf-8", newline="\n")
     print(f"gate: {manifest['counts']} -> {out}")
     return 0
 

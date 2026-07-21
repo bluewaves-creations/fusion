@@ -1,4 +1,5 @@
 """The Phase 2 gate, as a test: new → all 11 verbs → index → check → views."""
+
 import json
 
 import pytest
@@ -39,17 +40,26 @@ def test_round_trip(tmp_path, capsys):
 
     # 3. every verb in the closed set, appended and read back
     for i, verb in enumerate(VERBS):
-        assert main([
-            "log", verb, f"workbench/thing-{i}.md",
-            "--at", f"2026-07-10 {10 + i // 60:02d}:{i % 60:02d}",
-            "--bucket", str(root),
-        ]) == 0
+        assert (
+            main(
+                [
+                    "log",
+                    verb,
+                    f"workbench/thing-{i}.md",
+                    "--at",
+                    f"2026-07-10 {10 + i // 60:02d}:{i % 60:02d}",
+                    "--bucket",
+                    str(root),
+                ]
+            )
+            == 0
+        )
     capsys.readouterr()
     assert main(["log", "--bucket", str(root), "--json"]) == 0
     entries = out_json(capsys)
     # founding entry + indexed (from `fusion index`) + the eleven
     assert len(entries) == 13
-    assert [e["verb"] for e in entries[-len(VERBS):]] == list(VERBS)
+    assert [e["verb"] for e in entries[-len(VERBS) :]] == list(VERBS)
 
     # 4. still conformant — the ledger accepts the whole vocabulary
     assert main(["check", str(root)]) == 0
