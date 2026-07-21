@@ -31,6 +31,15 @@ root SPEC §0/§11 — no craft-spec delta, per the finish improvement loop.
   the path — it makes a bare `uv run mypy` work for contributors.
 - Review (fresh-eyes subagent, 1d3d528..d7e4932): zero critical/important;
   sweep AST-verified semantics-preserving; minors seated in Gaps.
+- Batch 2 closed 2026-07-22 (finish improvement loop). Review of
+  93126d2..ee1363a: zero critical, 1 important + 2 minor — all fixed in
+  the loop (de77187): remove_all gained the agent sweep's digest fallback
+  plus a --force escape so legacy pre-sentinel installs never strand;
+  space-bearing repaired destinations rewrap in <>; _summary pinned.
+  Sentinel transition waiver: craft/ADR.md Batch 2 entry.
+- SHIPPED at finish 2026-07-22: C1–C3 (static gates, blocking) +
+  R1–R6 (extended-review fixes). Suggested next spec: none open —
+  new work routes through specify (dogfood frictions remain the feed).
 
 ## Batch 1 — static gate remediation
 - [x] 1.1 Lint-clean and formatted (C1). Doc: Ruff docs — "Configuring
@@ -96,3 +105,7 @@ personal main-first system, no branch/PR ceremony) · mypy strict = true,
 - Skills suites depend on ad-hoc `--with` deps (no lockfile for skill
   tests) — human accepted as-is at finish; risk recorded in ADR.md
   adoption entry. Raise if it bites.
+- Batch 2 review sub-minors, accepted as noted: sentinel file content
+  (version+digest) is written but never read back (inspection value
+  only) · today()/agenda() items carry the raw non-scalar aurora while
+  the group key is stringified — harmless for conforming buckets.
