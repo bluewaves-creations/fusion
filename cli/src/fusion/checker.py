@@ -10,7 +10,14 @@ from pathlib import Path
 from typing import Any
 
 from . import hub, indexer, ledger, manifest
-from .bucket import DOC_ZONES, REQUIRED_BUCKET_FIELDS, ZONES, load, iter_documents
+from .bucket import (
+    DOC_ZONES,
+    REQUIRED_BUCKET_FIELDS,
+    ZONES,
+    is_hidden,
+    iter_documents,
+    load,
+)
 from .document import AURORAS, FILENAME_RE, MAX_STEM
 
 # SPEC §2, §11: output/ MAY hold non-markdown deliverables (exports); their
@@ -142,7 +149,7 @@ def _e7_manifest(root: Path) -> list[Finding]:
         for p in sources.rglob("*")
         if p.is_file()
         and p.name != "MANIFEST.md"
-        and not any(part.startswith(".") for part in p.relative_to(sources).parts)
+        and not is_hidden(p.relative_to(sources))
     }
     rows = {r.file for r in manifest.read(root)}
     findings = [
@@ -172,7 +179,7 @@ def _e8_filenames(root: Path) -> list[Finding]:
             if (
                 not p.is_file()
                 or p.name == "INDEX.md"
-                or any(part.startswith(".") for part in p.relative_to(zone_dir).parts)
+                or is_hidden(p.relative_to(zone_dir))
             ):
                 continue
             rel = f"{zone}/{p.relative_to(zone_dir).as_posix()}"

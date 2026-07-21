@@ -56,6 +56,12 @@ class Bucket:
             return 7
 
 
+def is_hidden(rel: Path) -> bool:
+    """A dot-file or dot-directory anywhere along the relative path —
+    the one filter every zone walker shares."""
+    return any(part.startswith(".") for part in rel.parts)
+
+
 def find_root(start: Path) -> Path | None:
     current = start.resolve()
     for candidate in (current, *current.parents):
@@ -81,8 +87,6 @@ def iter_documents(
             continue
         for path in sorted(zone_dir.rglob("*.md")):
             rel = path.relative_to(zone_dir)
-            if path.name == "INDEX.md" or any(
-                part.startswith(".") for part in rel.parts
-            ):
+            if path.name == "INDEX.md" or is_hidden(rel):
                 continue
             yield zone, rel, read_document(path)
