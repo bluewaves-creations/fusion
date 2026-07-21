@@ -16,10 +16,18 @@ Files (Batch 1):
 - AGENTS.md — gate line flips advisory → blocking
 
 ## State
-2026-07-21 — adopted brownfield; spec seated C1–C3 (static gates) same day.
-All advertised gates green (199 CLI tests, 87 intake, 22 librarian,
-conformance 0/0, shellcheck, wheel). Red trials re-run at plan time:
-ruff 0.15.22, mypy 2.3.0 — counts pinned in Gaps.
+Batch 1 closed 2026-07-21 (adopted brownfield + spec C1–C3 same day).
+All C-ids ticked; CI run 29873877632 green on all 7 jobs. Next: finish,
+or new work via specify.
+- Decided: one root ruff.toml, not [tool.ruff] in cli/pyproject.toml —
+  ruff's per-file upward discovery is the only way one config governs
+  cli/ AND skills/ (docs.astral.sh/ruff/configuration).
+- Decided: ci.yml static step pins `shell: bash` — pwsh only propagates
+  the last command's exit code; red ruff would pass silently on Windows.
+- Decided: [tool.mypy] files=["src/fusion"] kept although commands pass
+  the path — it makes a bare `uv run mypy` work for contributors.
+- Review (fresh-eyes subagent, 1d3d528..d7e4932): zero critical/important;
+  sweep AST-verified semantics-preserving; minors seated in Gaps.
 
 ## Batch 1 — static gate remediation
 - [x] 1.1 Lint-clean and formatted (C1). Doc: Ruff docs — "Configuring
@@ -49,10 +57,11 @@ ruff 0.15.22, mypy 2.3.0 — counts pinned in Gaps.
       AGENTS.md gate line contains no "advisory".
 
 ## Gaps
-- Lint red at adoption, re-confirmed at plan (2026-07-21): 8 ruff errors
-  (3 E702, 1 E731, 3 E741, 1 F401), 32/35 files unformatted.
-- Types red at adoption, re-confirmed: checker.py:41 union-attr,
-  cli.py:95 bool→list[str], yaml stubs missing (document.py:8,
-  scaffold.py:9).
+- ci.yml triggers are `push: main` + all PRs — C3's literal "every push"
+  excludes PR-less feature-branch pushes. Pre-existing trigger, PR path
+  to main is covered; widening it is the human's call (review minor).
+- mypy runs at default depth, not `strict` — untyped bodies unchecked.
+  C2's frozen command is satisfied; deepening is a future batch
+  (review minor).
 - Skills suites depend on ad-hoc `--with` deps (no lockfile for skill
-  tests) — works, unpinned. Not in Batch 1; raise at boundary if it bites.
+  tests) — works, unpinned. Raise if it bites.
