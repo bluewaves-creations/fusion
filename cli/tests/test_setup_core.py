@@ -93,3 +93,40 @@ def test_install_canonical_leaves_foreign_symlink(tmp_path):
     by = {r["skill"]: r["action"] for r in results}
     assert by["fusion-intake"] == "replaced"
     assert not (dest / "fusion-intake").is_symlink()
+
+
+def test_install_canonical_marks_provenance_and_stays_idempotent(tmp_path):
+    payload = make_payload(tmp_path / "payload")
+    dest = tmp_path / "agents-skills"
+    setup.install_canonical(payload, dest, force=False)
+    assert (dest / "fusion-intake" / ".fusion-setup").is_file()
+    again = setup.install_canonical(payload, dest, force=False)
+    assert {r["skill"]: r["action"] for r in again} == {
+        "fusion-intake": "up-to-date",
+        "fusion-librarian": "up-to-date",
+    }
+
+
+def test_install_canonical_leaves_unattributed_dir_unless_forced(tmp_path):
+    """The module contract: never destroy content setup did not create.
+    A fusion-named dir without our sentinel is not provably ours — left."""
+    payload = make_payload(tmp_path / "payload")
+    dest = tmp_path / "agents-skills"
+    dest.mkdir()
+    theirs = dest / "fusion-intake"
+    theirs.mkdir()
+    (theirs / "SKILL.md").write_text("their own skill\n")
+
+    by = {
+        r["skill"]: r["action"]
+        for r in setup.install_canonical(payload, dest, force=False)
+    }
+    assert by["fusion-intake"] == "left"
+    assert (theirs / "SKILL.md").read_text() == "their own skill\n"
+
+    by = {
+        r["skill"]: r["action"]
+        for r in setup.install_canonical(payload, dest, force=True)
+    }
+    assert by["fusion-intake"] == "replaced"
+    assert (theirs / "references" / "guide.md").read_text() == "guide\n"

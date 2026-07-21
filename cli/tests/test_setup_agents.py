@@ -279,3 +279,22 @@ def test_sweep_legacy_skips_dir_aliased_at_canonical(home, canonical):
     # remove is equally alias-safe
     setup.remove_all(canonical, home)
     assert user_link.is_symlink()
+
+
+def test_remove_all_canonical_skips_files_and_leaves_unattributed_dirs(home, canonical):
+    """The canonical sweep is attribution-checked like the agent sweep —
+    and a fusion-named plain file must never crash the removal."""
+    (canonical / "fusion-notes.md").write_text("a file, not a skill\n")
+    foreign = canonical / "fusion-extra"
+    foreign.mkdir()
+    (foreign / "SKILL.md").write_text("---\nname: their-tool\n---\n")
+
+    results = setup.remove_all(canonical, home)
+
+    assert not (canonical / "fusion-intake").exists()  # ours: removed
+    assert (canonical / "fusion-notes.md").is_file()  # file: left, no crash
+    assert foreign.is_dir()  # no sentinel: left
+    by = {r["skill"]: r["action"] for r in results if r["agent"] == "canonical"}
+    assert by["fusion-notes.md"] == "left"
+    assert by["fusion-extra"] == "left"
+    assert by["fusion-intake"] == "removed"

@@ -45,11 +45,25 @@ def payload_version() -> str:
 def tree_digest(path: Path) -> str:
     h = hashlib.sha256()
     for f in sorted(p for p in path.rglob("*") if p.is_file()):
-        h.update(f.relative_to(path).as_posix().encode())
+        rel = f.relative_to(path).as_posix()
+        if rel == ".fusion-setup":
+            continue  # provenance mark, not payload — a marked copy must
+            # still read byte-identical to the skill it was copied from
+        h.update(rel.encode())
         h.update(b"\0")
         h.update(f.read_bytes())
         h.update(b"\0")
     return h.hexdigest()
+
+
+def _write_sentinel(target: Path, skill: Path) -> None:
+    """Mark a copy as ours — the attribution every later setup/remove
+    decision keys on (never destroy what the sentinel can't vouch for)."""
+    (target / ".fusion-setup").write_text(
+        f"{payload_version()}\n{tree_digest(skill)}\n",
+        encoding="utf-8",
+        newline="\n",
+    )
 
 
 def install_canonical(
@@ -72,20 +86,40 @@ def install_canonical(
                 continue
             dest.unlink()
             shutil.copytree(skill, dest)
+            _write_sentinel(dest, skill)
             results.append(
                 {"skill": skill.name, "action": "replaced", "detail": str(dest)}
             )
             continue
         if dest.is_dir():
             if tree_digest(dest) == tree_digest(skill):
+                if not (dest / ".fusion-setup").is_file():
+                    _write_sentinel(dest, skill)  # byte-identical to our
+                    # payload — adopting it is provably safe
                 results.append(
                     {"skill": skill.name, "action": "up-to-date", "detail": str(dest)}
                 )
                 continue
+            ours = (dest / ".fusion-setup").is_file()
+            if not ours and not force:
+                results.append(
+                    {
+                        "skill": skill.name,
+                        "action": "left",
+                        "detail": f"{dest} differs and is not "
+                        f"attributable to setup — --force replaces",
+                    }
+                )
+                continue
             shutil.rmtree(dest)
             shutil.copytree(skill, dest)
+            _write_sentinel(dest, skill)
             results.append(
-                {"skill": skill.name, "action": "updated", "detail": str(dest)}
+                {
+                    "skill": skill.name,
+                    "action": "updated" if ours else "replaced",
+                    "detail": str(dest),
+                }
             )
             continue
         if dest.exists():
@@ -100,11 +134,13 @@ def install_canonical(
                 continue
             dest.unlink()
             shutil.copytree(skill, dest)
+            _write_sentinel(dest, skill)
             results.append(
                 {"skill": skill.name, "action": "replaced", "detail": str(dest)}
             )
             continue
         shutil.copytree(skill, dest)
+        _write_sentinel(dest, skill)
         results.append(
             {"skill": skill.name, "action": "installed", "detail": str(dest)}
         )
@@ -356,11 +392,7 @@ def fan_out(
                 )
             except OSError:
                 shutil.copytree(skill, target)
-                (target / ".fusion-setup").write_text(
-                    f"{payload_version()}\n{tree_digest(skill)}\n",
-                    encoding="utf-8",
-                    newline="\n",
-                )
+                _write_sentinel(target, skill)
                 results.append(
                     {
                         **row,
@@ -416,6 +448,20 @@ def remove_all(canonical: Path, home: Path) -> list[dict[str, Any]]:
         if skill.is_symlink():
             results.append(
                 {**row, "action": "left", "detail": f"{skill} is a symlink you manage"}
+            )
+            continue
+        if not skill.is_dir():
+            results.append(
+                {**row, "action": "left", "detail": f"{skill} is not a skill directory"}
+            )
+            continue
+        if not (skill / ".fusion-setup").is_file():
+            results.append(
+                {
+                    **row,
+                    "action": "left",
+                    "detail": f"{skill} is not attributable to setup — left in place",
+                }
             )
             continue
         shutil.rmtree(skill)
