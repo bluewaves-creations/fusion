@@ -17,8 +17,10 @@ closed on purpose — the bar for widening them is high.
 Bug fixes and capability work on the CLI (`cli/`) and skills (`skills/`)
 are welcome as pull requests. House rules: TDD (the suites are the spec's
 teeth), `fusion check examples/crazy-ones` stays at zero errors and zero
-warnings, the four `references/fusion-conventions.md` stay byte-identical,
-and single-writer registers are never hand-edited — not even in tests.
+warnings, the static checks stay green (`ruff check`, `ruff format`,
+strict `mypy` — CI blocks on all three), the four
+`references/fusion-conventions.md` stay byte-identical, and single-writer
+registers are never hand-edited — not even in tests.
 
 ## Rewrite it entirely
 

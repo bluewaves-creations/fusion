@@ -10,7 +10,7 @@ ledger, aurora attention system. v1.4.1 on PyPI; phase 4 (dogfood) live.
 The contract: the human judges, the AI operates, the files remember.
 
 ## Stack
-- Python ≥ 3.11 under uv — sole runtime dep `pyyaml`; dev group: pytest 8.
+- Python ≥ 3.11 under uv — sole runtime dep `pyyaml`; dev: pytest 8, ruff, strict mypy.
 - hatchling build; `cli/hatch_build.py` hook bundles skills into the wheel.
 - Skills: Agent Skills standard (SKILL.md), POSIX scripts, own pytest suites.
 - Installers: `install.sh` (POSIX sh) + `install.ps1`.

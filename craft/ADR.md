@@ -2,6 +2,23 @@
 
 Read before re-litigating anything. Newest first.
 
+## 2026-07-21 — Batch 1 finished: static gates live and blocking
+Context: craft C1–C3 remediated and finished the same day as adoption.
+
+Decisions:
+- One root ruff.toml, not [tool.ruff] in cli/pyproject.toml — ruff's
+  per-file upward config discovery is the only way one config governs
+  cli/ AND skills/. Rejected: per-package configs (style drift).
+- mypy `strict = true` (human: fix now, at finish) — 77 fallout errors
+  annotated. Liberal-reader frontmatter accessors return `Any` on
+  purpose: frontmatter values are untyped by design (SPEC §0); the
+  strictness lives at the boundaries, not in pretend value types.
+- ci.yml triggers on every push, no branch filter (human: Fusion is a
+  personal system, no branch/PR ceremony). Static-checks step pins
+  `shell: bash` — pwsh only propagates the last command's exit code.
+- Skills suites' unpinned `--with` deps: human accepted as-is at
+  finish; revisit only if a resolution ever bites.
+
 ## 2026-07-21 — State of the system at Craftsman adoption
 Context: `init craftsman` on the existing v1.4.1 tree (clean main, released
 to PyPI, phase 4 dogfood in progress).
