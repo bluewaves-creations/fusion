@@ -17,8 +17,11 @@ Files (Batch 1):
 
 ## State
 Batch 1 closed 2026-07-21 (adopted brownfield + spec C1–C3 same day).
-All C-ids ticked; CI run 29873877632 green on all 7 jobs. Next: finish,
-or new work via specify.
+All C-ids ticked; CI run 29873877632 green on all 7 jobs. Finish pass
+2026-07-21: gaps disposed, full QA green (CI 29875028824), extended
+review (whole repo, advisory) accepted in full → Batch 2 below. Batch 2
+tasks carry R-ids (review findings), not C-ids: review-fix work enforcing
+root SPEC §0/§11 — no craft-spec delta, per the finish improvement loop.
 - Decided: one root ruff.toml, not [tool.ruff] in cli/pyproject.toml —
   ruff's per-file upward discovery is the only way one config governs
   cli/ AND skills/ (docs.astral.sh/ruff/configuration).
@@ -55,6 +58,36 @@ or new work via specify.
       gate line rewritten to the `uv run` forms, advisory clause dropped.
       Done: `git push` then CI green on all 3 OSes with the new step;
       AGENTS.md gate line contains no "advisory".
+
+## Batch 2 — extended-review fixes (accepted in full, 2026-07-21)
+- [ ] 2.1 Liberal reader in the composed views [R1]. Doc: SPEC §0 —
+      consumers never reject a half-migrated bucket. Files:
+      cli/src/fusion/views.py (coerce frontmatter values to stable
+      strings before they become Counter/dict keys or output labels in
+      status/today/agenda); cli/tests (regression: list-valued aurora,
+      mapping-valued type). Fold-in (refactor commit): extract the 4×
+      dot-dir predicate into one helper in bucket.py, import in
+      indexer.py + checker.py [R6].
+      Done: fusion status/today/agenda exit 0 on a bucket holding
+      `aurora: [a, b]`; new tests red→green; full gates green.
+- [ ] 2.2 CommonMark link destinations [R2]. Doc: CommonMark spec §6.3
+      (inline links: optional <...> destination, optional "…"/'…'/(…)
+      title after spaces). Files: cli/src/fusion/document.py (_links:
+      strip title suffix, unwrap angle brackets, strip whitespace) and
+      its deliberate twin skills/fusion-librarian/scripts/link-repair.py;
+      tests both sides: [x](f.md "t"), [x](<f.md>), trailing space.
+      Fold-in: _summary returns (False, None) when no terminator — no
+      summary line from a non-summary-first doc [R5].
+      Done: W4 silent on titled links to existing files; link-repair
+      lists none of them unrepairable; both suites green.
+- [ ] 2.3 Setup honors its foreign-entry contract [R3+R4]. Doc: setup.py
+      module docstring (the contract) + fan_out's provenance gate as the
+      in-repo model. Files: cli/src/fusion/setup.py (install_canonical
+      dir branch: digest/sentinel/--force gate before rmtree; remove_all
+      canonical sweep: skip non-directories); cli/tests (foreign-modified
+      dir left without --force and replaced with it; fusion-* plain file
+      survives --remove without crash).
+      Done: named tests red→green; full gates green.
 
 ## Gaps
 Disposed at finish (2026-07-21): CI now triggers on every push (human:
