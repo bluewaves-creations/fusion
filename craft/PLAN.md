@@ -34,7 +34,7 @@ ruff 0.15.22, mypy 2.3.0 — counts pinned in Gaps.
       `uv run --project cli ruff format --check .` exit 0 (covers cli/
       and skills/ — C1's letter, inside cli/, holds as a subset); full
       gate run stays green.
-- [ ] 1.2 Type-clean (C2). Doc: mypy docs — "The mypy configuration file"
+- [x] 1.2 Type-clean (C2). Doc: mypy docs — "The mypy configuration file"
       (pyproject `[tool.mypy]`). Files: cli/pyproject.toml (add mypy +
       types-PyYAML to dev group); cli/src/fusion/checker.py:41 (union-attr
       on possibly-None before .strip()); cli/src/fusion/cli.py:95 (bool

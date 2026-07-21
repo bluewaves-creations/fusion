@@ -16,7 +16,7 @@ lint/type gate with ruff + mypy, then make it blocking.
       `cli/`, `uv run ruff check` and `uv run ruff format --check` both
       exit 0. Edge: skills test suites (`skills/*/tests`) are covered by
       the same check — one style across the repo.
-- [ ] C2 The CLI source is type-clean: inside `cli/`, `uv run mypy
+- [x] C2 The CLI source is type-clean: inside `cli/`, `uv run mypy
       src/fusion` exits 0 — no missing-stub errors, no real type errors.
 - [ ] C3 The static checks are enforced, not advisory: CI runs lint,
       format, and type checks on every push and pull request, and the
