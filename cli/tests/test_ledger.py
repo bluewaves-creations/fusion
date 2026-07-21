@@ -99,6 +99,18 @@ def test_resolve_actor(monkeypatch):
     assert ledger.resolve_actor()  # falls back to the OS username, non-empty
 
 
+def test_parse_drops_entries_before_any_date_header():
+    text = (
+        "# Ledger\n\n"
+        "- 08:55 · claude · created · library/orphan.md\n"
+        "## 2026-07-10\n"
+        "- 09:00 · claude · created · library/a.md\n"
+    )
+    entries = ledger.parse(text)
+    # liberal reader: a well-formed entry with no date context yet is dropped
+    assert [(e.date, e.obj) for e in entries] == [("2026-07-10", "library/a.md")]
+
+
 def test_parse_is_liberal_ignores_malformed_lines():
     text = (
         "# Ledger\n\n## 2026-07-10\n"
