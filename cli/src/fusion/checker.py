@@ -39,8 +39,8 @@ def _missing_fields(mapping: dict, fields: tuple[str, ...]) -> list[str]:
     return [
         f
         for f in fields
-        if mapping.get(f) is None
-        or (isinstance(mapping.get(f), str) and not mapping.get(f).strip())
+        if (value := mapping.get(f)) is None
+        or (isinstance(value, str) and not value.strip())
     ]
 
 

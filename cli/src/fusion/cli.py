@@ -100,17 +100,15 @@ def cmd_hub(args) -> int:
     entries = hub.load()
     flagged = [(e, not (hub.resolve(e) / "BUCKET.md").is_file()) for e in entries]
     lines = []
-    for e, missing in flagged:
+    for e, absent in flagged:
         lines.append(f"- **{e.name}** · {e.kind} · {e.path} — {e.description}")
-        if missing:
+        if absent:
             lines.append(
                 f"  ⚠ no bucket at that path — clone it there, "
                 f"or `fusion hub remove {e.name}`"
             )
     human = "\n".join(lines) or "the hub is empty — `fusion new` a bucket."
-    _emit(
-        [{**asdict(e), "missing": missing} for e, missing in flagged], args.json, human
-    )
+    _emit([{**asdict(e), "missing": absent} for e, absent in flagged], args.json, human)
     return 0
 
 
