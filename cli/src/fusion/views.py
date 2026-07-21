@@ -11,6 +11,15 @@ from . import bucket, hub, ledger
 from .document import AURORAS, Document
 
 
+def _label(value: Any, fallback: str) -> str:
+    """SPEC §0: half-migrated frontmatter never crashes a composed view.
+    Non-scalar values become their string form and keep composing — the
+    checker's E-codes are where the document itself gets judged."""
+    if not value:
+        return fallback
+    return value if isinstance(value, str) else str(value)
+
+
 def filter_since(entries: list[ledger.Entry], since: str | None) -> list[ledger.Entry]:
     if not since:
         return entries
@@ -31,10 +40,10 @@ def status(root: Path, since: str | None = None) -> dict[str, Any]:
     total = 0
     for zone, rel, doc in bucket.iter_documents(root):
         total += 1
-        auroras[doc.aurora or "—"] += 1
-        types[doc.type or "—"] += 1
+        auroras[_label(doc.aurora, "—")] += 1
+        types[_label(doc.type, "—")] += 1
         if zone == "activities":
-            activities[doc.status or "unset"] += 1
+            activities[_label(doc.status, "unset")] += 1
     entries = filter_since(ledger.read(root), since)
     return {
         "bucket": b.name or root.name,
@@ -99,7 +108,7 @@ def today() -> dict[str, Any]:
             is_active_activity = zone == "activities" and doc.status == "active"
             is_commitment = doc.aurora == "commitments"
             if is_active_activity or is_commitment:
-                groups.setdefault(doc.aurora or "—", []).append(
+                groups.setdefault(_label(doc.aurora, "—"), []).append(
                     _item(name, zone, rel, doc)
                 )
     ordered = {a: groups[a] for a in AURORAS if a in groups}

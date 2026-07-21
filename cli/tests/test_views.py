@@ -111,6 +111,30 @@ def test_today_skips_hub_entries_without_bucket(tmp_path, monkeypatch):
     assert t["missing"] == [{"name": "ghost", "path": str(tmp_path / "gone")}]
 
 
+def test_views_survive_non_scalar_frontmatter(two_bucket_hub):
+    """SPEC §0 liberal reader: a half-migrated document with list- or
+    mapping-valued frontmatter must never crash the composed views —
+    the checker judges the document; the views still compose the day."""
+    root = two_bucket_hub / "studio"
+    plan_dir = root / "activities" / "halfmigrated"
+    plan_dir.mkdir()
+    doc = (
+        "---\ntitle: Half\ntype: [plan, note]\naurora: [focus, ops]\n"
+        "status: active\n---\n\n## Summary\n\nHalf.\n\n---\n\nBody.\n"
+    )
+    (plan_dir / "plan.md").write_text(doc, encoding="utf-8")
+
+    s = views.status(root)
+    assert s["auroras"]["['focus', 'ops']"] == 1
+    assert s["types"]["['plan', 'note']"] == 1
+
+    t = views.today()  # status: active → composes under the stringified label
+    assert "['focus', 'ops']" in t["groups"]
+
+    a = views.agenda()  # must simply not raise; the doc is active and undated
+    assert any(i["title"] == "Half" for i in a["active"])
+
+
 def test_views_exclude_archive_aurora_off_archive_paths(two_bucket_hub):
     """A document with aurora: archive should be excluded from today() and
     agenda() even if it's not on an archive/ path."""
