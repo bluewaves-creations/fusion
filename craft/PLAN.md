@@ -57,11 +57,9 @@ or new work via specify.
       AGENTS.md gate line contains no "advisory".
 
 ## Gaps
-- ci.yml triggers are `push: main` + all PRs — C3's literal "every push"
-  excludes PR-less feature-branch pushes. Pre-existing trigger, PR path
-  to main is covered; widening it is the human's call (review minor).
-- mypy runs at default depth, not `strict` — untyped bodies unchecked.
-  C2's frozen command is satisfied; deepening is a future batch
-  (review minor).
+Disposed at finish (2026-07-21): CI now triggers on every push (human:
+personal main-first system, no branch/PR ceremony) · mypy strict = true,
+77 fallout errors annotated (human: fix now). Remaining:
 - Skills suites depend on ad-hoc `--with` deps (no lockfile for skill
-  tests) — works, unpinned. Raise if it bites.
+  tests) — human accepted as-is at finish; risk recorded in ADR.md
+  adoption entry. Raise if it bites.
